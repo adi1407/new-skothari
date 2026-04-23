@@ -1,0 +1,34 @@
+const mongoose = require("mongoose");
+
+const videoSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 220 },
+    titleEn: { type: String, trim: true, maxlength: 220, default: "" },
+    summary: { type: String, trim: true, maxlength: 500, default: "" },
+    summaryEn: { type: String, trim: true, maxlength: 500, default: "" },
+    youtubeUrl: { type: String, required: true, trim: true, maxlength: 500 },
+    duration: { type: String, trim: true, default: "" },
+    views: { type: String, trim: true, default: "" },
+    category: {
+      type: String,
+      enum: ["politics", "sports", "tech", "business", "entertainment", "health", "world", "state"],
+      default: "politics",
+    },
+    /** Manual poster override; otherwise web uses YouTube hqdefault from URL */
+    thumbnailOverride: { type: String, trim: true, default: "" },
+    sortOrder: { type: Number, default: 0 },
+    status: {
+      type: String,
+      enum: ["draft", "published"],
+      default: "draft",
+      index: true,
+    },
+    publishedAt: { type: Date, default: null },
+  },
+  { timestamps: true }
+);
+
+videoSchema.index({ status: 1, sortOrder: 1 });
+videoSchema.index({ category: 1, status: 1 });
+
+module.exports = mongoose.model("Video", videoSchema);

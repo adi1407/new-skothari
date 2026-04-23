@@ -1,0 +1,10 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# After first deploy, set env vars in the Render dashboard (secrets are not stored here).
+services:
+  - type: web
+    name: kothari-news-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
