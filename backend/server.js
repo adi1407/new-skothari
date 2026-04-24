@@ -46,6 +46,7 @@ app.use("/api/tasks",    require("./routes/tasks"));
 app.use("/api/admin",    require("./routes/admin"));
 app.use("/api/editor",   require("./routes/editor"));
 app.use("/api/public",   require("./routes/public"));
+app.use("/api/reader",   require("./routes/reader"));
 
 // ── Health ──
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));

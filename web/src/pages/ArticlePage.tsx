@@ -8,8 +8,14 @@ import {
 import { categories } from "../data/publicCategories";
 import type { NewsItem } from "../data/mockData";
 import { useLang } from "../context/LangContext";
+import { useReaderAuth } from "../context/ReaderAuthContext";
 import { fetchArticleById, fetchPublishedArticles } from "../services/newsApi";
 import { adaptArticle, adaptArticles } from "../services/articleAdapter";
+import {
+  readerBookmarkCheck,
+  readerBookmarkAdd,
+  readerBookmarkRemove,
+} from "../services/readerApi";
 
 const categoryColors: Record<string, string> = {
   politics: "#BB1919", sports: "#00695c", tech: "#1565c0",
@@ -90,6 +96,7 @@ export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { lang, t } = useLang();
+  const { reader } = useReaderAuth();
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 200, damping: 30 });
@@ -98,6 +105,7 @@ export default function ArticlePage() {
   const [loading, setLoading]     = useState(true);
   const [imgErr, setImgErr]       = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarkBusy, setBookmarkBusy] = useState(false);
   const [copied, setCopied]       = useState(false);
   const [showBackTop, setShowBackTop] = useState(false);
   const [relatedStories, setRelatedStories] = useState<NewsItem[]>([]);
@@ -117,6 +125,14 @@ export default function ArticlePage() {
       setLoading(false);
     });
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !reader) {
+      setBookmarked(false);
+      return;
+    }
+    readerBookmarkCheck(id).then(setBookmarked).catch(() => setBookmarked(false));
+  }, [id, reader]);
 
   useEffect(() => {
     if (!id || !article || String(article.id) !== id || !article.categorySlug) {
@@ -152,6 +168,29 @@ export default function ArticlePage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2200);
   }, []);
+
+  const handleBookmarkToggle = useCallback(async () => {
+    if (!id) return;
+    if (!reader) {
+      navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+    if (bookmarkBusy) return;
+    setBookmarkBusy(true);
+    try {
+      if (bookmarked) {
+        await readerBookmarkRemove(id);
+        setBookmarked(false);
+      } else {
+        await readerBookmarkAdd(id);
+        setBookmarked(true);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setBookmarkBusy(false);
+    }
+  }, [id, reader, bookmarked, bookmarkBusy, navigate]);
 
   /* Loading */
   if (loading) return (
@@ -261,10 +300,13 @@ export default function ArticlePage() {
 
             {/* Desktop quick-share */}
             <div className="article-share-row article-byline-share">
-              <button className="article-bookmark-btn"
+              <button
+                type="button"
+                className="article-bookmark-btn"
                 style={bookmarked ? { borderColor: color, color, background: color + "12" } : {}}
-                onClick={() => setBookmarked(b => !b)}
-                title={t("बुकमार्क", "Bookmark")}
+                onClick={() => void handleBookmarkToggle()}
+                disabled={bookmarkBusy}
+                title={reader ? t("सेव करें", "Save") : t("सेव करने के लिए लॉग इन", "Log in to save")}
               >
                 <Bookmark size={15} fill={bookmarked ? "currentColor" : "none"} />
               </button>
@@ -482,9 +524,14 @@ export default function ArticlePage() {
             <Share2 size={18} />
           </button>
         )}
-        <button className="mobile-strip-bookmark"
-          onClick={() => setBookmarked(b => !b)}
-          style={bookmarked ? { color: "#BB1919" } : {}}>
+        <button
+          type="button"
+          className="mobile-strip-bookmark"
+          onClick={() => void handleBookmarkToggle()}
+          disabled={bookmarkBusy}
+          style={bookmarked ? { color: "#BB1919" } : {}}
+          aria-label={t("सेव करें", "Save")}
+        >
           <Bookmark size={18} fill={bookmarked ? "currentColor" : "none"} />
         </button>
       </div>

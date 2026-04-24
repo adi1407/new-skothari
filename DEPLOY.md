@@ -25,6 +25,8 @@ Use [MongoDB Atlas](https://www.mongodb.com/atlas) (or any hosted Mongo). Create
    | `SEED_ADMIN_EMAIL` | First admin email |
    | `SEED_ADMIN_PASSWORD` | Strong password |
    | `SEED_ADMIN_NAME` | Display name |
+   | `GOOGLE_CLIENT_ID` | (Optional) Web client ID from [Google Cloud Console](https://console.cloud.google.com/apis/credentials) — enables **Google Sign-In** for public readers (`POST /api/reader/auth/google`). |
+   | `READER_JWT_SECRET` | (Optional) Separate secret for reader JWTs; if omitted, `JWT_SECRET` is used with an `aud: "reader"` claim. |
 
    Render sets `PORT` automatically — do not override unless you know you need to.
 
@@ -42,6 +44,7 @@ Optional: connect the repo and use the root [`render.yaml`](./render.yaml) as a 
    | Key | Value |
    |-----|--------|
    | `VITE_PUBLIC_API_ORIGIN` | Same as Render URL, **no trailing slash**, e.g. `https://kothari-news-backend.onrender.com` |
+   | `VITE_GOOGLE_CLIENT_ID` | (Optional) Same value as `GOOGLE_CLIENT_ID` — shows “Continue with Google” on `/login` and `/register`. |
 
 5. Deploy. If client-side routes 404 on refresh, [`web/vercel.json`](./web/vercel.json) already rewrites to `index.html`.
 
@@ -51,8 +54,17 @@ After Vercel gives you a URL, set Render **`CLIENT_URL`** (or **`CLIENT_URLS`**,
 
 ## 5. CMS (optional)
 
-The CMS (`cms/`) still uses the Vite dev proxy in local development. To run it against production, set `VITE_API_ORIGIN` (or adjust `cms/src/api.js` to use an env-based `baseURL`) and deploy the CMS separately with the same CORS origin added to `CLIENT_URLS` if it is hosted on another domain.
+For local dev, `cms/vite.config.js` proxies `/api` to your machine. If you host the CMS on its own URL later, set `axios` `baseURL` in `cms/src/api.js` to your Render API origin and add that CMS origin to **`CLIENT_URLS`** on Render so CORS allows it.
 
 ## Health check
 
 Render can use **`/api/health`** (see `render.yaml`) to verify the service is up.
+
+## 6. Google Sign-In (optional)
+
+1. In Google Cloud Console, create **OAuth 2.0 Client ID** → Application type **Web application**.
+2. **Authorized JavaScript origins:** `http://localhost:5173`, and your production site `https://your-app.vercel.app` (no path).
+3. You do **not** need a redirect URI for the ID-token (popup) flow used here.
+4. Copy the **Client ID** into Render `GOOGLE_CLIENT_ID` and Vercel `VITE_GOOGLE_CLIENT_ID` (same string).
+
+Public reader APIs live under **`/api/reader`** (register, login, Google auth, profile, saved articles). They are separate from CMS staff auth under **`/api/auth`**.

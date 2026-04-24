@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import {
   Landmark, Trophy, Cpu, Briefcase, Clapperboard, HeartPulse,
 } from "lucide-react";
 import { LangProvider, useLang } from "./context/LangContext";
+import { ReaderAuthProvider } from "./context/ReaderAuthContext";
 import Navbar from "./components/Navbar";
+import BottomNav from "./components/BottomNav";
 import SiteFooter from "./components/SiteFooter";
 import HeroSection from "./components/HeroSection";
 import NewsTicker from "./components/NewsTicker";
@@ -14,6 +17,9 @@ import ShowsSection from "./components/ShowsSection";
 import ArticlePage from "./pages/ArticlePage";
 import CategoryPage from "./pages/CategoryPage";
 import ShowsPage from "./pages/ShowsPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import ProfilePage from "./pages/ProfilePage";
 import type { NewsItem } from "./data/mockData";
 import { loadHomeArticles, pickCategory } from "./services/homeFeed";
 import "./index.css";
@@ -154,16 +160,29 @@ function AppInner() {
         <Route path="/shows"       element={<><ShowsPage /><SiteFooter /></>} />
         <Route path="/article/:id" element={<><ArticlePage /><SiteFooter /></>} />
         <Route path="/category/:slug" element={<><CategoryPage /><SiteFooter /></>} />
+        <Route path="/login"       element={<><LoginPage /><SiteFooter /></>} />
+        <Route path="/register"    element={<><RegisterPage /><SiteFooter /></>} />
+        <Route path="/profile"     element={<><ProfilePage /><SiteFooter /></>} />
       </Routes>
+      <BottomNav />
     </div>
   );
 }
 
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
 export default function App() {
+  const inner = <AppInner />;
   return (
     <BrowserRouter>
       <LangProvider>
-        <AppInner />
+        <ReaderAuthProvider>
+          {googleClientId ? (
+            <GoogleOAuthProvider clientId={googleClientId}>{inner}</GoogleOAuthProvider>
+          ) : (
+            inner
+          )}
+        </ReaderAuthProvider>
       </LangProvider>
     </BrowserRouter>
   );

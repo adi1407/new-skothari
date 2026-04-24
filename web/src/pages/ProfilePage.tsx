@@ -1,0 +1,217 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Bookmark, Loader2, LogOut, Settings } from "lucide-react";
+import { useLang } from "../context/LangContext";
+import { useReaderAuth } from "../context/ReaderAuthContext";
+import { readerListBookmarks, readerPatchMe, readerChangePassword } from "../services/readerApi";
+import { adaptArticles } from "../services/articleAdapter";
+import type { NewsItem } from "../data/mockData";
+
+type Tab = "saved" | "settings";
+
+export default function ProfilePage() {
+  const { t, lang } = useLang();
+  const navigate = useNavigate();
+  const { reader, loading, logout, refreshReader } = useReaderAuth();
+  const [tab, setTab] = useState<Tab>("saved");
+  const [saved, setSaved] = useState<NewsItem[]>([]);
+  const [savedLoading, setSavedLoading] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [prefLang, setPrefLang] = useState<"hi" | "en">("hi");
+  const [newsletter, setNewsletter] = useState(false);
+  const [settingsMsg, setSettingsMsg] = useState("");
+  const [pwdCur, setPwdCur] = useState("");
+  const [pwdNew, setPwdNew] = useState("");
+  const [pwdBusy, setPwdBusy] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !reader) {
+      navigate(`/login?next=${encodeURIComponent("/profile")}`, { replace: true });
+    }
+  }, [reader, loading, navigate]);
+
+  useEffect(() => {
+    if (!reader) return;
+    setDisplayName(reader.displayName);
+    setPrefLang(reader.preferences?.preferredLang ?? "hi");
+    setNewsletter(Boolean(reader.preferences?.newsletterOptIn));
+  }, [reader]);
+
+  useEffect(() => {
+    if (!reader || tab !== "saved") return;
+    let cancelled = false;
+    setSavedLoading(true);
+    readerListBookmarks(1, 30)
+      .then(({ articles }) => {
+        if (!cancelled) setSaved(adaptArticles(articles));
+      })
+      .catch(() => {
+        if (!cancelled) setSaved([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSavedLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reader, tab]);
+
+  const saveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsMsg("");
+    try {
+      await readerPatchMe({
+        displayName: displayName.trim(),
+        preferences: { preferredLang: prefLang, newsletterOptIn: newsletter },
+      });
+      await refreshReader();
+      setSettingsMsg(t("सेव हो गया।", "Saved."));
+    } catch (e: unknown) {
+      setSettingsMsg(e instanceof Error ? e.message : "Error");
+    }
+  };
+
+  const changePwd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsMsg("");
+    setPwdBusy(true);
+    try {
+      await readerChangePassword(pwdCur, pwdNew);
+      setPwdCur("");
+      setPwdNew("");
+      setSettingsMsg(t("पासवर्ड बदल गया।", "Password updated."));
+    } catch (e: unknown) {
+      setSettingsMsg(e instanceof Error ? e.message : "Error");
+    } finally {
+      setPwdBusy(false);
+    }
+  };
+
+  if (loading || !reader) {
+    return (
+      <main className="reader-auth-page" style={{ paddingTop: 160 }}>
+        <Loader2 size={32} className="reader-spinner" />
+      </main>
+    );
+  }
+
+  const initial = reader.displayName?.charAt(0)?.toUpperCase() || "?";
+  const hasLocal = reader.hasLocalPassword === true;
+
+  return (
+    <main className="reader-profile-page">
+      <div className="reader-profile-header">
+        <div className="reader-profile-avatar">
+          {reader.avatar ? (
+            <img src={reader.avatar} alt="" className="reader-profile-avatar-img" />
+          ) : (
+            <span>{initial}</span>
+          )}
+        </div>
+        <div>
+          <h1 className="reader-profile-name">{reader.displayName}</h1>
+          <p className="reader-profile-email">{reader.email}</p>
+        </div>
+        <button type="button" className="reader-profile-logout" onClick={() => { logout(); navigate("/"); }}>
+          <LogOut size={18} />
+          {t("लॉग आउट", "Log out")}
+        </button>
+      </div>
+
+      <div className="reader-profile-tabs">
+        <button type="button" className={tab === "saved" ? "active" : ""} onClick={() => setTab("saved")}>
+          <Bookmark size={16} />
+          {t("सेव की खबरें", "Saved")}
+        </button>
+        <button type="button" className={tab === "settings" ? "active" : ""} onClick={() => setTab("settings")}>
+          <Settings size={16} />
+          {t("सेटिंग्स", "Settings")}
+        </button>
+      </div>
+
+      {tab === "saved" && (
+        <section className="reader-profile-section">
+          {savedLoading ? (
+            <Loader2 size={28} className="reader-spinner" />
+          ) : saved.length === 0 ? (
+            <p className="reader-profile-empty">{t("अभी कोई खबर सेव नहीं।", "No saved articles yet.")}</p>
+          ) : (
+            <ul className="reader-saved-list">
+              {saved.map((item) => {
+                const title = lang === "hi" ? item.title : item.titleEn;
+                return (
+                  <li key={String(item.id)}>
+                    <Link to={`/article/${item.id}`} className="reader-saved-link">
+                      <Bookmark size={14} className="reader-saved-icon" aria-hidden />
+                      {title}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {tab === "settings" && (
+        <section className="reader-profile-section">
+          <form onSubmit={saveSettings} className="reader-auth-form">
+            <label className="reader-auth-label">
+              {t("नाम", "Display name")}
+              <input
+                className="reader-auth-input"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                maxLength={80}
+                required
+              />
+            </label>
+            <label className="reader-auth-label">
+              {t("भाषा वरीयता", "Language preference")}
+              <select
+                className="reader-auth-input"
+                value={prefLang}
+                onChange={(e) => setPrefLang(e.target.value as "hi" | "en")}
+              >
+                <option value="hi">हिन्दी</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label className="reader-auth-label reader-checkbox">
+              <input
+                type="checkbox"
+                checked={newsletter}
+                onChange={(e) => setNewsletter(e.target.checked)}
+              />
+              {t("न्यूज़लेटर चाहूँगा/चाहूँगी", "I want the newsletter")}
+            </label>
+            <button type="submit" className="reader-auth-submit">{t("सेव करें", "Save")}</button>
+          </form>
+
+          {hasLocal && (
+            <form onSubmit={changePwd} className="reader-auth-form reader-pwd-form">
+              <h2 className="reader-profile-subhead">{t("पासवर्ड बदलें", "Change password")}</h2>
+              <label className="reader-auth-label">
+                {t("वर्तमान पासवर्ड", "Current password")}
+                <input type="password" className="reader-auth-input" value={pwdCur} onChange={(e) => setPwdCur(e.target.value)} />
+              </label>
+              <label className="reader-auth-label">
+                {t("नया पासवर्ड", "New password")}
+                <input type="password" className="reader-auth-input" value={pwdNew} onChange={(e) => setPwdNew(e.target.value)} minLength={8} />
+              </label>
+              <button type="submit" className="reader-auth-submit" disabled={pwdBusy || !pwdCur || !pwdNew}>
+                {pwdBusy ? "…" : t("अपडेट", "Update")}
+              </button>
+            </form>
+          )}
+
+          {settingsMsg && <p className="reader-settings-msg">{settingsMsg}</p>}
+        </section>
+      )}
+
+      <p className="reader-auth-footer" style={{ marginTop: 24 }}>
+        <Link to="/">{t("होम", "Home")}</Link>
+      </p>
+    </main>
+  );
+}
