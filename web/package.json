@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "allow-firewall": "powershell -ExecutionPolicy Bypass -File ./scripts/allow-vite-firewall.ps1",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

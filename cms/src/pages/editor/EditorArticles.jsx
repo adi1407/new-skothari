@@ -12,6 +12,12 @@ const STATUS_BADGE = {
 
 const CATEGORIES = ["", "politics", "sports", "tech", "business", "entertainment", "health", "world", "state"];
 
+function articleListTitle(a) {
+  const pl = a.primaryLocale === "hi" ? "hi" : "en";
+  if (pl === "hi") return (a.titleHi || a.title || "").trim() || "Untitled";
+  return (a.title || a.titleHi || "").trim() || "Untitled";
+}
+
 export default function EditorArticles() {
   const [articles, setArticles] = useState([]);
   const [status, setStatus] = useState("");
@@ -117,7 +123,12 @@ export default function EditorArticles() {
                 className="flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50 sm:gap-4 sm:px-6"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-800 text-sm">{a.title}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-slate-800 text-sm">{articleListTitle(a)}</p>
+                    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${a.primaryLocale === "hi" ? "bg-indigo-100 text-indigo-800" : "bg-sky-100 text-sky-800"}`}>
+                      {a.primaryLocale === "hi" ? "HI" : "EN"}
+                    </span>
+                  </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {a.author?.name} · <span className="capitalize">{a.category}</span> ·{" "}
                     {new Date(a.updatedAt).toLocaleString()}

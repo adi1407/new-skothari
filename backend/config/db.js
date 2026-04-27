@@ -6,6 +6,10 @@ async function connectDB() {
     console.log("MongoDB connected:", mongoose.connection.host);
   } catch (err) {
     console.error("MongoDB connection error:", err.message);
+    console.error(
+      "Action: ensure MongoDB is running and MONGO_URI is correct. " +
+      "On Windows (Admin PowerShell): Start-Service MongoDB"
+    );
     process.exit(1);
   }
 }

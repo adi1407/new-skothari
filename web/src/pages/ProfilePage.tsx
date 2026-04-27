@@ -1,21 +1,28 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bookmark, Loader2, LogOut, Settings } from "lucide-react";
+import { Bookmark, Loader2, LogOut, Settings, History, Trash2 } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { useReaderAuth } from "../context/ReaderAuthContext";
-import { readerListBookmarks, readerPatchMe, readerChangePassword } from "../services/readerApi";
+import {
+  readerListBookmarks,
+  readerListHistory,
+  readerPatchMe,
+  readerChangePassword,
+} from "../services/readerApi";
 import { adaptArticles } from "../services/articleAdapter";
 import type { NewsItem } from "../data/mockData";
 
-type Tab = "saved" | "settings";
+type Tab = "saved" | "history" | "settings";
 
 export default function ProfilePage() {
-  const { t, lang } = useLang();
+  const { t, lang, setLang } = useLang();
   const navigate = useNavigate();
-  const { reader, loading, logout, refreshReader } = useReaderAuth();
+  const { reader, loading, logout, refreshReader, deleteAccount } = useReaderAuth();
   const [tab, setTab] = useState<Tab>("saved");
   const [saved, setSaved] = useState<NewsItem[]>([]);
+  const [history, setHistory] = useState<NewsItem[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [prefLang, setPrefLang] = useState<"hi" | "en">("hi");
   const [newsletter, setNewsletter] = useState(false);
@@ -23,6 +30,8 @@ export default function ProfilePage() {
   const [pwdCur, setPwdCur] = useState("");
   const [pwdNew, setPwdNew] = useState("");
   const [pwdBusy, setPwdBusy] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   useEffect(() => {
     if (!loading && !reader) {
@@ -56,6 +65,25 @@ export default function ProfilePage() {
     };
   }, [reader, tab]);
 
+  useEffect(() => {
+    if (!reader || tab !== "history") return;
+    let cancelled = false;
+    setHistoryLoading(true);
+    readerListHistory(1, 30)
+      .then(({ articles }) => {
+        if (!cancelled) setHistory(adaptArticles(articles));
+      })
+      .catch(() => {
+        if (!cancelled) setHistory([]);
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reader, tab]);
+
   const saveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSettingsMsg("");
@@ -65,6 +93,7 @@ export default function ProfilePage() {
         preferences: { preferredLang: prefLang, newsletterOptIn: newsletter },
       });
       await refreshReader();
+      setLang(prefLang);
       setSettingsMsg(t("सेव हो गया।", "Saved."));
     } catch (e: unknown) {
       setSettingsMsg(e instanceof Error ? e.message : "Error");
@@ -87,6 +116,24 @@ export default function ProfilePage() {
     }
   };
 
+  const onDeleteAccount = async () => {
+    if (!reader) return;
+    if (deleteConfirm.trim().toLowerCase() !== reader.email.toLowerCase()) {
+      setSettingsMsg(t("पुष्टि के लिए अपना ईमेल टाइप करें।", "Type your email exactly to confirm."));
+      return;
+    }
+    setSettingsMsg("");
+    setDeleteBusy(true);
+    try {
+      await deleteAccount();
+      navigate("/", { replace: true });
+    } catch (e: unknown) {
+      setSettingsMsg(e instanceof Error ? e.message : "Error");
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   if (loading || !reader) {
     return (
       <main className="reader-auth-page" style={{ paddingTop: 160 }}>
@@ -97,6 +144,7 @@ export default function ProfilePage() {
 
   const initial = reader.displayName?.charAt(0)?.toUpperCase() || "?";
   const hasLocal = reader.hasLocalPassword === true;
+  const isGoogle = Boolean(reader.googleId);
 
   return (
     <main className="reader-profile-page">
@@ -111,6 +159,11 @@ export default function ProfilePage() {
         <div>
           <h1 className="reader-profile-name">{reader.displayName}</h1>
           <p className="reader-profile-email">{reader.email}</p>
+          {isGoogle && (
+            <p className="reader-profile-provider">
+              {t("Google से साइन इन", "Signed in with Google")}
+            </p>
+          )}
         </div>
         <button type="button" className="reader-profile-logout" onClick={() => { logout(); navigate("/"); }}>
           <LogOut size={18} />
@@ -118,10 +171,21 @@ export default function ProfilePage() {
         </button>
       </div>
 
+      <div className="reader-profile-card reader-profile-account-card">
+        <h2 className="reader-profile-section-label">{t("खाता", "Account")}</h2>
+        <p className="reader-profile-meta-line">
+          {t("ईमेल (पढ़ने के लिए)", "Email (read-only)")}: <strong>{reader.email}</strong>
+        </p>
+      </div>
+
       <div className="reader-profile-tabs">
         <button type="button" className={tab === "saved" ? "active" : ""} onClick={() => setTab("saved")}>
           <Bookmark size={16} />
           {t("सेव की खबरें", "Saved")}
+        </button>
+        <button type="button" className={tab === "history" ? "active" : ""} onClick={() => setTab("history")}>
+          <History size={16} />
+          {t("इतिहास", "History")}
         </button>
         <button type="button" className={tab === "settings" ? "active" : ""} onClick={() => setTab("settings")}>
           <Settings size={16} />
@@ -153,8 +217,35 @@ export default function ProfilePage() {
         </section>
       )}
 
+      {tab === "history" && (
+        <section className="reader-profile-section">
+          {historyLoading ? (
+            <Loader2 size={28} className="reader-spinner" />
+          ) : history.length === 0 ? (
+            <p className="reader-profile-empty">
+              {t("अभी कोई पढ़ा हुआ लेख नहीं। खबरें खोलने पर यहाँ दिखेंगीं।", "No reading history yet. Open articles while signed in to see them here.")}
+            </p>
+          ) : (
+            <ul className="reader-saved-list">
+              {history.map((item) => {
+                const title = lang === "hi" ? item.title : item.titleEn;
+                return (
+                  <li key={String(item.id)}>
+                    <Link to={`/article/${item.id}`} className="reader-saved-link">
+                      <History size={14} className="reader-saved-icon" aria-hidden />
+                      {title}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
       {tab === "settings" && (
         <section className="reader-profile-section">
+          <h2 className="reader-profile-section-label">{t("वरीयताएँ", "Preferences")}</h2>
           <form onSubmit={saveSettings} className="reader-auth-form">
             <label className="reader-auth-label">
               {t("नाम", "Display name")}
@@ -188,9 +279,16 @@ export default function ProfilePage() {
             <button type="submit" className="reader-auth-submit">{t("सेव करें", "Save")}</button>
           </form>
 
-          {hasLocal && (
-            <form onSubmit={changePwd} className="reader-auth-form reader-pwd-form">
-              <h2 className="reader-profile-subhead">{t("पासवर्ड बदलें", "Change password")}</h2>
+          <h2 className="reader-profile-section-label reader-profile-security-head">
+            {t("सुरक्षा", "Security")}
+          </h2>
+          {!hasLocal ? (
+            <p className="reader-profile-meta-line">
+              {t("पासवर्ड साइन-इन इस खाते पर उपलब्ध नहीं।", "Password sign-in is not used for this account.")}
+            </p>
+          ) : (
+            <form onSubmit={changePwd} className="reader-auth-form">
+              <h3 className="reader-profile-subhead">{t("पासवर्ड बदलें", "Change password")}</h3>
               <label className="reader-auth-label">
                 {t("वर्तमान पासवर्ड", "Current password")}
                 <input type="password" className="reader-auth-input" value={pwdCur} onChange={(e) => setPwdCur(e.target.value)} />
@@ -204,6 +302,38 @@ export default function ProfilePage() {
               </button>
             </form>
           )}
+
+          <div className="reader-profile-danger-zone">
+            <h2 className="reader-profile-section-label reader-profile-danger-title">
+              <Trash2 size={18} aria-hidden />
+              {t("खाता हटाएँ", "Delete account")}
+            </h2>
+            <p className="reader-profile-meta-line">
+              {t(
+                "यह आपकी सेव की खबरें, पढ़ने का इतिहास और सेटिंग्स हटा देगा। पुष्टि के लिए अपना ईमेल नीचे लिखें।",
+                "This removes saved articles, reading history, and settings. Type your email below to confirm."
+              )}
+            </p>
+            <label className="reader-auth-label">
+              {t("ईमेल पुष्टि", "Email confirmation")}
+              <input
+                className="reader-auth-input reader-profile-delete-input"
+                type="email"
+                autoComplete="off"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder={reader.email}
+              />
+            </label>
+            <button
+              type="button"
+              className="reader-profile-danger-btn"
+              disabled={deleteBusy}
+              onClick={onDeleteAccount}
+            >
+              {deleteBusy ? "…" : t("खाता स्थायी रूप से हटाएँ", "Permanently delete account")}
+            </button>
+          </div>
 
           {settingsMsg && <p className="reader-settings-msg">{settingsMsg}</p>}
         </section>

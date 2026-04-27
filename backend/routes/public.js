@@ -2,6 +2,22 @@ const router = require("express").Router();
 const Article = require("../models/Article");
 const Video = require("../models/Video");
 
+function localeMatchQuery(req) {
+  const loc = (req.query.locale || "").toLowerCase();
+  if (loc === "hi") return { primaryLocale: "hi" };
+  if (loc === "en") {
+    // Legacy docs may omit primaryLocale (treated as English after migration defaults to "en")
+    return {
+      $or: [
+        { primaryLocale: "en" },
+        { primaryLocale: { $exists: false } },
+        { primaryLocale: null },
+      ],
+    };
+  }
+  return {};
+}
+
 // GET /api/public/videos — published only, for web /shows
 router.get("/videos", async (req, res) => {
   try {
@@ -29,11 +45,12 @@ router.get("/videos", async (req, res) => {
 router.get("/breaking", async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 15, 50);
-    const articles = await Article.find({ status: "published", isBreaking: true })
+    const q = { status: "published", isBreaking: true, ...localeMatchQuery(req) };
+    const articles = await Article.find(q)
       .populate("author", "name")
       .sort({ publishedAt: -1 })
       .limit(limit)
-      .select("title titleHi category publishedAt isBreaking")
+      .select("title titleHi category publishedAt isBreaking primaryLocale")
       .lean();
 
     res.json({ articles });
@@ -53,6 +70,7 @@ router.get("/search", async (req, res) => {
 
     const articles = await Article.find({
       status: "published",
+      ...localeMatchQuery(req),
       $or: [
         { title: { $regex: q, $options: "i" } },
         { titleHi: { $regex: q, $options: "i" } },
@@ -76,7 +94,7 @@ router.get("/search", async (req, res) => {
 router.get("/articles", async (req, res) => {
   try {
     const { category, limit = 20, page = 1 } = req.query;
-    const q = { status: "published" };
+    const q = { status: "published", ...localeMatchQuery(req) };
     if (category) q.category = category;
 
     const skip = (Number(page) - 1) * Number(limit);

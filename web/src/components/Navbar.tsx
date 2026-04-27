@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Moon, Sun, Menu, X, Globe2,
-  Send, Home, Tv2, Clock, ChevronRight,
+  Send, Home, Tv2, Clock, ChevronRight, User,
 } from "lucide-react";
 
 /* Brand SVG icons (lucide doesn't include these) */
@@ -14,8 +14,11 @@ const FbIcon  = () => <svg viewBox="0 0 24 24" width="17" height="17" fill="curr
 import type { NewsItem } from "../data/mockData";
 import { categories } from "../data/publicCategories";
 import { useLang } from "../context/LangContext";
+import { useReaderAuth } from "../context/ReaderAuthContext";
 import { fetchPublicSearch } from "../services/newsApi";
 import { adaptArticles } from "../services/articleAdapter";
+import BrandLogo from "./BrandLogo";
+import BrandWordmark from "./BrandWordmark";
 
 interface NavbarProps {
   darkMode: boolean;
@@ -32,6 +35,7 @@ const SOCIAL_LINKS = [
 
 export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
   const { lang, toggleLang, t } = useLang();
+  const { reader } = useReaderAuth();
   const [scrolled, setScrolled]       = useState(false);
   const [mobileOpen, setMobileOpen]   = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,6 +50,10 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
 
   /* active tab: home vs shows */
   const isShows = location.pathname === "/shows";
+  const isAccountRoute =
+    location.pathname === "/profile" ||
+    location.pathname === "/login" ||
+    location.pathname === "/register";
 
   /* active category from URL */
   const activeSlug = (() => {
@@ -106,7 +114,7 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
     setSearchLoading(true);
     setSearchFetched(false);
     const handle = window.setTimeout(() => {
-      fetchPublicSearch(q, 12)
+      fetchPublicSearch(q, 12, lang)
         .then((raw) => setRemoteResults(adaptArticles(raw)))
         .finally(() => {
           setSearchLoading(false);
@@ -114,7 +122,7 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
         });
     }, 280);
     return () => window.clearTimeout(handle);
-  }, [searchQuery, searchActive]);
+  }, [searchQuery, searchActive, lang]);
 
   const results = remoteResults;
 
@@ -134,12 +142,14 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
         <div className="nav-row1">
 
           {/* Logo */}
-          <a href="/" className="nav-logo" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
-            <div className="nav-logo-mark">ख</div>
-            <div className="nav-logo-text">
-              <span className="nav-logo-name">{t("खबर कोठरी", "Khabar Kothri")}</span>
-              <span className="nav-logo-tagline">{t("हर खबर, हर पल", "Every Story, Every Moment")}</span>
-            </div>
+          <a
+            href="/"
+            className="nav-logo"
+            onClick={(e) => { e.preventDefault(); navigate("/"); }}
+            aria-label={t("खबर कोठरी — होम", "Khabar Kothri — Home")}
+          >
+            <BrandLogo className="nav-brand-logo-img" height={44} decorative />
+            <BrandWordmark className="nav-brand-wordmark-img" decorative />
           </a>
 
           {/* Center tabs: Home | Shows */}
@@ -180,6 +190,15 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
               ))}
             </div>
             <div className="nav-util-btns">
+              <button
+                type="button"
+                className={`nav-util-btn nav-profile-btn${isAccountRoute ? " nav-profile-btn--active" : ""}`}
+                onClick={() => navigate(reader ? "/profile" : "/login?next=%2Fprofile")}
+                title={reader ? t("प्रोफ़ाइल", "Profile") : t("लॉग इन", "Log in")}
+                aria-label={reader ? t("प्रोफ़ाइल", "Profile") : t("लॉग इन", "Log in")}
+              >
+                <User size={15} strokeWidth={2} aria-hidden />
+              </button>
               <div className="nav-util-cluster" role="group" aria-label={t("भाषा और थीम", "Language and theme")}>
                 <button type="button" className="nav-util-btn" onClick={toggleLang} title={t("भाषा बदलें", "Change language")}>
                   <Globe2 size={15} strokeWidth={2} aria-hidden />
@@ -301,8 +320,15 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
             >
               <div className="drawer-header">
-                <div className="nav-logo-mark" style={{ width: 32, height: 32, fontSize: 14 }}>ख</div>
-                <span className="nav-logo-name" style={{ fontSize: 16 }}>{t("खबर कोठरी", "Khabar Kothri")}</span>
+                <a
+                  href="/"
+                  className="drawer-brand-hit"
+                  onClick={(e) => { e.preventDefault(); navigate("/"); setMobileOpen(false); }}
+                  aria-label={t("खबर कोठरी — होम", "Khabar Kothri — Home")}
+                >
+                  <BrandLogo height={36} decorative />
+                  <BrandWordmark className="drawer-brand-wordmark-img" decorative />
+                </a>
                 <button type="button" onClick={() => setMobileOpen(false)} className="drawer-close" aria-label={t("बंद करें", "Close")}><X size={22} aria-hidden /></button>
               </div>
 
@@ -325,6 +351,17 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
               </div>
 
               <div className="drawer-actions">
+                <button
+                  type="button"
+                  className="drawer-action-btn"
+                  onClick={() => {
+                    navigate(reader ? "/profile" : "/login?next=%2Fprofile");
+                    setMobileOpen(false);
+                  }}
+                >
+                  <User size={16} strokeWidth={2} aria-hidden />
+                  {reader ? t("प्रोफ़ाइल", "Profile") : t("लॉग इन", "Log in")}
+                </button>
                 <button type="button" className="drawer-action-btn" onClick={toggleLang}>
                   <Globe2 size={16} strokeWidth={2} aria-hidden />
                   {lang === "hi" ? "Switch to English" : "हिंदी में बदलें"}

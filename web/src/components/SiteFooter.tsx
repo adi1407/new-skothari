@@ -2,10 +2,12 @@ import { useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import {
   CirclePlay, Camera, AtSign, Globe, Send,
-  Heart, Flag, Rss, Tv, Sparkles, Building2, ArrowRight, Check,
+  Heart, Flag, Tv, Sparkles, Building2, ArrowRight, Check,
 } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { categories } from "../data/publicCategories";
+import BrandLogo from "./BrandLogo";
+import BrandWordmark from "./BrandWordmark";
 
 const SOCIAL = [
   { key: "yt", name: "YouTube", nameHi: "यूट्यूब", url: "https://youtube.com/@kotharinews", icon: CirclePlay, color: "#FF0000" },
@@ -69,23 +71,11 @@ export default function SiteFooter() {
       <div className="footer-premium-inner">
         <section className="footer-premium-brand">
           <div className="footer-premium-brand-row">
-            <div className="footer-premium-mark" aria-hidden>
-              <span className="footer-premium-mark-letter">ख</span>
-            </div>
-            <div>
-              <p className="footer-premium-title">{t("खबर कोठरी", "Khabar Kothri")}</p>
-              <p className="footer-premium-kicker">
-                <Rss size={11} strokeWidth={2.5} className="footer-premium-kicker-icon" aria-hidden />
-                {t("समाचार", "NEWS")}
-              </p>
-            </div>
+            <Link to="/" className="footer-premium-brand-logo-link" aria-label={t("होम", "Home")}>
+              <BrandLogo className="footer-premium-brand-logo" height={56} decorative />
+              <BrandWordmark className="footer-premium-brand-wordmark" decorative />
+            </Link>
           </div>
-          <p className="footer-premium-tagline">
-            {t(
-              "भारत की भरोसेमंद हिंदी खबरें — विश्लेषण, तथ्य और गहराई के साथ।",
-              "Trusted Hindi journalism — depth, context, and clarity in every story."
-            )}
-          </p>
           <div className="footer-premium-social">
             {SOCIAL.map(({ key, name, nameHi, url, icon: Icon, color }) => (
               <a
@@ -199,10 +189,7 @@ export default function SiteFooter() {
       </div>
 
       <div className="footer-premium-bottom">
-        <span className="footer-premium-copy">
-          © {new Date().getFullYear()}{" "}
-          {t("खबर कोठरी। सर्वाधिकार सुरक्षित।", "Khabar Kothri. All rights reserved.")}
-        </span>
+        <span className="footer-premium-copy">© {new Date().getFullYear()}</span>
         <div className="footer-premium-legal">
           {["Privacy", "Terms", "Sitemap"].map((l) => (
             <button key={l} type="button" className="footer-premium-legal-btn">

@@ -29,14 +29,14 @@ export default function LatestNews() {
 
   useEffect(() => {
     Promise.all([
-      fetchPublishedArticles({ limit: 10 }),
-      fetchPublishedArticles({ limit: 10, page: 2 }),
+      fetchPublishedArticles({ limit: 10, locale: lang }),
+      fetchPublishedArticles({ limit: 10, page: 2, locale: lang }),
     ]).then(([p1, p2]) => {
       setNews(adaptArticles(p1));
       setMostRead(adaptArticles(p2).slice(0, 5));
       setReady(true);
     });
-  }, []);
+  }, [lang]);
 
   const lead = news[0];
   const grid = news.slice(1, 5);

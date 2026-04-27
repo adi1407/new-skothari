@@ -60,7 +60,7 @@ app.use((err, _req, res, _next) => {
   res.status(err.status || 500).json({ message: err.message || "Server error" });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5050;
 const HOST = process.env.HOST || "0.0.0.0";
 app.listen(PORT, HOST, () => {
   console.log(`Server running on http://localhost:${PORT} (and your LAN IP, port ${PORT})`);

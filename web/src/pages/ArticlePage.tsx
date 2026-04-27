@@ -15,6 +15,7 @@ import {
   readerBookmarkCheck,
   readerBookmarkAdd,
   readerBookmarkRemove,
+  readerRecordHistory,
 } from "../services/readerApi";
 
 const categoryColors: Record<string, string> = {
@@ -135,6 +136,11 @@ export default function ArticlePage() {
   }, [id, reader]);
 
   useEffect(() => {
+    if (!reader || !id || !article || String(article.id) !== id) return;
+    readerRecordHistory(id);
+  }, [reader, id, article]);
+
+  useEffect(() => {
     if (!id || !article || String(article.id) !== id || !article.categorySlug) {
       setRelatedStories([]);
       setMostReadSidebar([]);
@@ -143,8 +149,8 @@ export default function ArticlePage() {
     const aid = id;
     let cancelled = false;
     Promise.all([
-      fetchPublishedArticles({ category: article.categorySlug, limit: 14 }),
-      fetchPublishedArticles({ limit: 12, page: 2 }),
+      fetchPublishedArticles({ category: article.categorySlug, limit: 14, locale: lang }),
+      fetchPublishedArticles({ limit: 12, page: 2, locale: lang }),
     ]).then(([relRaw, moreRaw]) => {
       if (cancelled) return;
       const rel = adaptArticles(relRaw).filter((n) => String(n.id) !== aid).slice(0, 6);
@@ -155,7 +161,7 @@ export default function ArticlePage() {
     return () => {
       cancelled = true;
     };
-  }, [id, article]);
+  }, [id, article, lang]);
 
   useEffect(() => {
     const onScroll = () => setShowBackTop(window.scrollY > 600);
@@ -222,8 +228,8 @@ export default function ArticlePage() {
   const paragraphs = rawContent && rawContent.length > 0
     ? rawContent
     : lang === "hi"
-      ? [article.summary, "इस विषय पर अधिक जानकारी जल्द उपलब्ध होगी। हमारे संवाददाता इस खबर पर नजर रखे हुए हैं।", "नवीनतम अपडेट के लिए खबर कोठरी के साथ बने रहें।"]
-      : [article.summaryEn, "More details on this story are being gathered by our correspondents. Stay tuned for live updates.", "Follow Khabar Kothri for the latest breaking news and comprehensive coverage."];
+      ? [article.summary, "इस विषय पर अधिक जानकारी जल्द उपलब्ध होगी। हमारे संवाददाता इस खबर पर नजर रखे हुए हैं।", "नवीनतम अपडेट के लिए बने रहें।"]
+      : [article.summaryEn, "More details on this story are being gathered by our correspondents. Stay tuned for live updates.", "Stay with us for the latest updates and coverage."];
 
   const color   = categoryColors[article.categorySlug] || "#BB1919";
   const cat     = categories.find(c => c.slug === article.categorySlug);
@@ -478,7 +484,7 @@ export default function ArticlePage() {
           {/* Newsletter mini */}
           <div className="aside-block aside-newsletter">
             <p className="aside-newsletter-headline">
-              {t("खबर कोठरी न्यूज़लेटर", "Khabar Kothri Newsletter")}
+              {t("न्यूज़लेटर", "Newsletter")}
             </p>
             <p className="aside-newsletter-sub">
               {t("हर सुबह ताज़ी खबरें — सीधे आपके inbox में", "Top stories every morning, straight to your inbox")}

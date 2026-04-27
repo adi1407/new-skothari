@@ -6,6 +6,7 @@ import { useLang } from "../context/LangContext";
 import YoutubeThumbImg from "../components/YoutubeThumbImg";
 import { fetchPublishedVideos } from "../services/newsApi";
 import { adaptVideos } from "../services/videoAdapter";
+import BrandLogo from "../components/BrandLogo";
 
 const YtIcon = ({ size = 24 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor">
@@ -44,9 +45,9 @@ export default function ShowsPage() {
       <div className="shows-page-header">
         <div className="shows-page-header-inner">
           <div className="shows-page-title-row">
-            <div className="shows-page-yt-icon"><YtIcon size={28} /></div>
+            <BrandLogo className="shows-page-brand-logo" height={48} decorative />
             <div>
-              <h1 className="shows-page-title">{t("खबर कोठरी शोज़", "Khabar Kothri Shows")}</h1>
+              <h1 className="shows-page-title">{t("शोज़", "Shows")}</h1>
               <p className="shows-page-sub">{t("हमारे YouTube चैनल पर देखें", "Watch on our YouTube channel")}</p>
             </div>
           </div>

@@ -4,10 +4,10 @@
 
 /* ── 1. DESIGN TOKENS ── */
 :root {
-  /* Brand — HT-adjacent crimson, print-ready */
-  --brand-red:       #C41E1E;
-  --brand-red-dark:  #9E1818;
-  --brand-red-tint:  #FDF3F3;
+  /* Brand — extracted from uploaded circular logo */
+  --brand-red:       #810102;
+  --brand-red-dark:  #650102;
+  --brand-red-tint:  #FAEEEE;
 
   /* Warm neutrals — paper white, sharper type contrast */
   --ink-900: #0D0D0D;
@@ -23,7 +23,7 @@
   --accent-tint: #EEF3FB;
 
   /* Category colours */
-  --cat-politics:     #BB1919;
+  --cat-politics:     #810102;
   --cat-sports:       #00695C;
   --cat-tech:         #1A56A7;
   --cat-business:     #7C4A00;
@@ -342,8 +342,20 @@ a { text-decoration:none; color:inherit }
   border-left:1px solid var(--card-border);
 }
 .drawer-header {
-  display:flex; align-items:center; gap:10px; padding:18px 20px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px; padding:18px 20px;
   border-bottom:1px solid var(--card-border);
+}
+.drawer-brand-hit {
+  display:inline-flex; align-items:center; gap:3px; line-height:0; border-radius:12px;
+  text-decoration:none; padding:2px; margin:-2px;
+}
+.drawer-brand-wordmark-img {
+  height: 22px;
+  width: auto;
+  max-width: 132px;
+}
+.drawer-brand-hit:focus-visible {
+  outline:2px solid var(--brand-red); outline-offset:2px;
 }
 .drawer-close { display:flex; padding:5px; border-radius:var(--r); color:var(--text-muted) }
 .drawer-actions {
@@ -2128,6 +2140,11 @@ a { text-decoration:none; color:inherit }
   display:flex; align-items:center; justify-content:center;
   font-size:16px; font-weight:900; flex-shrink:0;
 }
+.video-channel-logo {
+  width:36px; height:36px; border-radius:50%; object-fit:contain;
+  flex-shrink:0;
+  box-shadow:0 2px 10px rgba(0,0,0,.25);
+}
 .video-channel-name { font-family:var(--font-ui); font-size:13px; font-weight:700; color:rgba(240,237,234,.9) }
 .video-channel-sub { font-family:var(--font-mono); font-size:10px; color:rgba(255,255,255,.3) }
 .video-stack-duration {
@@ -2899,67 +2916,39 @@ a { text-decoration:none; color:inherit }
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
-.footer-premium-mark {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: linear-gradient(148deg, var(--brand-red) 0%, var(--brand-red-dark) 100%);
-  display: flex;
+.footer-premium-brand-logo-link {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
+  line-height: 0;
+  border-radius: 999px;
+  text-decoration: none;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.footer-premium-brand-logo-link:hover {
+  transform: scale(1.03);
+  opacity: 0.95;
+}
+.footer-premium-brand-logo-link:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 3px;
+}
+
+.footer-premium-brand-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
   box-shadow:
-    0 10px 32px rgba(196, 30, 30, 0.38),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  flex-shrink: 0;
+    0 12px 36px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
 }
-
-.footer-premium-mark-letter {
-  font-family: var(--font-hi);
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: #fff;
-  line-height: 1;
-}
-
-.footer-premium-title {
-  font-family: var(--font-display);
-  font-size: clamp(1.32rem, 2.8vw, 1.7rem);
-  font-weight: 700;
-  color: #faf7f2;
-  letter-spacing: -0.02em;
-  line-height: 1.08;
-}
-
-.footer-premium-kicker {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 5px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.36);
-  font-family: var(--font-ui);
-}
-
-.footer-premium-kicker-icon {
-  opacity: 0.55;
-}
-
-.footer-premium-tagline {
-  max-width: 22rem;
-  font-size: 14px;
-  line-height: 1.68;
-  color: rgba(245, 242, 238, 0.52);
-  font-family: var(--font-body);
-}
-
-[data-lang="hi"] .footer-premium-tagline {
-  font-family: var(--font-hi-body);
+.footer-premium-brand-wordmark {
+  height: 38px;
+  width: auto;
+  max-width: 220px;
 }
 
 .footer-premium-social {
@@ -3262,6 +3251,10 @@ a { text-decoration:none; color:inherit }
   .footer-premium-inner {
     grid-template-columns: 1fr;
   }
+  .footer-premium-brand-wordmark {
+    height: 30px;
+    max-width: 180px;
+  }
   .footer-premium-nl-form {
     flex-direction: column;
   }
@@ -3550,4 +3543,76 @@ a { text-decoration:none; color:inherit }
   font-size: 13px;
   font-weight: 600;
   color: var(--accent);
+}
+
+.reader-profile-card {
+  padding: var(--sp-5);
+  border-radius: var(--r-card);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  margin-bottom: var(--sp-5);
+  box-shadow: var(--shadow-card);
+}
+.reader-profile-section-label {
+  margin: 0 0 var(--sp-3);
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-family: var(--font-ui);
+  color: var(--ink-900);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reader-profile-account-card {
+  margin-top: calc(-1 * var(--sp-2));
+}
+.reader-profile-meta-line {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.reader-profile-provider {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-ui);
+  color: var(--brand-red);
+}
+.reader-profile-security-head {
+  margin-top: var(--sp-8);
+}
+.reader-profile-danger-zone {
+  margin-top: var(--sp-10);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--card-border);
+}
+.reader-profile-danger-title {
+  color: var(--brand-red);
+}
+.reader-profile-danger-btn {
+  margin-top: var(--sp-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: var(--r);
+  border: 1px solid var(--brand-red);
+  background: transparent;
+  color: var(--brand-red);
+  font-size: 13px;
+  font-weight: 800;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: background var(--t), color var(--t);
+}
+.reader-profile-danger-btn:hover:not(:disabled) {
+  background: var(--brand-red-tint);
+}
+.reader-profile-danger-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.reader-profile-delete-input {
+  font-family: var(--font-mono);
 }

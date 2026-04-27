@@ -25,11 +25,12 @@ import { loadHomeArticles, pickCategory } from "./services/homeFeed";
 import "./index.css";
 
 function HomePage() {
+  const { lang } = useLang();
   const [feed, setFeed] = useState<NewsItem[]>([]);
 
   useEffect(() => {
-    loadHomeArticles(120).then(setFeed);
-  }, []);
+    loadHomeArticles(120, lang).then(setFeed);
+  }, [lang]);
 
   const bucket = (slug: string) => pickCategory(feed, slug, 12);
 

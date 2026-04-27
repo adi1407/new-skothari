@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const rateLimit = require("express-rate-limit");
 const { body, validationResult } = require("express-validator");
@@ -6,6 +7,8 @@ const { OAuth2Client } = require("google-auth-library");
 const Reader = require("../models/Reader");
 const Bookmark = require("../models/Bookmark");
 const Article = require("../models/Article");
+const ReaderArticleView = require("../models/ReaderArticleView");
+const { setNewsletterSubscription } = require("../services/newsletterSubscription");
 const { signReaderToken, authenticateReader, readerPublic } = require("../middleware/readerAuth");
 
 const authLimiter = rateLimit({
@@ -16,7 +19,7 @@ const authLimiter = rateLimit({
 });
 
 function publishedArticleSelect() {
-  return "title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views author status tags body bodyHi";
+  return "primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views author status tags body bodyHi";
 }
 
 /** Strip to safe public fields (only call for published articles). */
@@ -25,6 +28,7 @@ function articleBookmarkPayload(doc) {
   const a = doc.toObject ? doc.toObject() : doc;
   return {
     _id: a._id,
+    primaryLocale: a.primaryLocale,
     title: a.title,
     titleHi: a.titleHi,
     summary: a.summary,
@@ -176,6 +180,8 @@ router.patch(
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     const { displayName, preferences } = req.body;
+    let oldNewsletter = Boolean(req.reader.preferences && req.reader.preferences.newsletterOptIn);
+
     const update = {};
     if (displayName !== undefined) update.displayName = displayName;
     if (preferences && typeof preferences === "object") {
@@ -189,12 +195,83 @@ router.patch(
 
     try {
       const reader = await Reader.findByIdAndUpdate(req.reader._id, { $set: update }, { new: true }).select("-password");
+      const newNewsletter = Boolean(reader.preferences && reader.preferences.newsletterOptIn);
+      if (oldNewsletter !== newNewsletter) {
+        await setNewsletterSubscription({
+          email: reader.email,
+          displayName: reader.displayName,
+          optIn: newNewsletter,
+        });
+      }
       res.json({ reader: readerPublic(reader) });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
   }
 );
+
+// ── DELETE /api/reader/me ───────────────────────────────
+router.delete("/me", authenticateReader, async (req, res) => {
+  try {
+    const rid = req.reader._id;
+    await Bookmark.deleteMany({ reader: rid });
+    await ReaderArticleView.deleteMany({ reader: rid });
+    await Reader.findByIdAndDelete(rid);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── POST /api/reader/me/history/:articleId ──────────────
+router.post("/me/history/:articleId", authenticateReader, async (req, res) => {
+  const aid = req.params.articleId;
+  if (!mongoose.isValidObjectId(aid)) {
+    return res.status(400).json({ message: "Invalid article id" });
+  }
+  try {
+    const article = await Article.findOne({ _id: aid, status: "published" }).select("_id").lean();
+    if (!article) return res.status(404).json({ message: "Article not found" });
+
+    await ReaderArticleView.findOneAndUpdate(
+      { reader: req.reader._id, article: article._id },
+      { $set: { viewedAt: new Date() }, $setOnInsert: { reader: req.reader._id, article: article._id } },
+      { upsert: true, new: true }
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── GET /api/reader/me/history ─────────────────────────
+router.get("/me/history", authenticateReader, async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const skip = (page - 1) * limit;
+
+    const [rows, total] = await Promise.all([
+      ReaderArticleView.find({ reader: req.reader._id })
+        .sort({ viewedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({
+          path: "article",
+          select: publishedArticleSelect(),
+          match: { status: "published" },
+          populate: { path: "author", select: "name" },
+        })
+        .lean(),
+      ReaderArticleView.countDocuments({ reader: req.reader._id }),
+    ]);
+
+    const articles = rows.map((r) => articleBookmarkPayload(r.article)).filter(Boolean);
+    res.json({ articles, total, page });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // ── PUT /api/reader/me/password ────────────────────────
 router.put(

@@ -35,11 +35,11 @@ export default function HeroSection() {
 
   useEffect(() => {
     setHeroLoading(true);
-    fetchPublishedArticles({ limit: 4 }).then((articles) => {
+    fetchPublishedArticles({ limit: 4, locale: lang }).then((articles) => {
       setStories(adaptArticles(articles).slice(0, 4));
       setHeroLoading(false);
     });
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     if (stories.length === 0) return;

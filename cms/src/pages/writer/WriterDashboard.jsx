@@ -24,6 +24,12 @@ const PRIORITY_STYLE = {
   urgent: "bg-red-100 text-red-600",
 };
 
+function articleListTitle(a) {
+  const pl = a.primaryLocale === "hi" ? "hi" : "en";
+  if (pl === "hi") return (a.titleHi || a.title || "").trim() || "Untitled";
+  return (a.title || a.titleHi || "").trim() || "Untitled";
+}
+
 function StatCard({ icon: Icon, label, value, color }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-center gap-4">
@@ -118,7 +124,12 @@ export default function WriterDashboard() {
                 return (
                   <div key={a._id} className="flex items-start gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-800 text-sm truncate">{a.title}</p>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <p className="font-medium text-slate-800 text-sm truncate">{articleListTitle(a)}</p>
+                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded flex-shrink-0 ${a.primaryLocale === "hi" ? "bg-indigo-100 text-indigo-800" : "bg-sky-100 text-sky-800"}`}>
+                          {a.primaryLocale === "hi" ? "HI" : "EN"}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs text-slate-400 capitalize">{a.category}</span>
                         <span className="text-slate-300">·</span>
@@ -192,7 +203,7 @@ export default function WriterDashboard() {
                     {t.article && (
                       <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                         <ChevronRight size={10} />
-                        Linked: {t.article.title?.slice(0, 35)}…
+                        Linked: {articleListTitle(t.article).slice(0, 35)}…
                       </p>
                     )}
                   </div>

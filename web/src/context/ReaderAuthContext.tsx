@@ -14,6 +14,7 @@ import {
   readerLogin,
   readerRegister,
   readerGoogleLogin,
+  readerDeleteAccount,
   type ReaderProfile,
 } from "../services/readerApi";
 
@@ -23,6 +24,7 @@ type ReaderAuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   register: (displayName: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   logout: () => void;
   refreshReader: () => Promise<void>;
 };
@@ -78,6 +80,12 @@ export function ReaderAuthProvider({ children }: { children: ReactNode }) {
     setReader(null);
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    await readerDeleteAccount();
+    setReaderToken(null);
+    setReader(null);
+  }, []);
+
   const value = useMemo(
     () => ({
       reader,
@@ -85,10 +93,11 @@ export function ReaderAuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       loginWithGoogle,
+      deleteAccount,
       logout,
       refreshReader,
     }),
-    [reader, loading, login, register, loginWithGoogle, logout, refreshReader]
+    [reader, loading, login, register, loginWithGoogle, deleteAccount, logout, refreshReader]
   );
 
   return <ReaderAuthContext.Provider value={value}>{children}</ReaderAuthContext.Provider>;

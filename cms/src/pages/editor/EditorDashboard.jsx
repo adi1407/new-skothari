@@ -15,6 +15,18 @@ const STATUS_BADGE = {
   rejected:   "bg-red-100 text-red-700",
 };
 
+function articleListTitle(a) {
+  const pl = a.primaryLocale === "hi" ? "hi" : "en";
+  if (pl === "hi") return (a.titleHi || a.title || "").trim() || "Untitled";
+  return (a.title || a.titleHi || "").trim() || "Untitled";
+}
+
+function articleListSummary(a) {
+  const pl = a.primaryLocale === "hi" ? "hi" : "en";
+  if (pl === "hi") return (a.summaryHi || a.summary || "").trim();
+  return (a.summary || a.summaryHi || "").trim();
+}
+
 export default function EditorDashboard() {
   const [tab, setTab]             = useState("submitted");
   const [articles, setArticles]   = useState([]);
@@ -140,8 +152,13 @@ export default function EditorDashboard() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-800 text-sm leading-snug">{a.title}</p>
-                  <p className="text-slate-500 text-xs mt-0.5 line-clamp-1">{a.summary}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-slate-800 text-sm leading-snug">{articleListTitle(a)}</p>
+                    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${a.primaryLocale === "hi" ? "bg-indigo-100 text-indigo-800" : "bg-sky-100 text-sky-800"}`}>
+                      {a.primaryLocale === "hi" ? "HI" : "EN"}
+                    </span>
+                  </div>
+                  <p className="text-slate-500 text-xs mt-0.5 line-clamp-1">{articleListSummary(a) || "—"}</p>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <span className="text-xs text-slate-400">By {a.author?.name}</span>
                     <span className="text-slate-300">·</span>

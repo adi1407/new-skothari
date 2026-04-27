@@ -33,11 +33,12 @@ export default function CategoryPage() {
     fetchPublishedArticles({
       ...(isAllFeed ? {} : { category: slug }),
       limit: 40,
+      locale: lang,
     }).then((articles) => {
       setStories(adaptArticles(articles));
       setLoading(false);
     });
-  }, [slug]);
+  }, [slug, lang]);
 
   if (!cat) {
     return (

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, Globe, XCircle, Edit3, Save, Loader2, AlertCircle, CheckCircle, Eye, EyeOff,
+  ArrowLeft, Globe, XCircle, Edit3, Save, Loader2, AlertCircle, CheckCircle,
 } from "lucide-react";
 import { getArticle, updateArticle, publishArticle, unpublishArticle, rejectArticle } from "../../api";
 import { useAuth } from "../../context/AuthContext";
@@ -22,6 +22,15 @@ function Badge({ status }) {
   );
 }
 
+function LocaleBadge({ locale }) {
+  const hi = locale === "hi";
+  return (
+    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${hi ? "bg-indigo-100 text-indigo-800" : "bg-sky-100 text-sky-800"}`}>
+      {hi ? "HI primary" : "EN primary"}
+    </span>
+  );
+}
+
 export default function ArticleReview() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -32,7 +41,6 @@ export default function ArticleReview() {
   const [form, setForm]           = useState({});
   const [rejectReason, setRejectReason] = useState("");
   const [showReject, setShowReject]     = useState(false);
-  const [showHindi, setShowHindi]       = useState(false);
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState("");
@@ -43,6 +51,7 @@ export default function ArticleReview() {
       const a = r.data.article;
       setArticle(a);
       setForm({
+        primaryLocale: a.primaryLocale === "hi" ? "hi" : "en",
         title: a.title, titleHi: a.titleHi, summary: a.summary, summaryHi: a.summaryHi,
         body: a.body, bodyHi: a.bodyHi, category: a.category,
         tags: (a.tags || []).join(", "), isBreaking: a.isBreaking,
@@ -132,8 +141,9 @@ export default function ArticleReview() {
           </button>
           <div>
             <h1 className="text-xl font-bold text-slate-800">Article Review</h1>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
               <Badge status={article.status} />
+              <LocaleBadge locale={article.primaryLocale === "hi" ? "hi" : "en"} />
               <span className="text-xs text-slate-400">by {article.author?.name}</span>
               <span className="text-xs text-slate-400">· {new Date(article.updatedAt).toLocaleDateString()}</span>
             </div>
@@ -141,15 +151,6 @@ export default function ArticleReview() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowHindi(!showHindi)}
-            className="flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"
-          >
-            {showHindi ? <EyeOff size={14} /> : <Eye size={14} />}
-            Hindi
-          </button>
-
           {canEdit && !editMode && (
             <button
               onClick={() => setEditMode(true)}
@@ -255,7 +256,11 @@ export default function ArticleReview() {
           {article.images?.length > 0 && (
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               <div className="relative aspect-video">
-                <img src={article.images[0].url} alt={article.title} className="w-full h-full object-cover" />
+                <img
+                  src={article.images[0].url}
+                  alt={(article.primaryLocale === "hi" ? article.titleHi : article.title) || "Article"}
+                  className="w-full h-full object-cover"
+                />
               </div>
               {article.images.length > 1 && (
                 <div className="flex gap-2 p-3 overflow-x-auto">
@@ -267,42 +272,30 @@ export default function ArticleReview() {
             </div>
           )}
 
-          {/* English content */}
+          {/* Primary story */}
           <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">English</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">
+              {article.primaryLocale === "hi" ? "हिंदी (primary)" : "English (primary)"}
+            </p>
             {editMode ? (
-              <div className="space-y-4">
-                <input
-                  value={form.title} onChange={(e) => set("title", e.target.value)}
-                  className="w-full text-xl font-bold text-slate-800 border-b border-slate-200 pb-2 outline-none focus:border-brand"
-                />
-                <textarea
-                  rows={2} value={form.summary} onChange={(e) => set("summary", e.target.value)}
-                  placeholder="Summary"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand resize-y"
-                />
-                <textarea
-                  rows={16} value={form.body} onChange={(e) => set("body", e.target.value)}
-                  placeholder="Article body"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand resize-y font-mono"
-                />
-              </div>
-            ) : (
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800 leading-snug mb-3">{article.title}</h1>
-                {article.summary && <p className="text-slate-600 text-base mb-5 italic border-l-4 border-brand pl-4">{article.summary}</p>}
-                <div className="prose text-slate-700 text-sm leading-relaxed whitespace-pre-wrap article-preview">
-                  {article.body || <span className="text-slate-400 italic">No body content</span>}
+              form.primaryLocale === "en" ? (
+                <div className="space-y-4">
+                  <input
+                    value={form.title} onChange={(e) => set("title", e.target.value)}
+                    className="w-full text-xl font-bold text-slate-800 border-b border-slate-200 pb-2 outline-none focus:border-brand"
+                  />
+                  <textarea
+                    rows={2} value={form.summary} onChange={(e) => set("summary", e.target.value)}
+                    placeholder="Summary"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand resize-y"
+                  />
+                  <textarea
+                    rows={16} value={form.body} onChange={(e) => set("body", e.target.value)}
+                    placeholder="Article body"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand resize-y font-mono"
+                  />
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Hindi content */}
-          {showHindi && (
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">हिंदी</p>
-              {editMode ? (
+              ) : (
                 <div className="space-y-4">
                   <input
                     value={form.titleHi} onChange={(e) => set("titleHi", e.target.value)}
@@ -315,18 +308,94 @@ export default function ArticleReview() {
                     className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand resize-y"
                   />
                   <textarea
-                    rows={12} value={form.bodyHi} onChange={(e) => set("bodyHi", e.target.value)}
+                    rows={16} value={form.bodyHi} onChange={(e) => set("bodyHi", e.target.value)}
                     placeholder="हिंदी सामग्री"
                     className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand resize-y"
                   />
                 </div>
-              ) : (
-                <div>
-                  {article.titleHi && <h2 className="text-xl font-bold text-slate-800 mb-3">{article.titleHi}</h2>}
-                  {article.summaryHi && <p className="text-slate-600 text-sm mb-4 italic">{article.summaryHi}</p>}
-                  <div className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">
-                    {article.bodyHi || <span className="text-slate-400 italic">Hindi translation not added</span>}
+              )
+            ) : (
+              <div>
+                {article.primaryLocale === "hi" ? (
+                  <>
+                    <h1 className="text-2xl font-bold text-slate-800 leading-snug mb-3">{article.titleHi || "—"}</h1>
+                    {article.summaryHi && <p className="text-slate-600 text-base mb-5 italic border-l-4 border-brand pl-4">{article.summaryHi}</p>}
+                    <div className="prose text-slate-700 text-sm leading-relaxed whitespace-pre-wrap article-preview">
+                      {article.bodyHi || <span className="text-slate-400 italic">No body content</span>}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h1 className="text-2xl font-bold text-slate-800 leading-snug mb-3">{article.title || "—"}</h1>
+                    {article.summary && <p className="text-slate-600 text-base mb-5 italic border-l-4 border-brand pl-4">{article.summary}</p>}
+                    <div className="prose text-slate-700 text-sm leading-relaxed whitespace-pre-wrap article-preview">
+                      {article.body || <span className="text-slate-400 italic">No body content</span>}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Optional other language */}
+          {(editMode || (article.primaryLocale === "hi" ? (article.title || article.body) : (article.titleHi || article.bodyHi))) && (
+            <div className="bg-slate-50 rounded-xl border border-slate-200 border-dashed p-6">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">
+                {article.primaryLocale === "hi" ? "Optional English" : "Optional Hindi"}
+              </p>
+              {editMode ? (
+                article.primaryLocale === "hi" ? (
+                  <div className="space-y-4">
+                    <input
+                      value={form.title} onChange={(e) => set("title", e.target.value)}
+                      placeholder="English title (optional)"
+                      className="w-full text-lg font-semibold text-slate-800 border-b border-slate-200 pb-2 outline-none focus:border-brand"
+                    />
+                    <textarea
+                      rows={2} value={form.summary} onChange={(e) => set("summary", e.target.value)}
+                      placeholder="Summary"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand resize-y"
+                    />
+                    <textarea
+                      rows={10} value={form.body} onChange={(e) => set("body", e.target.value)}
+                      placeholder="English body (optional)"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand resize-y"
+                    />
                   </div>
+                ) : (
+                  <div className="space-y-4">
+                    <input
+                      value={form.titleHi} onChange={(e) => set("titleHi", e.target.value)}
+                      placeholder="हिंदी शीर्षक (optional)"
+                      className="w-full text-lg font-semibold text-slate-800 border-b border-slate-200 pb-2 outline-none focus:border-brand"
+                    />
+                    <textarea
+                      rows={2} value={form.summaryHi} onChange={(e) => set("summaryHi", e.target.value)}
+                      placeholder="सारांश"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand resize-y"
+                    />
+                    <textarea
+                      rows={10} value={form.bodyHi} onChange={(e) => set("bodyHi", e.target.value)}
+                      placeholder="हिंदी सामग्री (optional)"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand resize-y"
+                    />
+                  </div>
+                )
+              ) : (
+                <div className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">
+                  {article.primaryLocale === "hi" ? (
+                    <>
+                      {article.title && <h2 className="text-lg font-bold text-slate-800 mb-2">{article.title}</h2>}
+                      {article.summary && <p className="text-slate-600 text-sm mb-3 italic">{article.summary}</p>}
+                      {article.body || <span className="text-slate-400 italic">No optional English content</span>}
+                    </>
+                  ) : (
+                    <>
+                      {article.titleHi && <h2 className="text-lg font-bold text-slate-800 mb-2">{article.titleHi}</h2>}
+                      {article.summaryHi && <p className="text-slate-600 text-sm mb-3 italic">{article.summaryHi}</p>}
+                      {article.bodyHi || <span className="text-slate-400 italic">No optional Hindi content</span>}
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -339,6 +408,21 @@ export default function ArticleReview() {
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Article Info</p>
             <div className="space-y-3 text-sm">
+              <div className="flex justify-between items-center gap-2">
+                <span className="text-slate-500">Primary</span>
+                {editMode ? (
+                  <select
+                    value={form.primaryLocale || "en"}
+                    onChange={(e) => set("primaryLocale", e.target.value)}
+                    className="text-sm border border-slate-200 rounded px-2 py-1 outline-none capitalize bg-white"
+                  >
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                  </select>
+                ) : (
+                  <LocaleBadge locale={article.primaryLocale === "hi" ? "hi" : "en"} />
+                )}
+              </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Author</span>
                 <span className="font-medium text-slate-800">{article.author?.name}</span>

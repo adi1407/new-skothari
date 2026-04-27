@@ -4,6 +4,7 @@ import { Play, Clock, Eye, Tv2, ArrowRight, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { VideoItem } from "../data/mockData";
 import { useLang } from "../context/LangContext";
+import BrandLogo from "./BrandLogo";
 import YoutubeThumbImg from "./YoutubeThumbImg";
 import { fetchPublishedVideos } from "../services/newsApi";
 import { adaptVideos } from "../services/videoAdapter";
@@ -87,9 +88,9 @@ export default function VideoSection() {
             </a>
             <div className="video-body">
               <div className="video-channel-row">
-                <div className="video-channel-avatar">ख</div>
+                <BrandLogo className="video-channel-logo" height={36} decorative />
                 <div>
-                  <div className="video-channel-name">{t("खबर कोठरी टीवी", "Khabar Kothri TV")}</div>
+                  <div className="video-channel-name">{t("टीवी", "TV")}</div>
                   <div className="video-channel-sub">{t("2.4M सब्सक्राइबर्स", "2.4M subscribers")}</div>
                 </div>
               </div>

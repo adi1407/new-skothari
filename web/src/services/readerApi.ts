@@ -145,3 +145,33 @@ export async function readerListBookmarks(page = 1, limit = 20): Promise<{ artic
   if (!res.ok) throw new Error(data.message || "Failed to load bookmarks");
   return { articles: data.articles ?? [], total: data.total ?? 0 };
 }
+
+/** Best-effort: failures are ignored so article views are never blocked. */
+export async function readerRecordHistory(articleId: string): Promise<void> {
+  try {
+    const res = await fetch(apiUrl(`/api/reader/me/history/${articleId}`), {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    await res.json().catch(() => ({}));
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function readerListHistory(page = 1, limit = 20): Promise<{ articles: BackendArticle[]; total: number }> {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  const res = await fetch(apiUrl(`/api/reader/me/history?${params}`), { headers: authHeaders() });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || "Failed to load history");
+  return { articles: data.articles ?? [], total: data.total ?? 0 };
+}
+
+export async function readerDeleteAccount(): Promise<void> {
+  const res = await fetch(apiUrl("/api/reader/me"), {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || "Could not delete account");
+}

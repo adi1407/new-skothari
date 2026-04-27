@@ -18,14 +18,31 @@ const imageSchema = new mongoose.Schema(
   { _id: false }
 );
 
+function asciiSlugPart(str) {
+  return String(str || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 100);
+}
+
 const articleSchema = new mongoose.Schema(
   {
+    // Primary language for this story (separate uploads per locale; no pairing)
+    primaryLocale: {
+      type: String,
+      enum: ["hi", "en"],
+      default: "en",
+      index: true,
+    },
+
     // ── Content ──
     title: {
       type: String,
-      required: [true, "Title is required"],
       trim: true,
       maxlength: 200,
+      default: "",
     },
     titleHi: { type: String, trim: true, maxlength: 200, default: "" },
 
@@ -54,7 +71,7 @@ const articleSchema = new mongoose.Schema(
 
     isBreaking: { type: Boolean, default: false },
 
-    readTime: { type: Number, default: 0 },   // minutes, auto-calculated
+    readTime: { type: Number, default: 0 },   // minutes, auto-calculated from primary body
 
     // ── Workflow ──
     status: {
@@ -99,25 +116,20 @@ const articleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-generate slug from title
+// Slug from primary title; read time from primary body
 articleSchema.pre("save", function (next) {
-  if (this.isModified("title") && !this.slug) {
-    this.slug =
-      this.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .trim()
-        .replace(/\s+/g, "-")
-        .slice(0, 100) +
-      "-" +
-      Date.now();
+  const pl = this.primaryLocale === "hi" ? "hi" : "en";
+  const primaryTitle = pl === "hi" ? (this.titleHi || "") : (this.title || "");
+
+  if (!this.slug) {
+    let base = asciiSlugPart(primaryTitle);
+    if (!base) base = "article";
+    this.slug = `${base}-${Date.now()}`.slice(0, 120);
   }
 
-  // Auto read time (avg 200 wpm)
-  if (this.isModified("body") && this.body) {
-    const words = this.body.split(/\s+/).length;
-    this.readTime = Math.max(1, Math.ceil(words / 200));
-  }
+  const primaryBody = pl === "hi" ? (this.bodyHi || "") : (this.body || "");
+  const words = primaryBody.trim().split(/\s+/).filter(Boolean).length;
+  this.readTime = words ? Math.max(1, Math.ceil(words / 200)) : 0;
 
   next();
 });

@@ -46,6 +46,7 @@ export default function ArticleEditor() {
   const isEdit   = Boolean(id);
 
   const [form, setForm] = useState({
+    primaryLocale: "en",
     title: "", titleHi: "", summary: "", summaryHi: "",
     body: "", bodyHi: "", category: "politics",
     tags: "", isBreaking: false, task: "",
@@ -68,6 +69,7 @@ export default function ArticleEditor() {
       if (a) {
         const art = a.data.article;
         setForm({
+          primaryLocale: art.primaryLocale === "hi" ? "hi" : "en",
           title: art.title || "", titleHi: art.titleHi || "",
           summary: art.summary || "", summaryHi: art.summaryHi || "",
           body: art.body || "", bodyHi: art.bodyHi || "",
@@ -85,7 +87,11 @@ export default function ArticleEditor() {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
-    if (!form.title.trim()) return setError("Title is required");
+    if (form.primaryLocale === "hi") {
+      if (!form.titleHi.trim()) return setError("Hindi title is required for Hindi articles");
+    } else if (!form.title.trim()) {
+      return setError("Title is required for English articles");
+    }
     setError(""); setSaving(true);
     try {
       const payload = {
@@ -108,7 +114,11 @@ export default function ArticleEditor() {
   };
 
   const handleSubmit = async () => {
-    if (!form.body.trim()) return setError("Article body is required before submitting");
+    if (form.primaryLocale === "hi") {
+      if (!form.bodyHi.trim()) return setError("Hindi article body is required before submitting");
+    } else if (!form.body.trim()) {
+      return setError("Article body is required before submitting");
+    }
     setError(""); setSubmitting(true);
     try {
       await handleSave();
@@ -149,7 +159,12 @@ export default function ArticleEditor() {
   };
 
   const canEdit  = ["draft", "rejected"].includes(status);
-  const canSubmit = isEdit && canEdit && form.title && form.body;
+  const canSubmit =
+    isEdit &&
+    canEdit &&
+    (form.primaryLocale === "hi"
+      ? Boolean(form.titleHi?.trim() && form.bodyHi?.trim())
+      : Boolean(form.title?.trim() && form.body?.trim()));
 
   if (loading) return (
     <div className="cms-page-center">
@@ -228,56 +243,111 @@ export default function ArticleEditor() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-5">
-          {/* English fields */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
-            <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">English</h2>
-            <Field label="Title" required>
-              <Input
-                value={form.title} disabled={!canEdit}
-                onChange={(e) => set("title", e.target.value)}
-                placeholder="Article headline in English"
-              />
-            </Field>
-            <Field label="Summary">
-              <Textarea
-                rows={2} value={form.summary} disabled={!canEdit}
-                onChange={(e) => set("summary", e.target.value)}
-                placeholder="Brief summary (shown in cards)"
-              />
-            </Field>
-            <Field label="Body" required>
-              <Textarea
-                rows={14} value={form.body} disabled={!canEdit}
-                onChange={(e) => set("body", e.target.value)}
-                placeholder="Full article content…"
-              />
-            </Field>
-          </div>
+          {form.primaryLocale === "en" ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
+              <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">English (primary)</h2>
+              <Field label="Title" required>
+                <Input
+                  value={form.title} disabled={!canEdit}
+                  onChange={(e) => set("title", e.target.value)}
+                  placeholder="Article headline in English"
+                />
+              </Field>
+              <Field label="Summary">
+                <Textarea
+                  rows={2} value={form.summary} disabled={!canEdit}
+                  onChange={(e) => set("summary", e.target.value)}
+                  placeholder="Brief summary (shown in cards)"
+                />
+              </Field>
+              <Field label="Body" required>
+                <Textarea
+                  rows={14} value={form.body} disabled={!canEdit}
+                  onChange={(e) => set("body", e.target.value)}
+                  placeholder="Full article content…"
+                />
+              </Field>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
+              <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">हिंदी (primary)</h2>
+              <Field label="शीर्षक (Title)" required>
+                <Input
+                  value={form.titleHi} disabled={!canEdit}
+                  onChange={(e) => set("titleHi", e.target.value)}
+                  placeholder="हिंदी में शीर्षक"
+                />
+              </Field>
+              <Field label="सारांश (Summary)">
+                <Textarea
+                  rows={2} value={form.summaryHi} disabled={!canEdit}
+                  onChange={(e) => set("summaryHi", e.target.value)}
+                  placeholder="संक्षिप्त विवरण"
+                />
+              </Field>
+              <Field label="मुख्य सामग्री (Body)" required>
+                <Textarea
+                  rows={14} value={form.bodyHi} disabled={!canEdit}
+                  onChange={(e) => set("bodyHi", e.target.value)}
+                  placeholder="पूरा लेख यहाँ लिखें…"
+                />
+              </Field>
+            </div>
+          )}
 
-          {/* Hindi fields */}
-          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
-            <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">हिंदी (Hindi)</h2>
-            <Field label="शीर्षक (Title)">
-              <Input
-                value={form.titleHi} disabled={!canEdit}
-                onChange={(e) => set("titleHi", e.target.value)}
-                placeholder="हिंदी में शीर्षक"
-              />
-            </Field>
-            <Field label="सारांश (Summary)">
-              <Textarea
-                rows={2} value={form.summaryHi} disabled={!canEdit}
-                onChange={(e) => set("summaryHi", e.target.value)}
-                placeholder="संक्षिप्त विवरण"
-              />
-            </Field>
-            <Field label="मुख्य सामग्री (Body)">
-              <Textarea
-                rows={10} value={form.bodyHi} disabled={!canEdit}
-                onChange={(e) => set("bodyHi", e.target.value)}
-                placeholder="पूरा लेख यहाँ लिखें…"
-              />
-            </Field>
+          <div className="bg-slate-50 rounded-xl border border-slate-200 border-dashed p-6 space-y-5">
+            <h2 className="font-semibold text-slate-500 text-sm uppercase tracking-wide">
+              {form.primaryLocale === "en" ? "Optional Hindi" : "Optional English"}
+            </h2>
+            {form.primaryLocale === "en" ? (
+              <>
+                <Field label="शीर्षक (Title)">
+                  <Input
+                    value={form.titleHi} disabled={!canEdit}
+                    onChange={(e) => set("titleHi", e.target.value)}
+                    placeholder="हिंदी में शीर्षक (optional)"
+                  />
+                </Field>
+                <Field label="सारांश (Summary)">
+                  <Textarea
+                    rows={2} value={form.summaryHi} disabled={!canEdit}
+                    onChange={(e) => set("summaryHi", e.target.value)}
+                    placeholder="संक्षिप्त विवरण"
+                  />
+                </Field>
+                <Field label="मुख्य सामग्री (Body)">
+                  <Textarea
+                    rows={8} value={form.bodyHi} disabled={!canEdit}
+                    onChange={(e) => set("bodyHi", e.target.value)}
+                    placeholder="पूरा लेख (optional)"
+                  />
+                </Field>
+              </>
+            ) : (
+              <>
+                <Field label="Title">
+                  <Input
+                    value={form.title} disabled={!canEdit}
+                    onChange={(e) => set("title", e.target.value)}
+                    placeholder="English headline (optional)"
+                  />
+                </Field>
+                <Field label="Summary">
+                  <Textarea
+                    rows={2} value={form.summary} disabled={!canEdit}
+                    onChange={(e) => set("summary", e.target.value)}
+                    placeholder="Brief summary in English (optional)"
+                  />
+                </Field>
+                <Field label="Body">
+                  <Textarea
+                    rows={8} value={form.body} disabled={!canEdit}
+                    onChange={(e) => set("body", e.target.value)}
+                    placeholder="Full article in English (optional)"
+                  />
+                </Field>
+              </>
+            )}
           </div>
 
           {/* Image upload */}
@@ -344,6 +414,18 @@ export default function ArticleEditor() {
           <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
             <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Settings</h2>
 
+            <Field label="Primary language" required>
+              <select
+                value={form.primaryLocale}
+                disabled={!canEdit}
+                onChange={(e) => set("primaryLocale", e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
+              >
+                <option value="en">English — separate upload per language</option>
+                <option value="hi">हिंदी (Hindi)</option>
+              </select>
+            </Field>
+
             <Field label="Category" required>
               <select
                 value={form.category} disabled={!canEdit}
@@ -399,7 +481,7 @@ export default function ArticleEditor() {
               <li>Save draft anytime with the Save button</li>
               <li>Submit only when article is complete</li>
               <li>Upload the hero image first</li>
-              <li>Hindi fields are optional but recommended</li>
+              <li>Pick primary language first; optional other-language fields below</li>
             </ul>
           </div>
         </div>

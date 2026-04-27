@@ -63,7 +63,7 @@ Render can use **`/api/health`** (see `render.yaml`) to verify the service is up
 ## 6. Google Sign-In (optional)
 
 1. In Google Cloud Console, create **OAuth 2.0 Client ID** → Application type **Web application**.
-2. **Authorized JavaScript origins:** `http://localhost:5173`, and your production site `https://your-app.vercel.app` (no path).
+2. **Authorized JavaScript origins:** `http://localhost:5280` (public `web/` dev server), and your production site `https://your-app.vercel.app` (no path).
 3. You do **not** need a redirect URI for the ID-token (popup) flow used here.
 4. Copy the **Client ID** into Render `GOOGLE_CLIENT_ID` and Vercel `VITE_GOOGLE_CLIENT_ID` (same string).
 

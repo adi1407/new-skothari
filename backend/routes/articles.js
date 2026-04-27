@@ -9,6 +9,20 @@ const upload = require("../middleware/upload");
 
 // ── Helpers ──────────────────────────────────────────
 
+function normalizePrimaryLocale(v) {
+  if (v === "hi" || v === "en") return v;
+  return "en";
+}
+
+/** Non-empty title + body for the article's primary locale (submit/publish gate). */
+function hasPrimaryContent(article) {
+  const pl = article.primaryLocale === "hi" ? "hi" : "en";
+  if (pl === "hi") {
+    return !!(String(article.titleHi || "").trim() && String(article.bodyHi || "").trim());
+  }
+  return !!(String(article.title || "").trim() && String(article.body || "").trim());
+}
+
 function buildQuery(role, userId, filters = {}) {
   const q = {};
 
@@ -106,7 +120,6 @@ router.post(
   authenticate,
   authorize("writer", "admin"),
   [
-    body("title").trim().notEmpty().withMessage("Title is required"),
     body("category")
       .isIn(["politics","sports","tech","business","entertainment","health","world","state"])
       .withMessage("Invalid category"),
@@ -116,12 +129,21 @@ router.post(
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     try {
+      const primaryLocale = normalizePrimaryLocale(req.body.primaryLocale);
       const { title, titleHi, summary, summaryHi, body: bodyText, bodyHi,
               category, tags, isBreaking, task: taskId } = req.body;
 
+      if (primaryLocale === "hi") {
+        if (!String(titleHi || "").trim())
+          return res.status(400).json({ message: "Hindi title is required for Hindi articles" });
+      } else if (!String(title || "").trim()) {
+        return res.status(400).json({ message: "Title is required for English articles" });
+      }
+
       const article = await Article.create({
-        title, titleHi, summary, summaryHi,
-        body: bodyText, bodyHi,
+        primaryLocale,
+        title: title ?? "", titleHi: titleHi ?? "", summary: summary ?? "", summaryHi: summaryHi ?? "",
+        body: bodyText ?? "", bodyHi: bodyHi ?? "",
         category, tags, isBreaking,
         author: req.user._id,
         task: taskId || null,
@@ -160,11 +182,15 @@ router.put("/:id", authenticate, async (req, res) => {
     }
 
     const allowed = [
+      "primaryLocale",
       "title","titleHi","summary","summaryHi",
       "body","bodyHi","category","tags","isBreaking",
     ];
     allowed.forEach((f) => {
-      if (req.body[f] !== undefined) article[f] = req.body[f];
+      if (req.body[f] !== undefined) {
+        if (f === "primaryLocale") article[f] = normalizePrimaryLocale(req.body[f]);
+        else article[f] = req.body[f];
+      }
     });
 
     if (req.user.role !== "writer") {
@@ -212,8 +238,12 @@ router.patch("/:id/submit", authenticate, authorize("writer", "admin"), async (r
     if (article.status !== "draft" && article.status !== "rejected")
       return res.status(400).json({ message: `Cannot submit from status: ${article.status}` });
 
-    if (!article.title || !article.body)
-      return res.status(400).json({ message: "Article must have a title and body before submitting" });
+    if (!hasPrimaryContent(article))
+      return res.status(400).json({
+        message: article.primaryLocale === "hi"
+          ? "Hindi title and body are required before submitting"
+          : "Title and body are required before submitting",
+      });
 
     article.status = "submitted";
     article.rejectionReason = "";
@@ -233,6 +263,13 @@ router.patch("/:id/publish", authenticate, authorize("editor", "admin"), async (
 
     if (article.status !== "submitted")
       return res.status(400).json({ message: `Cannot publish from status: ${article.status}` });
+
+    if (!hasPrimaryContent(article))
+      return res.status(400).json({
+        message: article.primaryLocale === "hi"
+          ? "Cannot publish: Hindi title and body are required"
+          : "Cannot publish: English title and body are required",
+      });
 
     article.status = "published";
     article.publishedAt = new Date();

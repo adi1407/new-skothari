@@ -3,8 +3,8 @@ import { fetchPublishedArticles } from "./newsApi";
 import { adaptArticles } from "./articleAdapter";
 
 /** One fetch for the home page; map with `pickCategory` / `pickLatest`. */
-export async function loadHomeArticles(limit = 100): Promise<NewsItem[]> {
-  const raw = await fetchPublishedArticles({ limit });
+export async function loadHomeArticles(limit = 100, locale: "hi" | "en" = "hi"): Promise<NewsItem[]> {
+  const raw = await fetchPublishedArticles({ limit, locale });
   return adaptArticles(raw);
 }
 
