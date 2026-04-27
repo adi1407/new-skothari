@@ -19,11 +19,7 @@ export default function NewsTicker() {
     return breakingArticles
       .map((a) => {
         const primary = a.primaryLocale === "hi" ? "hi" : "en";
-        const line =
-          primary === "hi"
-            ? (a.titleHi || a.title || "").trim()
-            : (a.title || a.titleHi || "").trim();
-        return line;
+        return (primary === "hi" ? (a.titleHi || a.title) : (a.title || a.titleHi || "")).trim();
       })
       .filter(Boolean);
   }, [breakingArticles]);
@@ -65,7 +61,7 @@ export default function NewsTicker() {
       cancelAnimationFrame(raf);
       clearTimeout(timer);
     };
-  }, [lang, reduceMotion, items.length]);
+  }, [reduceMotion, items.length]);
 
   if (items.length === 0) return null;
 

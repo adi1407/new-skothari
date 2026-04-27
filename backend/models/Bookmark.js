@@ -2,18 +2,8 @@ const mongoose = require("mongoose");
 
 const bookmarkSchema = new mongoose.Schema(
   {
-    reader: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Reader",
-      required: true,
-      index: true,
-    },
-    article: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Article",
-      required: true,
-      index: true,
-    },
+    reader: { type: mongoose.Schema.Types.ObjectId, ref: "Reader", required: true, index: true },
+    article: { type: mongoose.Schema.Types.ObjectId, ref: "Article", required: true, index: true },
   },
   { timestamps: true }
 );

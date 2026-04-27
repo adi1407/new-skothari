@@ -173,15 +173,16 @@ function AppInner() {
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 export default function App() {
-  const inner = <AppInner />;
   return (
     <BrowserRouter>
       <LangProvider>
         <ReaderAuthProvider>
           {googleClientId ? (
-            <GoogleOAuthProvider clientId={googleClientId}>{inner}</GoogleOAuthProvider>
+            <GoogleOAuthProvider clientId={googleClientId}>
+              <AppInner />
+            </GoogleOAuthProvider>
           ) : (
-            inner
+            <AppInner />
           )}
         </ReaderAuthProvider>
       </LangProvider>

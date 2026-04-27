@@ -31,7 +31,7 @@ export default function HeroSection() {
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     setHeroLoading(true);

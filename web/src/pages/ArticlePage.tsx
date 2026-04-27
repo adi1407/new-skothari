@@ -8,15 +8,10 @@ import {
 import { categories } from "../data/publicCategories";
 import type { NewsItem } from "../data/mockData";
 import { useLang } from "../context/LangContext";
-import { useReaderAuth } from "../context/ReaderAuthContext";
 import { fetchArticleById, fetchPublishedArticles } from "../services/newsApi";
 import { adaptArticle, adaptArticles } from "../services/articleAdapter";
-import {
-  readerBookmarkCheck,
-  readerBookmarkAdd,
-  readerBookmarkRemove,
-  readerRecordHistory,
-} from "../services/readerApi";
+import { useReaderAuth } from "../context/ReaderAuthContext";
+import { addBookmark, recordHistory, removeBookmark, sendSignal } from "../services/readerApi";
 
 const categoryColors: Record<string, string> = {
   politics: "#BB1919", sports: "#00695c", tech: "#1565c0",
@@ -97,7 +92,7 @@ export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { lang, t } = useLang();
-  const { reader } = useReaderAuth();
+  const { token } = useReaderAuth();
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 200, damping: 30 });
@@ -106,7 +101,6 @@ export default function ArticlePage() {
   const [loading, setLoading]     = useState(true);
   const [imgErr, setImgErr]       = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
-  const [bookmarkBusy, setBookmarkBusy] = useState(false);
   const [copied, setCopied]       = useState(false);
   const [showBackTop, setShowBackTop] = useState(false);
   const [relatedStories, setRelatedStories] = useState<NewsItem[]>([]);
@@ -126,19 +120,6 @@ export default function ArticlePage() {
       setLoading(false);
     });
   }, [id]);
-
-  useEffect(() => {
-    if (!id || !reader) {
-      setBookmarked(false);
-      return;
-    }
-    readerBookmarkCheck(id).then(setBookmarked).catch(() => setBookmarked(false));
-  }, [id, reader]);
-
-  useEffect(() => {
-    if (!reader || !id || !article || String(article.id) !== id) return;
-    readerRecordHistory(id);
-  }, [reader, id, article]);
 
   useEffect(() => {
     if (!id || !article || String(article.id) !== id || !article.categorySlug) {
@@ -177,26 +158,28 @@ export default function ArticlePage() {
 
   const handleBookmarkToggle = useCallback(async () => {
     if (!id) return;
-    if (!reader) {
-      navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+    if (!token) {
+      navigate(`/profile?next=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
-    if (bookmarkBusy) return;
-    setBookmarkBusy(true);
-    try {
-      if (bookmarked) {
-        await readerBookmarkRemove(id);
-        setBookmarked(false);
-      } else {
-        await readerBookmarkAdd(id);
-        setBookmarked(true);
-      }
-    } catch {
-      /* ignore */
-    } finally {
-      setBookmarkBusy(false);
+    if (bookmarked) {
+      await removeBookmark(token, id).catch(() => {});
+      setBookmarked(false);
+      return;
     }
-  }, [id, reader, bookmarked, bookmarkBusy, navigate]);
+    await addBookmark(token, id).catch(() => {});
+    await sendSignal(token, { eventType: "bookmark", articleId: id, weight: 3 }).catch(() => {});
+    setBookmarked(true);
+  }, [id, token, bookmarked, navigate]);
+
+  useEffect(() => {
+    if (!token || !id) return;
+    const timer = window.setTimeout(() => {
+      recordHistory(token, id, 15, 20).catch(() => {});
+      sendSignal(token, { eventType: "view", articleId: id, weight: 1 }).catch(() => {});
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [token, id]);
 
   /* Loading */
   if (loading) return (
@@ -228,8 +211,8 @@ export default function ArticlePage() {
   const paragraphs = rawContent && rawContent.length > 0
     ? rawContent
     : lang === "hi"
-      ? [article.summary, "इस विषय पर अधिक जानकारी जल्द उपलब्ध होगी। हमारे संवाददाता इस खबर पर नजर रखे हुए हैं।", "नवीनतम अपडेट के लिए बने रहें।"]
-      : [article.summaryEn, "More details on this story are being gathered by our correspondents. Stay tuned for live updates.", "Stay with us for the latest updates and coverage."];
+      ? [article.summary, "इस विषय पर अधिक जानकारी जल्द उपलब्ध होगी। हमारे संवाददाता इस खबर पर नजर रखे हुए हैं।", "नवीनतम अपडेट के लिए खबर कोठरी के साथ बने रहें।"]
+      : [article.summaryEn, "More details on this story are being gathered by our correspondents. Stay tuned for live updates.", "Follow Khabar Kothri for the latest breaking news and comprehensive coverage."];
 
   const color   = categoryColors[article.categorySlug] || "#BB1919";
   const cat     = categories.find(c => c.slug === article.categorySlug);
@@ -306,13 +289,10 @@ export default function ArticlePage() {
 
             {/* Desktop quick-share */}
             <div className="article-share-row article-byline-share">
-              <button
-                type="button"
-                className="article-bookmark-btn"
+              <button className="article-bookmark-btn"
                 style={bookmarked ? { borderColor: color, color, background: color + "12" } : {}}
                 onClick={() => void handleBookmarkToggle()}
-                disabled={bookmarkBusy}
-                title={reader ? t("सेव करें", "Save") : t("सेव करने के लिए लॉग इन", "Log in to save")}
+                title={t("बुकमार्क", "Bookmark")}
               >
                 <Bookmark size={15} fill={bookmarked ? "currentColor" : "none"} />
               </button>
@@ -484,7 +464,7 @@ export default function ArticlePage() {
           {/* Newsletter mini */}
           <div className="aside-block aside-newsletter">
             <p className="aside-newsletter-headline">
-              {t("न्यूज़लेटर", "Newsletter")}
+              {t("खबर कोठरी न्यूज़लेटर", "Khabar Kothri Newsletter")}
             </p>
             <p className="aside-newsletter-sub">
               {t("हर सुबह ताज़ी खबरें — सीधे आपके inbox में", "Top stories every morning, straight to your inbox")}
@@ -530,14 +510,9 @@ export default function ArticlePage() {
             <Share2 size={18} />
           </button>
         )}
-        <button
-          type="button"
-          className="mobile-strip-bookmark"
+        <button className="mobile-strip-bookmark"
           onClick={() => void handleBookmarkToggle()}
-          disabled={bookmarkBusy}
-          style={bookmarked ? { color: "#BB1919" } : {}}
-          aria-label={t("सेव करें", "Save")}
-        >
+          style={bookmarked ? { color: "#BB1919" } : {}}>
           <Bookmark size={18} fill={bookmarked ? "currentColor" : "none"} />
         </button>
       </div>

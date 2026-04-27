@@ -3,18 +3,9 @@ const Article = require("../models/Article");
 const Video = require("../models/Video");
 
 function localeMatchQuery(req) {
-  const loc = (req.query.locale || "").toLowerCase();
+  const loc = String(req.query.locale || "").toLowerCase();
   if (loc === "hi") return { primaryLocale: "hi" };
-  if (loc === "en") {
-    // Legacy docs may omit primaryLocale (treated as English after migration defaults to "en")
-    return {
-      $or: [
-        { primaryLocale: "en" },
-        { primaryLocale: { $exists: false } },
-        { primaryLocale: null },
-      ],
-    };
-  }
+  if (loc === "en") return { primaryLocale: { $in: ["en", null] } };
   return {};
 }
 
@@ -45,12 +36,11 @@ router.get("/videos", async (req, res) => {
 router.get("/breaking", async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 15, 50);
-    const q = { status: "published", isBreaking: true, ...localeMatchQuery(req) };
-    const articles = await Article.find(q)
+    const articles = await Article.find({ status: "published", isBreaking: true, ...localeMatchQuery(req) })
       .populate("author", "name")
       .sort({ publishedAt: -1 })
       .limit(limit)
-      .select("title titleHi category publishedAt isBreaking primaryLocale")
+      .select("primaryLocale title titleHi category publishedAt isBreaking")
       .lean();
 
     res.json({ articles });

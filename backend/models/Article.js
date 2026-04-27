@@ -18,18 +18,8 @@ const imageSchema = new mongoose.Schema(
   { _id: false }
 );
 
-function asciiSlugPart(str) {
-  return String(str || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .slice(0, 100);
-}
-
 const articleSchema = new mongoose.Schema(
   {
-    // Primary language for this story (separate uploads per locale; no pairing)
     primaryLocale: {
       type: String,
       enum: ["hi", "en"],
@@ -71,7 +61,7 @@ const articleSchema = new mongoose.Schema(
 
     isBreaking: { type: Boolean, default: false },
 
-    readTime: { type: Number, default: 0 },   // minutes, auto-calculated from primary body
+    readTime: { type: Number, default: 0 },   // minutes, auto-calculated
 
     // ── Workflow ──
     status: {
@@ -116,19 +106,27 @@ const articleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Slug from primary title; read time from primary body
-articleSchema.pre("save", function (next) {
-  const pl = this.primaryLocale === "hi" ? "hi" : "en";
-  const primaryTitle = pl === "hi" ? (this.titleHi || "") : (this.title || "");
+function asciiSlugPart(str) {
+  return String(str || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 100);
+}
 
+// Auto-generate slug from primary-locale title
+articleSchema.pre("save", function (next) {
   if (!this.slug) {
-    let base = asciiSlugPart(primaryTitle);
+    const titleForSlug = this.primaryLocale === "hi" ? this.titleHi : this.title;
+    let base = asciiSlugPart(titleForSlug);
     if (!base) base = "article";
-    this.slug = `${base}-${Date.now()}`.slice(0, 120);
+    this.slug = `${base}-${Date.now()}`;
   }
 
-  const primaryBody = pl === "hi" ? (this.bodyHi || "") : (this.body || "");
-  const words = primaryBody.trim().split(/\s+/).filter(Boolean).length;
+  // Auto read time from primary body (avg 200 wpm)
+  const primaryBody = this.primaryLocale === "hi" ? this.bodyHi : this.body;
+  const words = String(primaryBody || "").split(/\s+/).filter(Boolean).length;
   this.readTime = words ? Math.max(1, Math.ceil(words / 200)) : 0;
 
   next();

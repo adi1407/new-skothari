@@ -1,378 +1,400 @@
+const crypto = require("crypto");
 const router = require("express").Router();
-const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
-const rateLimit = require("express-rate-limit");
 const { body, validationResult } = require("express-validator");
-const { OAuth2Client } = require("google-auth-library");
 const Reader = require("../models/Reader");
+const ReaderProfile = require("../models/ReaderProfile");
 const Bookmark = require("../models/Bookmark");
-const Article = require("../models/Article");
 const ReaderArticleView = require("../models/ReaderArticleView");
-const { setNewsletterSubscription } = require("../services/newsletterSubscription");
-const { signReaderToken, authenticateReader, readerPublic } = require("../middleware/readerAuth");
+const ReaderSession = require("../models/ReaderSession");
+const RecommendationSignal = require("../models/RecommendationSignal");
+const Article = require("../models/Article");
+const { authenticateReader, signReaderToken, readerPublic } = require("../middleware/readerAuth");
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 40,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-function publishedArticleSelect() {
-  return "primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views author status tags body bodyHi";
+function err400(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.status(400).json({ errors: errors.array() });
+    return true;
+  }
+  return false;
 }
 
-/** Strip to safe public fields (only call for published articles). */
-function articleBookmarkPayload(doc) {
-  if (!doc) return null;
-  const a = doc.toObject ? doc.toObject() : doc;
+async function ensureProfile(readerId) {
+  let profile = await ReaderProfile.findOne({ reader: readerId });
+  if (!profile) {
+    profile = await ReaderProfile.create({ reader: readerId });
+  }
+  return profile;
+}
+
+function sessionPayload(req) {
   return {
-    _id: a._id,
-    primaryLocale: a.primaryLocale,
-    title: a.title,
-    titleHi: a.titleHi,
-    summary: a.summary,
-    summaryHi: a.summaryHi,
-    category: a.category,
-    images: a.images,
-    publishedAt: a.publishedAt,
-    readTime: a.readTime,
-    isBreaking: a.isBreaking,
-    views: a.views,
-    author: a.author,
+    sessionId: crypto.randomUUID(),
+    userAgent: req.get("user-agent") || "",
+    ipAddress: req.ip || req.socket?.remoteAddress || "",
+    lastSeenAt: new Date(),
   };
 }
 
-// ── POST /api/reader/register ───────────────────────────
+// Google-only (lightweight): client sends verified identity payload from Google SDK.
 router.post(
-  "/register",
-  authLimiter,
+  "/auth/google",
   [
-    body("displayName").trim().notEmpty().withMessage("Name required").isLength({ max: 80 }),
     body("email").isEmail().normalizeEmail(),
-    body("password").isLength({ min: 8 }).withMessage("Password must be at least 8 characters"),
+    body("name").trim().notEmpty(),
+    body("googleId").optional().trim().notEmpty(),
+    body("avatar").optional().isString(),
   ],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-    const { displayName, email, password } = req.body;
+    if (err400(req, res)) return;
     try {
-      const existing = await Reader.findOne({ email });
-      if (existing) return res.status(409).json({ message: "Email already registered" });
-
-      const hash = await bcrypt.hash(password, 12);
-      const reader = await Reader.create({
-        displayName,
-        email,
-        password: hash,
-        hasLocalPassword: true,
-      });
-
-      const token = signReaderToken(reader._id);
-      res.status(201).json({ token, reader: readerPublic(reader) });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-
-// ── POST /api/reader/login ──────────────────────────────
-router.post(
-  "/login",
-  authLimiter,
-  [body("email").isEmail().normalizeEmail(), body("password").notEmpty()],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-    const { email, password } = req.body;
-    try {
-      const reader = await Reader.findOne({ email }).select("+password");
-      if (!reader || !reader.password)
-        return res.status(401).json({ message: "Invalid credentials" });
-
-      const match = await bcrypt.compare(password, reader.password);
-      if (!match) return res.status(401).json({ message: "Invalid credentials" });
-
-      reader.password = undefined;
-      const token = signReaderToken(reader._id);
-      res.json({ token, reader: readerPublic(reader) });
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  }
-);
-
-// ── POST /api/reader/auth/google ────────────────────────
-router.post("/auth/google", authLimiter, async (req, res) => {
-  const idToken = (req.body && req.body.idToken) || "";
-  if (!idToken || typeof idToken !== "string") {
-    return res.status(400).json({ message: "idToken required" });
-  }
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  if (!clientId) {
-    return res.status(503).json({ message: "Google sign-in is not configured" });
-  }
-
-  try {
-    const client = new OAuth2Client(clientId);
-    const ticket = await client.verifyIdToken({ idToken, audience: clientId });
-    const payload = ticket.getPayload();
-    if (!payload || !payload.sub || !payload.email) {
-      return res.status(401).json({ message: "Invalid Google token" });
-    }
-
-    const sub = payload.sub;
-    const email = String(payload.email).toLowerCase().trim();
-    const name = (payload.name || email.split("@")[0] || "Reader").slice(0, 80);
-    const picture = payload.picture || "";
-
-    let reader = await Reader.findOne({ googleId: sub });
-    if (reader) {
-      const token = signReaderToken(reader._id);
-      return res.json({ token, reader: readerPublic(reader) });
-    }
-
-    reader = await Reader.findOne({ email });
-    if (reader) {
-      if (reader.googleId && reader.googleId !== sub) {
-        return res.status(409).json({ message: "This email is linked to another account" });
+      const { email, name, googleId, avatar = "" } = req.body;
+      let reader = await Reader.findOne({ email });
+      if (!reader) {
+        reader = await Reader.create({ email, name, googleId: googleId || null, avatar });
+      } else {
+        reader.name = name || reader.name;
+        if (googleId) reader.googleId = googleId;
+        if (avatar) reader.avatar = avatar;
       }
-      reader.googleId = sub;
-      if (picture && !reader.avatar) reader.avatar = picture;
+      reader.lastLogin = new Date();
       await reader.save();
-      const token = signReaderToken(reader._id);
-      return res.json({ token, reader: readerPublic(reader) });
-    }
 
-    reader = await Reader.create({
-      email,
-      googleId: sub,
-      displayName: name,
-      avatar: picture || "",
-      password: null,
-    });
-    const token = signReaderToken(reader._id);
-    res.status(201).json({ token, reader: readerPublic(reader) });
+      const profile = await ensureProfile(reader._id);
+      const sp = sessionPayload(req);
+      const session = await ReaderSession.create({ reader: reader._id, ...sp });
+      const token = signReaderToken(reader, session.sessionId);
+
+      res.json({ token, reader: readerPublic(reader, profile) });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.get("/me", authenticateReader, async (req, res) => {
+  try {
+    const profile = await ensureProfile(req.reader._id);
+    if (req.readerSessionId) {
+      await ReaderSession.findOneAndUpdate(
+        { reader: req.reader._id, sessionId: req.readerSessionId, revokedAt: null },
+        { $set: { lastSeenAt: new Date() } }
+      );
+    }
+    res.json({ reader: readerPublic(req.reader, profile) });
   } catch (err) {
-    console.error("Google auth error:", err.message);
-    res.status(401).json({ message: "Google sign-in failed" });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ── GET /api/reader/me ──────────────────────────────────
-router.get("/me", authenticateReader, (req, res) => {
-  res.json({ reader: readerPublic(req.reader) });
-});
-
-// ── PATCH /api/reader/me ────────────────────────────────
-router.patch(
-  "/me",
+router.put(
+  "/preferences",
   authenticateReader,
   [
-    body("displayName").optional().trim().notEmpty().isLength({ max: 80 }),
-    body("preferences.preferredLang").optional().isIn(["hi", "en"]),
-    body("preferences.newsletterOptIn").optional().isBoolean(),
+    body("primaryLanguage").optional().isIn(["hi", "en"]),
+    body("preferredCategories").optional().isArray(),
+    body("followedTopics").optional().isArray(),
+    body("newsletterEnabled").optional().isBoolean(),
+    body("newsletterTopics").optional().isArray(),
+    body("digestCadence").optional().isIn(["daily", "weekly", "off"]),
   ],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-    const { displayName, preferences } = req.body;
-    let oldNewsletter = Boolean(req.reader.preferences && req.reader.preferences.newsletterOptIn);
-
-    const update = {};
-    if (displayName !== undefined) update.displayName = displayName;
-    if (preferences && typeof preferences === "object") {
-      if (preferences.preferredLang !== undefined) {
-        update["preferences.preferredLang"] = preferences.preferredLang;
-      }
-      if (preferences.newsletterOptIn !== undefined) {
-        update["preferences.newsletterOptIn"] = Boolean(preferences.newsletterOptIn);
-      }
-    }
-
+    if (err400(req, res)) return;
     try {
-      const reader = await Reader.findByIdAndUpdate(req.reader._id, { $set: update }, { new: true }).select("-password");
-      const newNewsletter = Boolean(reader.preferences && reader.preferences.newsletterOptIn);
-      if (oldNewsletter !== newNewsletter) {
-        await setNewsletterSubscription({
-          email: reader.email,
-          displayName: reader.displayName,
-          optIn: newNewsletter,
-        });
-      }
-      res.json({ reader: readerPublic(reader) });
+      const profile = await ensureProfile(req.reader._id);
+      const fields = [
+        "primaryLanguage",
+        "preferredCategories",
+        "followedTopics",
+        "newsletterEnabled",
+        "newsletterTopics",
+        "digestCadence",
+      ];
+      fields.forEach((k) => {
+        if (req.body[k] !== undefined) profile[k] = req.body[k];
+      });
+      await profile.save();
+      res.json({ profile });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
   }
 );
 
-// ── DELETE /api/reader/me ───────────────────────────────
-router.delete("/me", authenticateReader, async (req, res) => {
-  try {
-    const rid = req.reader._id;
-    await Bookmark.deleteMany({ reader: rid });
-    await ReaderArticleView.deleteMany({ reader: rid });
-    await Reader.findByIdAndDelete(rid);
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ── POST /api/reader/me/history/:articleId ──────────────
-router.post("/me/history/:articleId", authenticateReader, async (req, res) => {
-  const aid = req.params.articleId;
-  if (!mongoose.isValidObjectId(aid)) {
-    return res.status(400).json({ message: "Invalid article id" });
-  }
-  try {
-    const article = await Article.findOne({ _id: aid, status: "published" }).select("_id").lean();
-    if (!article) return res.status(404).json({ message: "Article not found" });
-
-    await ReaderArticleView.findOneAndUpdate(
-      { reader: req.reader._id, article: article._id },
-      { $set: { viewedAt: new Date() }, $setOnInsert: { reader: req.reader._id, article: article._id } },
-      { upsert: true, new: true }
-    );
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ── GET /api/reader/me/history ─────────────────────────
-router.get("/me/history", authenticateReader, async (req, res) => {
-  try {
-    const limit = Math.min(Number(req.query.limit) || 20, 50);
-    const page = Math.max(Number(req.query.page) || 1, 1);
-    const skip = (page - 1) * limit;
-
-    const [rows, total] = await Promise.all([
-      ReaderArticleView.find({ reader: req.reader._id })
-        .sort({ viewedAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate({
-          path: "article",
-          select: publishedArticleSelect(),
-          match: { status: "published" },
-          populate: { path: "author", select: "name" },
-        })
-        .lean(),
-      ReaderArticleView.countDocuments({ reader: req.reader._id }),
-    ]);
-
-    const articles = rows.map((r) => articleBookmarkPayload(r.article)).filter(Boolean);
-    res.json({ articles, total, page });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ── PUT /api/reader/me/password ────────────────────────
 router.put(
-  "/me/password",
+  "/profile",
   authenticateReader,
-  [body("currentPassword").notEmpty(), body("newPassword").isLength({ min: 8 })],
+  [
+    body("bio").optional().isLength({ max: 300 }),
+    body("profileVisibility").optional().isIn(["private", "public"]),
+    body("avatarOverride").optional().isString(),
+    body("socialLinks").optional().isObject(),
+  ],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
+    if (err400(req, res)) return;
     try {
-      const reader = await Reader.findById(req.reader._id).select("+password");
-      if (!reader.password) {
-        return res.status(400).json({ message: "Password sign-in is not set for this account" });
-      }
-      const match = await bcrypt.compare(req.body.currentPassword, reader.password);
-      if (!match) return res.status(401).json({ message: "Current password is incorrect" });
-
-      reader.password = await bcrypt.hash(req.body.newPassword, 12);
-      await reader.save();
-      res.json({ message: "Password updated" });
+      const profile = await ensureProfile(req.reader._id);
+      ["bio", "profileVisibility", "avatarOverride", "socialLinks"].forEach((k) => {
+        if (req.body[k] !== undefined) profile[k] = req.body[k];
+      });
+      await profile.save();
+      res.json({ profile });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
   }
 );
 
-// ── GET /api/reader/me/bookmarks/check/:articleId ───────
-router.get("/me/bookmarks/check/:articleId", authenticateReader, async (req, res) => {
+router.get("/bookmarks", authenticateReader, async (req, res) => {
   try {
-    const exists = await Bookmark.exists({
-      reader: req.reader._id,
-      article: req.params.articleId,
-    });
-    res.json({ bookmarked: Boolean(exists) });
-  } catch {
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-// ── POST /api/reader/me/bookmarks/:articleId ────────────
-router.post("/me/bookmarks/:articleId", authenticateReader, async (req, res) => {
-  try {
-    const article = await Article.findOne({
-      _id: req.params.articleId,
-      status: "published",
-    }).lean();
-    if (!article) return res.status(404).json({ message: "Article not found" });
-
-    try {
-      await Bookmark.create({ reader: req.reader._id, article: article._id });
-      return res.status(201).json({ bookmarked: true, article: articleBookmarkPayload(article) });
-    } catch (err) {
-      if (err.code === 11000) {
-        return res.status(200).json({ bookmarked: true, article: articleBookmarkPayload(article) });
-      }
-      throw err;
-    }
+    const rows = await Bookmark.find({ reader: req.reader._id })
+      .populate({
+        path: "article",
+        match: { status: "published" },
+        select: "primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views author body bodyHi",
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ bookmarks: rows.filter((r) => r.article) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// ── DELETE /api/reader/me/bookmarks/:articleId ─────────
-router.delete("/me/bookmarks/:articleId", authenticateReader, async (req, res) => {
+router.post(
+  "/bookmarks",
+  authenticateReader,
+  [body("articleId").isMongoId()],
+  async (req, res) => {
+    if (err400(req, res)) return;
+    try {
+      const exists = await Article.findOne({ _id: req.body.articleId, status: "published" }).select("_id");
+      if (!exists) return res.status(404).json({ message: "Article not found" });
+      const bookmark = await Bookmark.findOneAndUpdate(
+        { reader: req.reader._id, article: req.body.articleId },
+        { $setOnInsert: { reader: req.reader._id, article: req.body.articleId } },
+        { upsert: true, new: true }
+      );
+      await RecommendationSignal.create({
+        reader: req.reader._id,
+        article: req.body.articleId,
+        category: "",
+        eventType: "bookmark",
+        weight: 3,
+      });
+      res.status(201).json({ bookmark });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.delete("/bookmarks/:articleId", authenticateReader, async (req, res) => {
   try {
     await Bookmark.deleteOne({ reader: req.reader._id, article: req.params.articleId });
-    res.json({ bookmarked: false });
+    res.json({ message: "Bookmark removed" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// ── GET /api/reader/me/bookmarks ────────────────────────
-router.get("/me/bookmarks", authenticateReader, async (req, res) => {
+router.get("/history", authenticateReader, async (req, res) => {
   try {
-    const limit = Math.min(Number(req.query.limit) || 20, 50);
-    const page = Math.max(Number(req.query.page) || 1, 1);
-    const skip = (page - 1) * limit;
+    const rows = await ReaderArticleView.find({ reader: req.reader._id })
+      .populate({
+        path: "article",
+        match: { status: "published" },
+        select: "primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views author body bodyHi",
+      })
+      .sort({ lastViewedAt: -1 })
+      .lean();
+    res.json({ history: rows.filter((r) => r.article) });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
-    const [marks, total] = await Promise.all([
-      Bookmark.find({ reader: req.reader._id })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate({
-          path: "article",
-          select: publishedArticleSelect(),
-          match: { status: "published" },
-          populate: { path: "author", select: "name" },
-        })
-        .lean(),
-      Bookmark.countDocuments({ reader: req.reader._id }),
+router.post(
+  "/history",
+  authenticateReader,
+  [
+    body("articleId").isMongoId(),
+    body("progressPct").optional().isFloat({ min: 0, max: 100 }),
+    body("readSeconds").optional().isInt({ min: 0 }),
+  ],
+  async (req, res) => {
+    if (err400(req, res)) return;
+    try {
+      const exists = await Article.findOne({ _id: req.body.articleId, status: "published" }).select("category");
+      if (!exists) return res.status(404).json({ message: "Article not found" });
+      const view = await ReaderArticleView.findOneAndUpdate(
+        { reader: req.reader._id, article: req.body.articleId },
+        {
+          $set: {
+            progressPct: req.body.progressPct || 0,
+            readSeconds: req.body.readSeconds || 0,
+            lastViewedAt: new Date(),
+          },
+          $setOnInsert: { reader: req.reader._id, article: req.body.articleId },
+        },
+        { upsert: true, new: true }
+      );
+      await RecommendationSignal.create({
+        reader: req.reader._id,
+        article: req.body.articleId,
+        category: exists.category || "",
+        eventType: req.body.progressPct >= 90 ? "complete" : "view",
+        weight: req.body.progressPct >= 90 ? 2 : 1,
+        meta: { progressPct: req.body.progressPct || 0 },
+      });
+      res.status(201).json({ view });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.delete("/history/:articleId", authenticateReader, async (req, res) => {
+  try {
+    await ReaderArticleView.deleteOne({ reader: req.reader._id, article: req.params.articleId });
+    res.json({ message: "History item removed" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete("/history", authenticateReader, async (req, res) => {
+  try {
+    await ReaderArticleView.deleteMany({ reader: req.reader._id });
+    res.json({ message: "History cleared" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/sessions", authenticateReader, async (req, res) => {
+  try {
+    const sessions = await ReaderSession.find({ reader: req.reader._id, revokedAt: null })
+      .sort({ lastSeenAt: -1 })
+      .lean();
+    res.json({
+      sessions: sessions.map((s) => ({
+        ...s,
+        isCurrent: req.readerSessionId && s.sessionId === req.readerSessionId,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.delete("/sessions/:sessionId", authenticateReader, async (req, res) => {
+  try {
+    await ReaderSession.findOneAndUpdate(
+      { reader: req.reader._id, sessionId: req.params.sessionId, revokedAt: null },
+      { $set: { revokedAt: new Date() } }
+    );
+    res.json({ message: "Session revoked" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/sessions/logout-all", authenticateReader, async (req, res) => {
+  try {
+    const q = { reader: req.reader._id, revokedAt: null };
+    if (req.readerSessionId) q.sessionId = { $ne: req.readerSessionId };
+    await ReaderSession.updateMany(q, { $set: { revokedAt: new Date() } });
+    res.json({ message: "Logged out from all other sessions" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/export", authenticateReader, async (req, res) => {
+  try {
+    const [profile, bookmarks, history, sessions, signals] = await Promise.all([
+      ensureProfile(req.reader._id),
+      Bookmark.find({ reader: req.reader._id }).lean(),
+      ReaderArticleView.find({ reader: req.reader._id }).lean(),
+      ReaderSession.find({ reader: req.reader._id }).lean(),
+      RecommendationSignal.find({ reader: req.reader._id }).sort({ createdAt: -1 }).limit(500).lean(),
     ]);
+    res.json({
+      exportedAt: new Date().toISOString(),
+      reader: readerPublic(req.reader, profile),
+      bookmarks,
+      history,
+      sessions,
+      signals,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
-    const articles = marks
-      .map((m) => m.article)
-      .filter(Boolean)
-      .map(articleBookmarkPayload);
+router.delete("/account", authenticateReader, async (req, res) => {
+  try {
+    await Promise.all([
+      ReaderSession.updateMany({ reader: req.reader._id, revokedAt: null }, { $set: { revokedAt: new Date() } }),
+      Bookmark.deleteMany({ reader: req.reader._id }),
+      ReaderArticleView.deleteMany({ reader: req.reader._id }),
+      RecommendationSignal.deleteMany({ reader: req.reader._id }),
+      ReaderProfile.deleteOne({ reader: req.reader._id }),
+    ]);
+    req.reader.isActive = false;
+    await req.reader.save();
+    res.json({ message: "Reader account deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
-    res.json({ articles, total, page });
+router.post(
+  "/signals",
+  authenticateReader,
+  [
+    body("eventType").isIn(["view", "bookmark", "share", "complete", "category_click"]),
+    body("articleId").optional().isMongoId(),
+    body("category").optional().isString(),
+    body("weight").optional().isNumeric(),
+  ],
+  async (req, res) => {
+    if (err400(req, res)) return;
+    try {
+      const signal = await RecommendationSignal.create({
+        reader: req.reader._id,
+        article: req.body.articleId || null,
+        category: req.body.category || "",
+        eventType: req.body.eventType,
+        weight: Number(req.body.weight || 1),
+        meta: req.body.meta || {},
+      });
+      res.status(201).json({ signal });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.get("/recommendations", authenticateReader, async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 12, 30);
+    const byCat = await RecommendationSignal.aggregate([
+      { $match: { reader: req.reader._id, category: { $ne: "" } } },
+      { $group: { _id: "$category", score: { $sum: "$weight" } } },
+      { $sort: { score: -1 } },
+      { $limit: 5 },
+    ]);
+    const categories = byCat.map((x) => x._id);
+    const q = { status: "published" };
+    if (categories.length > 0) q.category = { $in: categories };
+    const articles = await Article.find(q)
+      .sort({ publishedAt: -1 })
+      .limit(limit)
+      .select("primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views author body bodyHi")
+      .lean();
+    res.json({ articles, categories });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

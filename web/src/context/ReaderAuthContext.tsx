@@ -1,110 +1,82 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import {
-  getReaderToken,
-  setReaderToken,
-  readerFetchMe,
-  readerLogin,
-  readerRegister,
-  readerGoogleLogin,
-  readerDeleteAccount,
-  type ReaderProfile,
-} from "../services/readerApi";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { readerGoogleAuth, readerMe, type ReaderAccount } from "../services/readerApi";
 
-type ReaderAuthContextValue = {
-  reader: ReaderProfile | null;
+interface ReaderAuthContextType {
+  reader: ReaderAccount | null;
+  token: string;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (displayName: string, email: string, password: string) => Promise<void>;
-  loginWithGoogle: (idToken: string) => Promise<void>;
-  deleteAccount: () => Promise<void>;
-  logout: () => void;
+  signInWithGooglePayload: (payload: { email: string; name: string; googleId?: string; avatar?: string }) => Promise<void>;
   refreshReader: () => Promise<void>;
-};
+  logout: () => void;
+}
 
-const ReaderAuthContext = createContext<ReaderAuthContextValue | null>(null);
+const ReaderAuthContext = createContext<ReaderAuthContextType>({
+  reader: null,
+  token: "",
+  loading: false,
+  signInWithGooglePayload: async () => {},
+  refreshReader: async () => {},
+  logout: () => {},
+});
 
-export function ReaderAuthProvider({ children }: { children: ReactNode }) {
-  const [reader, setReader] = useState<ReaderProfile | null>(null);
+const TOKEN_KEY = "kn-reader-token";
+
+export function ReaderAuthProvider({ children }: { children: React.ReactNode }) {
+  const [token, setToken] = useState<string>(() => localStorage.getItem(TOKEN_KEY) || "");
+  const [reader, setReader] = useState<ReaderAccount | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshReader = useCallback(async () => {
-    const token = getReaderToken();
+  const refreshReader = async () => {
     if (!token) {
       setReader(null);
       setLoading(false);
       return;
     }
     try {
-      const me = await readerFetchMe();
-      setReader(me);
+      const data = await readerMe(token);
+      setReader(data.reader);
     } catch {
-      setReaderToken(null);
+      localStorage.removeItem(TOKEN_KEY);
+      setToken("");
       setReader(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     refreshReader();
-  }, [refreshReader]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { token, reader: r } = await readerLogin({ email, password });
-    setReaderToken(token);
-    setReader(r);
-  }, []);
+  const signInWithGooglePayload = async (payload: {
+    email: string;
+    name: string;
+    googleId?: string;
+    avatar?: string;
+  }) => {
+    setLoading(true);
+    const data = await readerGoogleAuth(payload);
+    localStorage.setItem(TOKEN_KEY, data.token);
+    setToken(data.token);
+    setReader(data.reader);
+    setLoading(false);
+  };
 
-  const register = useCallback(async (displayName: string, email: string, password: string) => {
-    const { token, reader: r } = await readerRegister({ displayName, email, password });
-    setReaderToken(token);
-    setReader(r);
-  }, []);
-
-  const loginWithGoogle = useCallback(async (idToken: string) => {
-    const { token, reader: r } = await readerGoogleLogin(idToken);
-    setReaderToken(token);
-    setReader(r);
-  }, []);
-
-  const logout = useCallback(() => {
-    setReaderToken(null);
+  const logout = () => {
+    localStorage.removeItem(TOKEN_KEY);
+    setToken("");
     setReader(null);
-  }, []);
-
-  const deleteAccount = useCallback(async () => {
-    await readerDeleteAccount();
-    setReaderToken(null);
-    setReader(null);
-  }, []);
+  };
 
   const value = useMemo(
-    () => ({
-      reader,
-      loading,
-      login,
-      register,
-      loginWithGoogle,
-      deleteAccount,
-      logout,
-      refreshReader,
-    }),
-    [reader, loading, login, register, loginWithGoogle, deleteAccount, logout, refreshReader]
+    () => ({ reader, token, loading, signInWithGooglePayload, refreshReader, logout }),
+    [reader, token, loading]
   );
 
   return <ReaderAuthContext.Provider value={value}>{children}</ReaderAuthContext.Provider>;
 }
 
 export function useReaderAuth() {
-  const ctx = useContext(ReaderAuthContext);
-  if (!ctx) throw new Error("useReaderAuth must be used within ReaderAuthProvider");
-  return ctx;
+  return useContext(ReaderAuthContext);
 }

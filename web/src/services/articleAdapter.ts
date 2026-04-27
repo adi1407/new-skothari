@@ -48,42 +48,15 @@ export function adaptArticle(a: BackendArticle): NewsItem {
   const authorName = a.author?.name ?? "संवाददाता";
   const pl = a.primaryLocale === "hi" ? "hi" : "en";
 
-  // NewsItem: `title`/`summary`/`content` = Hindi UI slots; `*En` = English UI slots.
-  // Map primary locale into the correct slots so lang toggle shows coherent copy.
-  if (pl === "hi") {
-    return {
-      id:           a._id,
-      category:     CAT_HI[a.category] ?? a.category,
-      categoryEn:   CAT_EN[a.category] ?? a.category,
-      categorySlug: a.category,
-      title:        a.titleHi || "",
-      titleEn:      a.title || "",
-      summary:      a.summaryHi || "",
-      summaryEn:    a.summary || "",
-      image:        getImageUrl(a),
-      time:         time.hi,
-      timeEn:       time.en,
-      author:       authorName,
-      authorEn:     authorName,
-      isBreaking:   a.isBreaking,
-      readTime:     String(a.readTime || ""),
-      viewCount:    typeof a.views === "number" ? a.views : 0,
-      tags:         a.tags,
-      tagsEn:       a.tags,
-      content:      a.bodyHi ? [a.bodyHi] : undefined,
-      contentEn:    a.body ? [a.body] : undefined,
-    };
-  }
-
   return {
     id:           a._id,
     category:     CAT_HI[a.category] ?? a.category,
     categoryEn:   CAT_EN[a.category] ?? a.category,
     categorySlug: a.category,
-    title:        a.titleHi || "",
-    titleEn:      a.title || "",
-    summary:      a.summaryHi || "",
-    summaryEn:    a.summary || "",
+    title:        pl === "hi" ? (a.titleHi || a.title || "") : (a.titleHi || ""),
+    titleEn:      pl === "en" ? (a.title || a.titleHi || "") : (a.title || ""),
+    summary:      pl === "hi" ? (a.summaryHi || "") : (a.summaryHi || ""),
+    summaryEn:    pl === "en" ? (a.summary || a.summaryHi || "") : (a.summary || ""),
     image:        getImageUrl(a),
     time:         time.hi,
     timeEn:       time.en,

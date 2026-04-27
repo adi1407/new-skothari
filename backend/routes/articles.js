@@ -10,13 +10,11 @@ const upload = require("../middleware/upload");
 // ── Helpers ──────────────────────────────────────────
 
 function normalizePrimaryLocale(v) {
-  if (v === "hi" || v === "en") return v;
-  return "en";
+  return v === "hi" ? "hi" : "en";
 }
 
-/** Non-empty title + body for the article's primary locale (submit/publish gate). */
 function hasPrimaryContent(article) {
-  const pl = article.primaryLocale === "hi" ? "hi" : "en";
+  const pl = normalizePrimaryLocale(article.primaryLocale);
   if (pl === "hi") {
     return !!(String(article.titleHi || "").trim() && String(article.bodyHi || "").trim());
   }
@@ -134,16 +132,17 @@ router.post(
               category, tags, isBreaking, task: taskId } = req.body;
 
       if (primaryLocale === "hi") {
-        if (!String(titleHi || "").trim())
-          return res.status(400).json({ message: "Hindi title is required for Hindi articles" });
+        if (!String(titleHi || "").trim()) {
+          return res.status(400).json({ message: "Hindi title is required for Hindi-primary article" });
+        }
       } else if (!String(title || "").trim()) {
-        return res.status(400).json({ message: "Title is required for English articles" });
+        return res.status(400).json({ message: "Title is required for English-primary article" });
       }
 
       const article = await Article.create({
         primaryLocale,
-        title: title ?? "", titleHi: titleHi ?? "", summary: summary ?? "", summaryHi: summaryHi ?? "",
-        body: bodyText ?? "", bodyHi: bodyHi ?? "",
+        title, titleHi, summary, summaryHi,
+        body: bodyText, bodyHi,
         category, tags, isBreaking,
         author: req.user._id,
         task: taskId || null,
@@ -188,8 +187,7 @@ router.put("/:id", authenticate, async (req, res) => {
     ];
     allowed.forEach((f) => {
       if (req.body[f] !== undefined) {
-        if (f === "primaryLocale") article[f] = normalizePrimaryLocale(req.body[f]);
-        else article[f] = req.body[f];
+        article[f] = f === "primaryLocale" ? normalizePrimaryLocale(req.body[f]) : req.body[f];
       }
     });
 

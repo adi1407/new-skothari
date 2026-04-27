@@ -1,45 +1,60 @@
 const jwt = require("jsonwebtoken");
 const Reader = require("../models/Reader");
 
-const READER_AUD = "reader";
-
-function readerJwtSecret() {
-  return process.env.READER_JWT_SECRET || process.env.JWT_SECRET;
-}
-
-function signReaderToken(readerId) {
+function signReaderToken(reader, sessionId) {
   return jwt.sign(
-    { sub: String(readerId), aud: READER_AUD },
-    readerJwtSecret(),
-    { expiresIn: process.env.READER_JWT_EXPIRES_IN || "30d" }
+    { rid: reader._id.toString(), sid: sessionId, typ: "reader" },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
   );
-}
-
-function readerPublic(reader) {
-  const r = reader.toObject ? reader.toObject() : { ...reader };
-  delete r.password;
-  r.hasLocalPassword = Boolean(r.hasLocalPassword);
-  return r;
 }
 
 async function authenticateReader(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "No token provided" });
+    return res.status(401).json({ message: "No reader token provided" });
   }
+
   const token = header.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, readerJwtSecret());
-    if (decoded.aud !== READER_AUD) {
-      return res.status(401).json({ message: "Invalid token" });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.typ !== "reader" || !decoded.rid) {
+      return res.status(401).json({ message: "Invalid reader token" });
     }
-    const reader = await Reader.findById(decoded.sub).select("-password");
-    if (!reader) return res.status(401).json({ message: "Reader not found" });
+    const reader = await Reader.findById(decoded.rid);
+    if (!reader || !reader.isActive) {
+      return res.status(401).json({ message: "Reader not found or inactive" });
+    }
     req.reader = reader;
+    req.readerSessionId = decoded.sid || null;
     next();
-  } catch {
-    res.status(401).json({ message: "Invalid or expired token" });
+  } catch (_err) {
+    return res.status(401).json({ message: "Invalid or expired reader token" });
   }
 }
 
-module.exports = { signReaderToken, authenticateReader, readerPublic, READER_AUD };
+function readerPublic(reader, profile = null) {
+  return {
+    _id: reader._id,
+    email: reader.email,
+    name: reader.name,
+    avatar: reader.avatar || "",
+    lastLogin: reader.lastLogin,
+    profile: profile
+      ? {
+          primaryLanguage: profile.primaryLanguage,
+          preferredCategories: profile.preferredCategories || [],
+          followedTopics: profile.followedTopics || [],
+          newsletterEnabled: !!profile.newsletterEnabled,
+          newsletterTopics: profile.newsletterTopics || [],
+          digestCadence: profile.digestCadence,
+          profileVisibility: profile.profileVisibility,
+          bio: profile.bio || "",
+          socialLinks: profile.socialLinks || {},
+          avatarOverride: profile.avatarOverride || "",
+        }
+      : null,
+  };
+}
+
+module.exports = { signReaderToken, authenticateReader, readerPublic };

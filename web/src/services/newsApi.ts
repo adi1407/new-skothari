@@ -2,7 +2,6 @@ import { withPublicOrigin } from "../config/publicApi";
 
 export interface BackendArticle {
   _id: string;
-  /** CMS primary language for this story (`hi` | `en`). */
   primaryLocale?: "hi" | "en";
   title: string;
   titleHi?: string;

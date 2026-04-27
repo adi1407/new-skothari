@@ -5,7 +5,6 @@ type Lang = "hi" | "en";
 interface LangContextType {
   lang: Lang;
   toggleLang: () => void;
-  /** Set site language explicitly (e.g. from saved reader preferences). */
   setLang: (next: Lang) => void;
   t: (hi: string, en: string) => string;
 }
