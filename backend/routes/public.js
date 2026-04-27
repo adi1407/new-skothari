@@ -2,6 +2,13 @@ const router = require("express").Router();
 const Article = require("../models/Article");
 const Video = require("../models/Video");
 
+function localeMatchQuery(req) {
+  const loc = String(req.query.locale || "").toLowerCase();
+  if (loc === "hi") return { primaryLocale: "hi" };
+  if (loc === "en") return { primaryLocale: { $in: ["en", null] } };
+  return {};
+}
+
 // GET /api/public/videos — published only, for web /shows
 router.get("/videos", async (req, res) => {
   try {
@@ -29,11 +36,11 @@ router.get("/videos", async (req, res) => {
 router.get("/breaking", async (req, res) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 15, 50);
-    const articles = await Article.find({ status: "published", isBreaking: true })
+    const articles = await Article.find({ status: "published", isBreaking: true, ...localeMatchQuery(req) })
       .populate("author", "name")
       .sort({ publishedAt: -1 })
       .limit(limit)
-      .select("title titleHi category publishedAt isBreaking")
+      .select("primaryLocale title titleHi category publishedAt isBreaking")
       .lean();
 
     res.json({ articles });
@@ -53,6 +60,7 @@ router.get("/search", async (req, res) => {
 
     const articles = await Article.find({
       status: "published",
+      ...localeMatchQuery(req),
       $or: [
         { title: { $regex: q, $options: "i" } },
         { titleHi: { $regex: q, $options: "i" } },
@@ -76,7 +84,7 @@ router.get("/search", async (req, res) => {
 router.get("/articles", async (req, res) => {
   try {
     const { category, limit = 20, page = 1 } = req.query;
-    const q = { status: "published" };
+    const q = { status: "published", ...localeMatchQuery(req) };
     if (category) q.category = category;
 
     const skip = (Number(page) - 1) * Number(limit);

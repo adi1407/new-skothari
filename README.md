@@ -23,11 +23,17 @@ Editors use **`/api/editor/*`** for desk metrics and lists so they never need ad
 
 Used by the **web** app:
 
-- `GET /api/public/articles` — published list (optional `category`, `page`, `limit`)
+- `GET /api/public/articles` — published list (optional `category`, `page`, `limit`, `locale=hi|en`)
 - `GET /api/public/articles/:id` — published article by id
-- `GET /api/public/breaking` — published with `isBreaking` (ticker)
-- `GET /api/public/search?q=` — published full-text style search (min 2 chars)
+- `GET /api/public/breaking` — published with `isBreaking` (ticker), optional `locale=hi|en`
+- `GET /api/public/search?q=` — published full-text style search (min 2 chars), optional `locale=hi|en`
 - `GET /api/public/videos` — published YouTube clips (optional `category`, `page`, `limit`)
+
+Per-language article model:
+- Each article has one `primaryLocale` (`hi` or `en`) and is treated as a separate upload.
+- Hindi and English versions are not linked pairs.
+- During migration, requests without `locale` continue to return all published articles.
+- One-time data migration command: `npm run migrate:primary-locale --prefix backend`.
 
 Desk (JWT): `GET/POST/PUT /api/videos`, `GET /api/videos/:id` — **editor** + **admin**; `DELETE /api/videos/:id` — **admin** only.
 

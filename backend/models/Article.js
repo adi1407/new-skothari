@@ -20,12 +20,19 @@ const imageSchema = new mongoose.Schema(
 
 const articleSchema = new mongoose.Schema(
   {
+    primaryLocale: {
+      type: String,
+      enum: ["hi", "en"],
+      default: "en",
+      index: true,
+    },
+
     // ── Content ──
     title: {
       type: String,
-      required: [true, "Title is required"],
       trim: true,
       maxlength: 200,
+      default: "",
     },
     titleHi: { type: String, trim: true, maxlength: 200, default: "" },
 
@@ -99,25 +106,28 @@ const articleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-generate slug from title
+function asciiSlugPart(str) {
+  return String(str || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 100);
+}
+
+// Auto-generate slug from primary-locale title
 articleSchema.pre("save", function (next) {
-  if (this.isModified("title") && !this.slug) {
-    this.slug =
-      this.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .trim()
-        .replace(/\s+/g, "-")
-        .slice(0, 100) +
-      "-" +
-      Date.now();
+  if (!this.slug) {
+    const titleForSlug = this.primaryLocale === "hi" ? this.titleHi : this.title;
+    let base = asciiSlugPart(titleForSlug);
+    if (!base) base = "article";
+    this.slug = `${base}-${Date.now()}`;
   }
 
-  // Auto read time (avg 200 wpm)
-  if (this.isModified("body") && this.body) {
-    const words = this.body.split(/\s+/).length;
-    this.readTime = Math.max(1, Math.ceil(words / 200));
-  }
+  // Auto read time from primary body (avg 200 wpm)
+  const primaryBody = this.primaryLocale === "hi" ? this.bodyHi : this.body;
+  const words = String(primaryBody || "").split(/\s+/).filter(Boolean).length;
+  this.readTime = words ? Math.max(1, Math.ceil(words / 200)) : 0;
 
   next();
 });

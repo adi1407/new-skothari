@@ -10,6 +10,8 @@ import type { NewsItem } from "../data/mockData";
 import { useLang } from "../context/LangContext";
 import { fetchArticleById, fetchPublishedArticles } from "../services/newsApi";
 import { adaptArticle, adaptArticles } from "../services/articleAdapter";
+import { useReaderAuth } from "../context/ReaderAuthContext";
+import { addBookmark, recordHistory, removeBookmark, sendSignal } from "../services/readerApi";
 
 const categoryColors: Record<string, string> = {
   politics: "#BB1919", sports: "#00695c", tech: "#1565c0",
@@ -90,6 +92,7 @@ export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { lang, t } = useLang();
+  const { token } = useReaderAuth();
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 200, damping: 30 });
@@ -127,8 +130,8 @@ export default function ArticlePage() {
     const aid = id;
     let cancelled = false;
     Promise.all([
-      fetchPublishedArticles({ category: article.categorySlug, limit: 14 }),
-      fetchPublishedArticles({ limit: 12, page: 2 }),
+      fetchPublishedArticles({ category: article.categorySlug, limit: 14, locale: lang }),
+      fetchPublishedArticles({ limit: 12, page: 2, locale: lang }),
     ]).then(([relRaw, moreRaw]) => {
       if (cancelled) return;
       const rel = adaptArticles(relRaw).filter((n) => String(n.id) !== aid).slice(0, 6);
@@ -139,7 +142,7 @@ export default function ArticlePage() {
     return () => {
       cancelled = true;
     };
-  }, [id, article]);
+  }, [id, article, lang]);
 
   useEffect(() => {
     const onScroll = () => setShowBackTop(window.scrollY > 600);
@@ -152,6 +155,31 @@ export default function ArticlePage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2200);
   }, []);
+
+  const handleBookmarkToggle = useCallback(async () => {
+    if (!id) return;
+    if (!token) {
+      navigate(`/profile?next=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+    if (bookmarked) {
+      await removeBookmark(token, id).catch(() => {});
+      setBookmarked(false);
+      return;
+    }
+    await addBookmark(token, id).catch(() => {});
+    await sendSignal(token, { eventType: "bookmark", articleId: id, weight: 3 }).catch(() => {});
+    setBookmarked(true);
+  }, [id, token, bookmarked, navigate]);
+
+  useEffect(() => {
+    if (!token || !id) return;
+    const timer = window.setTimeout(() => {
+      recordHistory(token, id, 15, 20).catch(() => {});
+      sendSignal(token, { eventType: "view", articleId: id, weight: 1 }).catch(() => {});
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [token, id]);
 
   /* Loading */
   if (loading) return (
@@ -263,7 +291,7 @@ export default function ArticlePage() {
             <div className="article-share-row article-byline-share">
               <button className="article-bookmark-btn"
                 style={bookmarked ? { borderColor: color, color, background: color + "12" } : {}}
-                onClick={() => setBookmarked(b => !b)}
+                onClick={() => void handleBookmarkToggle()}
                 title={t("बुकमार्क", "Bookmark")}
               >
                 <Bookmark size={15} fill={bookmarked ? "currentColor" : "none"} />
@@ -483,7 +511,7 @@ export default function ArticlePage() {
           </button>
         )}
         <button className="mobile-strip-bookmark"
-          onClick={() => setBookmarked(b => !b)}
+          onClick={() => void handleBookmarkToggle()}
           style={bookmarked ? { color: "#BB1919" } : {}}>
           <Bookmark size={18} fill={bookmarked ? "currentColor" : "none"} />
         </button>

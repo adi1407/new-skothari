@@ -2,6 +2,7 @@ import { withPublicOrigin } from "../config/publicApi";
 
 export interface BackendArticle {
   _id: string;
+  primaryLocale?: "hi" | "en";
   title: string;
   titleHi?: string;
   summary?: string;
@@ -45,12 +46,13 @@ export interface BackendVideo {
   createdAt?: string;
 }
 
-export async function fetchPublishedArticles(opts: { category?: string; limit?: number; page?: number } = {}): Promise<BackendArticle[]> {
+export async function fetchPublishedArticles(opts: { category?: string; limit?: number; page?: number; locale?: "hi" | "en" } = {}): Promise<BackendArticle[]> {
   try {
     const params = new URLSearchParams();
     if (opts.category) params.set("category", opts.category);
     if (opts.limit) params.set("limit", String(opts.limit));
     if (opts.page) params.set("page", String(opts.page));
+    if (opts.locale) params.set("locale", opts.locale);
     const res = await fetch(publicUrl(`${BASE}/articles?${params}`));
     if (!res.ok) return [];
     const data = await res.json();
@@ -72,10 +74,11 @@ export async function fetchArticleById(id: string): Promise<BackendArticle | nul
 }
 
 /** Published articles flagged breaking (ticker). */
-export async function fetchBreakingArticles(limit = 20): Promise<BackendArticle[]> {
+export async function fetchBreakingArticles(limit = 20, locale?: "hi" | "en"): Promise<BackendArticle[]> {
   try {
     const params = new URLSearchParams();
     params.set("limit", String(Math.min(limit, 50)));
+    if (locale) params.set("locale", locale);
     const res = await fetch(publicUrl(`${BASE}/breaking?${params}`));
     if (!res.ok) return [];
     const data = await res.json();
@@ -101,13 +104,14 @@ export async function fetchPublishedVideos(opts: { category?: string; limit?: nu
   }
 }
 
-export async function fetchPublicSearch(q: string, limit = 15): Promise<BackendArticle[]> {
+export async function fetchPublicSearch(q: string, limit = 15, locale?: "hi" | "en"): Promise<BackendArticle[]> {
   const query = q.trim();
   if (query.length < 2) return [];
   try {
     const params = new URLSearchParams();
     params.set("q", query);
     params.set("limit", String(Math.min(limit, 30)));
+    if (locale) params.set("locale", locale);
     const res = await fetch(publicUrl(`${BASE}/search?${params}`));
     if (!res.ok) return [];
     const data = await res.json();

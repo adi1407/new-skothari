@@ -46,16 +46,17 @@ function getImageUrl(article: BackendArticle): string {
 export function adaptArticle(a: BackendArticle): NewsItem {
   const time = relativeTime(a.publishedAt ?? a.createdAt);
   const authorName = a.author?.name ?? "संवाददाता";
+  const pl = a.primaryLocale === "hi" ? "hi" : "en";
 
   return {
     id:           a._id,
     category:     CAT_HI[a.category] ?? a.category,
     categoryEn:   CAT_EN[a.category] ?? a.category,
     categorySlug: a.category,
-    title:        a.titleHi || a.title,
-    titleEn:      a.title,
-    summary:      a.summaryHi || a.summary || "",
-    summaryEn:    a.summary || "",
+    title:        pl === "hi" ? (a.titleHi || a.title || "") : (a.titleHi || ""),
+    titleEn:      pl === "en" ? (a.title || a.titleHi || "") : (a.title || ""),
+    summary:      pl === "hi" ? (a.summaryHi || "") : (a.summaryHi || ""),
+    summaryEn:    pl === "en" ? (a.summary || a.summaryHi || "") : (a.summary || ""),
     image:        getImageUrl(a),
     time:         time.hi,
     timeEn:       time.en,
@@ -67,7 +68,7 @@ export function adaptArticle(a: BackendArticle): NewsItem {
     tags:         a.tags,
     tagsEn:       a.tags,
     content:      a.bodyHi ? [a.bodyHi] : undefined,
-    contentEn:    a.body   ? [a.body]   : undefined,
+    contentEn:    a.body ? [a.body] : undefined,
   };
 }
 

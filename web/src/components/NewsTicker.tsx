@@ -10,16 +10,19 @@ export default function NewsTicker() {
   const [breakingArticles, setBreakingArticles] = useState<BackendArticle[]>([]);
 
   useEffect(() => {
-    fetchBreakingArticles(18).then((articles) => {
+    fetchBreakingArticles(18, lang).then((articles) => {
       if (articles.length) setBreakingArticles(articles);
     });
-  }, []);
+  }, [lang]);
 
   const items = useMemo(() => {
     return breakingArticles
-      .map((a) => (lang === "hi" ? (a.titleHi || a.title) : a.title).trim())
+      .map((a) => {
+        const primary = a.primaryLocale === "hi" ? "hi" : "en";
+        return (primary === "hi" ? (a.titleHi || a.title) : (a.title || a.titleHi || "")).trim();
+      })
       .filter(Boolean);
-  }, [breakingArticles, lang]);
+  }, [breakingArticles]);
   const doubled = [...items, ...items];
 
   useEffect(() => {
@@ -58,7 +61,7 @@ export default function NewsTicker() {
       cancelAnimationFrame(raf);
       clearTimeout(timer);
     };
-  }, [lang, reduceMotion, items.length]);
+  }, [reduceMotion, items.length]);
 
   if (items.length === 0) return null;
 

@@ -31,15 +31,15 @@ export default function HeroSection() {
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     setHeroLoading(true);
-    fetchPublishedArticles({ limit: 4 }).then((articles) => {
+    fetchPublishedArticles({ limit: 4, locale: lang }).then((articles) => {
       setStories(adaptArticles(articles).slice(0, 4));
       setHeroLoading(false);
     });
-  }, []);
+  }, [lang]);
 
   useEffect(() => {
     if (stories.length === 0) return;

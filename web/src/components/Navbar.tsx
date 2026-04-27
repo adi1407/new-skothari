@@ -106,7 +106,7 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
     setSearchLoading(true);
     setSearchFetched(false);
     const handle = window.setTimeout(() => {
-      fetchPublicSearch(q, 12)
+      fetchPublicSearch(q, 12, lang)
         .then((raw) => setRemoteResults(adaptArticles(raw)))
         .finally(() => {
           setSearchLoading(false);
@@ -114,7 +114,7 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
         });
     }, 280);
     return () => window.clearTimeout(handle);
-  }, [searchQuery, searchActive]);
+  }, [searchQuery, searchActive, lang]);
 
   const results = remoteResults;
 

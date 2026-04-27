@@ -5,23 +5,30 @@ type Lang = "hi" | "en";
 interface LangContextType {
   lang: Lang;
   toggleLang: () => void;
+  setLang: (next: Lang) => void;
   t: (hi: string, en: string) => string;
 }
 
 export const LangContext = createContext<LangContextType>({
   lang: "hi",
   toggleLang: () => {},
+  setLang: () => {},
   t: (hi) => hi,
 });
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<Lang>(() => {
+  const [lang, setLangState] = useState<Lang>(() => {
     const saved = localStorage.getItem("kn-lang");
     return (saved === "en" ? "en" : "hi") as Lang;
   });
 
+  const setLang = (next: Lang) => {
+    localStorage.setItem("kn-lang", next);
+    setLangState(next);
+  };
+
   const toggleLang = () => {
-    setLang((l) => {
+    setLangState((l) => {
       const next = l === "hi" ? "en" : "hi";
       localStorage.setItem("kn-lang", next);
       return next;
@@ -32,7 +39,7 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
   const t = (hi: string, en: string) => (lang === "hi" ? hi : en);
 
   return (
-    <LangContext.Provider value={{ lang, toggleLang, t }}>
+    <LangContext.Provider value={{ lang, toggleLang, setLang, t }}>
       {children}
     </LangContext.Provider>
   );
