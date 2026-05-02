@@ -51,7 +51,7 @@ The API does **not** run on Vercel as this Express app. The browser talks to Rai
 ## 3. Vercel — public site (`web-next`)
 
 1. **New Project** → import the same Git repo.
-2. **Root directory:** **`web-next`** (or rely on root [`vercel.json`](./vercel.json) `rootDirectory` when importing from monorepo root).
+2. **Root directory:** **`web-next`** — set this under Vercel → **Settings → General → Root Directory** (do **not** put `rootDirectory` in `vercel.json`; the platform rejects it).
 3. **Framework:** Next.js. Build: `npm run build` (see [`web-next/package.json`](./web-next/package.json)).
 
 ### Environment variables
@@ -71,7 +71,7 @@ Redeploy after env changes. `next.config.ts` whitelists that host for **Next/Ima
 Use a **second Vercel project** (same repo, different root).
 
 1. **New Project** → same repo.
-2. **Root directory:** **`cms`**.
+2. **Root directory:** **`cms`** — only in Vercel **Settings → General → Root Directory**, not in `vercel.json`.
 3. **Framework:** Vite (or “Other” with [`cms/vercel.json`](./cms/vercel.json)). **Output directory:** `dist` (from `vite build`).
 4. SPA fallback is configured in **`cms/vercel.json`** (rewrites to `index.html`).
 
