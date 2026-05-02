@@ -2,17 +2,20 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckSquare, Clock, Globe, XCircle, Eye, Search } from "lucide-react";
 import { getArticles, mediaUrl } from "../../api";
+import DashboardHero from "../../components/DashboardHero";
+import StatTile from "../../components/dashboard/StatTile";
+import PanelCard from "../../components/dashboard/PanelCard";
 
 const TAB_FILTER = {
-  submitted: { label: "Pending Review", color: "text-yellow-600 border-yellow-500" },
-  published:  { label: "Published",     color: "text-green-600 border-green-500" },
-  rejected:   { label: "Rejected",      color: "text-red-600 border-red-500" },
+  submitted: { label: "Pending review" },
+  published: { label: "Published" },
+  rejected: { label: "Rejected" },
 };
 
 const STATUS_BADGE = {
-  submitted: "bg-yellow-100 text-yellow-700",
-  published:  "bg-green-100 text-green-700",
-  rejected:   "bg-red-100 text-red-700",
+  submitted: "bg-amber-50 text-amber-800 ring-1 ring-amber-200/80",
+  published: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80",
+  rejected: "bg-red-50 text-red-800 ring-1 ring-red-200/80",
 };
 
 function articleListTitle(a) {
@@ -28,11 +31,11 @@ function articleListSummary(a) {
 }
 
 export default function EditorDashboard() {
-  const [tab, setTab]             = useState("submitted");
-  const [articles, setArticles]   = useState([]);
-  const [search, setSearch]       = useState("");
-  const [loading, setLoading]     = useState(true);
-  const [counts, setCounts]       = useState({ submitted: 0, published: 0, rejected: 0 });
+  const [tab, setTab] = useState("submitted");
+  const [articles, setArticles] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState({ submitted: 0, published: 0, rejected: 0 });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,7 +45,6 @@ export default function EditorDashboard() {
       .finally(() => setLoading(false));
   }, [tab, search]);
 
-  // Load counts once
   useEffect(() => {
     Promise.all([
       getArticles({ status: "submitted" }),
@@ -51,133 +53,145 @@ export default function EditorDashboard() {
     ]).then(([s, p, r]) =>
       setCounts({
         submitted: s.data.pagination.total,
-        published:  p.data.pagination.total,
-        rejected:   r.data.pagination.total,
+        published: p.data.pagination.total,
+        rejected: r.data.pagination.total,
       })
     );
   }, []);
 
   return (
     <div className="cms-page">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">Editor Dashboard</h1>
-        <p className="text-slate-500 text-sm mt-0.5">Review, edit, and publish submitted articles</p>
-      </div>
+      <DashboardHero
+        eyebrow="Review queue"
+        title="Editorial pipeline"
+        description="Prioritize submissions, verify facts, and publish with confidence. Filter by status and search across the queue."
+      />
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         {[
-          { key: "submitted", label: "Awaiting Review", icon: Clock,        bg: "bg-yellow-50 text-yellow-600" },
-          { key: "published",  label: "Published",       icon: Globe,       bg: "bg-green-50 text-green-600" },
-          { key: "rejected",   label: "Rejected",        icon: XCircle,     bg: "bg-red-50 text-red-600" },
-        ].map(({ key, label, icon: Icon, bg }) => (
-          <button
+          { key: "submitted", label: "Awaiting review", icon: Clock, variant: "warn" },
+          { key: "published", label: "Published", icon: Globe, variant: "success" },
+          { key: "rejected", label: "Rejected", icon: XCircle, variant: "danger" },
+        ].map(({ key, label, icon: Icon, variant }) => (
+          <StatTile
             key={key}
+            icon={Icon}
+            label={label}
+            value={counts[key]}
+            variant={variant}
             onClick={() => setTab(key)}
-            className={`bg-white rounded-xl border p-5 flex items-center gap-4 text-left transition-all ${
-              tab === key ? "border-brand ring-1 ring-brand/20" : "border-slate-200 hover:border-slate-300"
-            }`}
-          >
-            <div className={`w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 ${bg}`}>
-              <Icon size={20} />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-800">{counts[key]}</p>
-              <p className="text-sm text-slate-500">{label}</p>
-            </div>
-          </button>
+            className={tab === key ? "ring-2 ring-brand/35 ring-offset-2 ring-offset-slate-50" : ""}
+          />
         ))}
       </div>
 
-      {/* Search + Tabs */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 gap-4">
-          <div className="flex gap-0">
-            {Object.entries(TAB_FILTER).map(([key, { label }]) => (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                className={`px-4 py-2 text-sm font-semibold border-b-2 transition-colors ${
-                  tab === key
-                    ? "border-brand text-brand"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {label}
-                {counts[key] > 0 && (
-                  <span className="ml-1.5 text-xs bg-slate-100 text-slate-600 rounded-full px-1.5 py-0.5">
-                    {counts[key]}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <PanelCard
+        title="Articles"
+        aside={
+          <div className="relative w-full min-w-0 sm:w-52">
+            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
-              type="text" value={search}
+              type="search"
+              value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search articles…"
-              className="pl-8 pr-4 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-brand w-52"
+              placeholder="Search…"
+              className="cms-field !min-h-9 w-full py-2 pl-8 pr-3 text-sm"
+              aria-label="Search articles"
             />
           </div>
+        }
+      >
+        <div className="flex flex-wrap gap-1 border-b border-slate-100 bg-slate-50/50 px-3 py-2.5 sm:px-5">
+          {Object.entries(TAB_FILTER).map(([key, { label }]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={`rounded-full px-3.5 py-2 text-xs font-bold uppercase tracking-wide transition-all sm:text-[13px] ${
+                tab === key
+                  ? "bg-slate-900 text-white shadow-md shadow-slate-900/15"
+                  : "text-slate-500 hover:bg-white hover:text-slate-800"
+              }`}
+            >
+              {label}
+              {counts[key] > 0 && (
+                <span
+                  className={`ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full px-1 py-0.5 text-[10px] font-extrabold tabular-nums ${
+                    tab === key ? "bg-white/15 text-white" : "bg-slate-200/90 text-slate-700"
+                  }`}
+                >
+                  {counts[key]}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         {loading ? (
-          <div className="py-16 flex justify-center">
-            <div className="w-7 h-7 border-4 border-brand border-t-transparent rounded-full animate-spin" />
+          <div className="flex justify-center py-20">
+            <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-slate-200 border-t-brand" />
           </div>
         ) : articles.length === 0 ? (
-          <div className="py-16 text-center">
-            <CheckSquare size={32} className="mx-auto text-slate-300 mb-3" />
-            <p className="text-slate-500 text-sm">No articles in this category</p>
+          <div className="py-20 text-center">
+            <CheckSquare size={36} className="mx-auto text-slate-200" strokeWidth={1.5} />
+            <p className="mt-3 text-sm font-medium text-slate-500">No articles in this category</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
             {articles.map((a) => (
               <div
                 key={a._id}
-                className="flex items-start gap-4 px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer"
+                role="button"
+                tabIndex={0}
                 onClick={() => navigate(`/editor/review/${a._id}`)}
+                onKeyDown={(e) => e.key === "Enter" && navigate(`/editor/review/${a._id}`)}
+                className="group/row flex cursor-pointer items-start gap-4 px-4 py-4 transition-colors hover:bg-slate-50/90 sm:px-6 sm:py-4"
               >
-                {/* Hero image */}
-                <div className="w-20 h-14 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+                <div className="h-14 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200/80">
                   {a.images?.[0] ? (
-                    <img src={mediaUrl(a.images[0].url)} alt="" className="w-full h-full object-cover" />
+                    <img src={mediaUrl(a.images[0].url)} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Eye size={16} className="text-slate-300" />
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Eye size={18} className="text-slate-300" />
                     </div>
                   )}
                 </div>
 
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-slate-800 text-sm leading-snug">{articleListTitle(a)}</p>
-                    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${a.primaryLocale === "hi" ? "bg-indigo-100 text-indigo-800" : "bg-sky-100 text-sky-800"}`}>
+                    <p className="text-sm font-bold leading-snug text-slate-900">{articleListTitle(a)}</p>
+                    <span
+                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${
+                        a.primaryLocale === "hi" ? "bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200/60" : "bg-sky-50 text-sky-800 ring-1 ring-sky-200/60"
+                      }`}
+                    >
                       {a.primaryLocale === "hi" ? "HI" : "EN"}
                     </span>
                   </div>
-                  <p className="text-slate-500 text-xs mt-0.5 line-clamp-1">{articleListSummary(a) || "—"}</p>
-                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <span className="text-xs text-slate-400">By {a.author?.name}</span>
+                  <p className="mt-0.5 line-clamp-1 text-xs leading-relaxed text-slate-500">
+                    {articleListSummary(a) || "—"}
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
+                    <span>By {a.author?.name}</span>
                     <span className="text-slate-300">·</span>
-                    <span className="text-xs text-slate-400 capitalize">{a.category}</span>
+                    <span className="capitalize">{a.category}</span>
                     <span className="text-slate-300">·</span>
-                    <span className="text-xs text-slate-400">{new Date(a.updatedAt).toLocaleDateString()}</span>
+                    <span>{new Date(a.updatedAt).toLocaleDateString()}</span>
                     {a.isBreaking && (
-                      <span className="text-xs bg-red-100 text-red-600 font-semibold px-1.5 py-0.5 rounded">
+                      <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-700 ring-1 ring-red-200/60">
                         Breaking
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_BADGE[a.status] || "bg-slate-100 text-slate-600"}`}>
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide ${STATUS_BADGE[a.status] || "bg-slate-100 text-slate-600"}`}
+                  >
                     {a.status}
                   </span>
-                  <div className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-brand/10 hover:text-brand transition-colors">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 ring-1 ring-slate-200/80 transition-colors group-hover/row:text-brand">
                     <Eye size={16} />
                   </div>
                 </div>
@@ -185,7 +199,7 @@ export default function EditorDashboard() {
             ))}
           </div>
         )}
-      </div>
+      </PanelCard>
     </div>
   );
 }

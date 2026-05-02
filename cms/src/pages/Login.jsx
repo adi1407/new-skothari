@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Rss, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { login } from "../api";
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/AuthShell";
+import CmsBrandLogo from "../components/CmsBrandLogo";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -46,12 +47,12 @@ export default function Login() {
   return (
     <AuthShell>
       <header className="cms-auth-brand">
-        <div className="cms-auth-brand-mark">
-          <Rss size={22} className="text-white" strokeWidth={2.5} aria-hidden />
+        <div className="cms-auth-brand-mark cms-auth-brand-mark--logo">
+          <CmsBrandLogo height={34} decorative />
         </div>
         <div className="cms-auth-brand-text">
           <p className="cms-auth-kicker">Editorial workspace</p>
-          <p className="cms-auth-title-line">Kothari News</p>
+          <p className="cms-auth-title-line">News Kothari</p>
           <p className="cms-auth-sub">Content Management System · Secure access</p>
         </div>
       </header>
@@ -132,7 +133,7 @@ export default function Login() {
         </div>
       </div>
 
-      <p className="cms-auth-footer">Kothari News CMS · Internal use only</p>
+      <p className="cms-auth-footer">News Kothari · Editorial CMS · Internal use only</p>
     </AuthShell>
   );
 }

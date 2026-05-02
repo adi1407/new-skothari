@@ -1,13 +1,23 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
-  LayoutDashboard, FileText, PlusCircle, CheckSquare,
-  Users, ClipboardList, LogOut, Rss, ChevronRight, Video, X,
+  LayoutDashboard,
+  FileText,
+  PlusCircle,
+  CheckSquare,
+  Users,
+  UserCog,
+  ClipboardList,
+  LogOut,
+  ChevronRight,
+  Video,
+  X,
 } from "lucide-react";
 import { isWriterRole, writerDeskLabel } from "../constants/roles";
+import CmsBrandLogo from "./CmsBrandLogo";
 
 const WRITER_NAV = [
-  { to: "/writer",     label: "My Articles", icon: FileText },
+  { to: "/writer", label: "My Articles", icon: FileText },
   { to: "/writer/new", label: "Write Article", icon: PlusCircle },
 ];
 
@@ -21,14 +31,14 @@ const EDITOR_NAV = [
 ];
 
 const ADMIN_NAV = [
-  { to: "/admin",          label: "Dashboard",  icon: LayoutDashboard },
-  { to: "/admin/writers",  label: "Writers",    icon: Users },
-  { to: "/admin/videos",   label: "Videos",     icon: Video },
-  { to: "/admin/tasks",    label: "Tasks",      icon: ClipboardList },
-  { to: "/admin/users",    label: "Users",      icon: Users },
-  { to: "/writer",         label: "Write",      icon: PlusCircle },
-  { to: "/editor",         label: "Editor overview", icon: LayoutDashboard },
-  { to: "/editor/queue",   label: "Review",     icon: CheckSquare },
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/admin/writers", label: "Writers", icon: Users },
+  { to: "/admin/videos", label: "Videos", icon: Video },
+  { to: "/admin/tasks", label: "Tasks", icon: ClipboardList },
+  { to: "/admin/users", label: "Users", icon: UserCog },
+  { to: "/writer", label: "Write", icon: PlusCircle },
+  { to: "/editor", label: "Editor overview", icon: LayoutDashboard },
+  { to: "/editor/queue", label: "Review", icon: CheckSquare },
 ];
 
 function navForUser(role) {
@@ -39,11 +49,11 @@ function navForUser(role) {
 }
 
 const ROLE_BADGE = {
-  admin:  "bg-purple-500/15 text-purple-200 ring-1 ring-purple-400/25",
-  editor: "bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/25",
-  writer: "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/25",
-  writer_en: "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/25",
-  writer_hi: "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/25",
+  admin: "bg-violet-500/20 text-violet-100 ring-1 ring-violet-400/30",
+  editor: "bg-sky-500/20 text-sky-100 ring-1 ring-sky-400/30",
+  writer: "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25",
+  writer_en: "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25",
+  writer_hi: "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25",
 };
 
 export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }) {
@@ -59,49 +69,52 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
 
   const navClass = ({ isActive }) =>
     [
-      "group flex min-h-[2.75rem] max-lg:min-h-12 items-center gap-3 rounded-xl px-3 py-2 text-[0.8125rem] font-medium leading-snug transition-all duration-200 ease-drawer",
+      "group flex min-h-[2.75rem] max-lg:min-h-12 items-center gap-3 rounded-xl border-l-2 py-2 pl-[0.625rem] pr-3 text-[0.8125rem] font-semibold leading-snug transition-all duration-200 ease-drawer",
       isActive
-        ? "bg-brand text-white shadow-md shadow-black/20 ring-1 ring-white/10"
-        : "text-slate-400 hover:bg-slate-800/90 hover:text-white active:scale-[0.99]",
+        ? "border-brand bg-white/[0.1] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] ring-1 ring-brand/25"
+        : "border-transparent text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 active:scale-[0.99]",
     ].join(" ");
 
   return (
     <aside
       className={[
-        "flex min-h-0 max-h-[100dvh] w-[min(17.5rem,calc(100vw-1.25rem))] flex-shrink-0 flex-col bg-slate-900 text-slate-300",
-        "border-r border-slate-800/80 ring-1 ring-white/[0.04]",
-        "fixed inset-y-0 left-0 z-50 overflow-y-auto overscroll-y-contain shadow-drawer",
+        "flex min-h-0 max-h-[100dvh] w-[min(17.75rem,calc(100vw-1.25rem))] flex-shrink-0 flex-col",
+        "border-r border-white/[0.06] bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-300",
+        "shadow-drawer ring-1 ring-white/[0.04]",
+        "fixed inset-y-0 left-0 z-50 overflow-y-auto overscroll-y-contain",
         "max-lg:rounded-r-3xl max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[env(safe-area-inset-bottom)]",
-        "transition-transform duration-300 ease-drawer will-change-transform lg:static lg:z-0 lg:max-h-none lg:min-h-screen lg:w-60 lg:rounded-none lg:shadow-none lg:ring-0 lg:transition-none lg:will-change-auto",
+        "transition-transform duration-300 ease-drawer will-change-transform lg:static lg:z-0 lg:max-h-none lg:min-h-screen lg:w-[17rem] lg:rounded-none lg:shadow-none lg:ring-0 lg:transition-none lg:will-change-auto",
         mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
       ].join(" ")}
     >
-      <div className="flex items-center gap-3 border-b border-slate-800/80 px-4 py-4 sm:px-5 sm:py-5">
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-dark shadow-lg shadow-brand/30">
-          <Rss size={15} className="text-white" strokeWidth={2.5} />
+      <div className="flex items-start gap-3 border-b border-white/[0.06] px-4 py-5 sm:px-5">
+        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-white/[0.08] shadow-inner ring-1 ring-white/10">
+          <CmsBrandLogo height={34} decorative />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold leading-tight tracking-tight text-white">Kothari News</p>
-          <p className="text-[11px] font-medium uppercase tracking-widest text-slate-500">CMS</p>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <p className="text-[0.8125rem] font-extrabold leading-tight tracking-tight text-white">News Kothari</p>
+          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Editorial CMS</p>
         </div>
         <button
           type="button"
           onClick={onMobileClose}
-          className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-800 hover:text-white active:scale-95 lg:hidden"
+          className="flex min-h-11 min-w-11 flex-shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white/[0.08] hover:text-white active:scale-95 lg:hidden"
           aria-label="Close menu"
         >
           <X size={20} strokeWidth={2} />
         </button>
       </div>
 
-      <div className="border-b border-slate-800/80 px-4 py-4 sm:px-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-700 to-slate-800 text-sm font-bold text-white ring-2 ring-slate-600/50">
+      <div className="border-b border-white/[0.06] px-4 py-4 sm:px-5">
+        <div className="flex items-center gap-3 rounded-xl bg-white/[0.04] p-3 ring-1 ring-white/[0.06]">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-600 to-slate-800 text-sm font-bold text-white ring-2 ring-white/10">
             {user?.name?.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white">{user?.name}</p>
-            <span className={`mt-1 inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold ${ROLE_BADGE[user?.role] || ROLE_BADGE.writer}`}>
+            <span
+              className={`mt-1 inline-block rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${ROLE_BADGE[user?.role] || ROLE_BADGE.writer}`}
+            >
               {writerDeskLabel(user?.role)}
             </span>
           </div>
@@ -113,29 +126,29 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
           <NavLink
             key={to + label}
             to={to}
-            end={
-              to === "/editor" ||
-              to === "/admin" ||
-              (to !== "/admin/writers" && to !== "/writer")
-            }
+            end={to === "/editor" || to === "/admin" || (to !== "/admin/writers" && to !== "/writer")}
             onClick={() => onMobileClose()}
             className={navClass}
           >
             <Icon size={17} className="flex-shrink-0 opacity-90" strokeWidth={2} />
             <span className="flex-1 leading-snug">{label}</span>
-            <ChevronRight size={14} className="opacity-30 transition-opacity group-hover:opacity-50" />
+            <ChevronRight
+              size={14}
+              className="opacity-25 transition-opacity group-hover:opacity-50"
+              aria-hidden
+            />
           </NavLink>
         ))}
       </nav>
 
-      <div className="mt-auto border-t border-slate-800/80 px-2.5 py-4 sm:px-3">
+      <div className="mt-auto border-t border-white/[0.06] px-2.5 py-4 sm:px-3">
         <button
           type="button"
           onClick={handleSignOut}
-          className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-all hover:bg-red-950/40 hover:text-red-300 active:scale-[0.99] max-lg:py-3"
+          className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-400 transition-all hover:bg-red-950/50 hover:text-red-200 active:scale-[0.99] max-lg:py-3"
         >
           <LogOut size={17} strokeWidth={2} />
-          Sign Out
+          Sign out
         </button>
       </div>
     </aside>

@@ -1,27 +1,40 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlusCircle, FileText, Clock, CheckCircle, XCircle, AlertCircle, Eye, Edit3, ChevronRight } from "lucide-react";
+import {
+  PlusCircle,
+  FileText,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Eye,
+  Edit3,
+  ChevronRight,
+} from "lucide-react";
 import { getArticles, getTasks } from "../../api";
+import DashboardHero from "../../components/DashboardHero";
+import StatTile from "../../components/dashboard/StatTile";
+import PanelCard from "../../components/dashboard/PanelCard";
 
 const STATUS_STYLE = {
-  draft:     { cls: "bg-slate-100 text-slate-600",   label: "Draft" },
-  submitted: { cls: "bg-yellow-100 text-yellow-700", label: "In Review" },
-  published: { cls: "bg-green-100 text-green-700",   label: "Published" },
-  rejected:  { cls: "bg-red-100 text-red-700",       label: "Rejected" },
+  draft: { cls: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80", label: "Draft" },
+  submitted: { cls: "bg-amber-50 text-amber-800 ring-1 ring-amber-200/70", label: "In review" },
+  published: { cls: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/70", label: "Published" },
+  rejected: { cls: "bg-red-50 text-red-800 ring-1 ring-red-200/70", label: "Rejected" },
 };
 
 const TASK_STYLE = {
-  pending:     { cls: "bg-slate-100 text-slate-600",   label: "Pending" },
-  in_progress: { cls: "bg-blue-100 text-blue-700",     label: "In Progress" },
-  completed:   { cls: "bg-green-100 text-green-700",   label: "Completed" },
-  overdue:     { cls: "bg-red-100 text-red-700",       label: "Overdue" },
+  pending: { cls: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80", label: "Pending" },
+  in_progress: { cls: "bg-sky-50 text-sky-800 ring-1 ring-sky-200/70", label: "In progress" },
+  completed: { cls: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/70", label: "Completed" },
+  overdue: { cls: "bg-red-50 text-red-800 ring-1 ring-red-200/70", label: "Overdue" },
 };
 
 const PRIORITY_STYLE = {
-  low:    "bg-slate-100 text-slate-500",
-  medium: "bg-blue-100 text-blue-600",
-  high:   "bg-orange-100 text-orange-600",
-  urgent: "bg-red-100 text-red-600",
+  low: "bg-slate-100 text-slate-600 ring-1 ring-slate-200/60",
+  medium: "bg-sky-50 text-sky-700 ring-1 ring-sky-200/60",
+  high: "bg-orange-50 text-orange-700 ring-1 ring-orange-200/60",
+  urgent: "bg-red-50 text-red-700 ring-1 ring-red-200/60",
 };
 
 function articleListTitle(a) {
@@ -30,24 +43,10 @@ function articleListTitle(a) {
   return (a.title || a.titleHi || "").trim() || "Untitled";
 }
 
-function StatCard({ icon: Icon, label, value, color }) {
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 flex items-center gap-4">
-      <div className={`w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0 ${color}`}>
-        <Icon size={20} />
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-slate-800">{value}</p>
-        <p className="text-sm text-slate-500">{label}</p>
-      </div>
-    </div>
-  );
-}
-
 export default function WriterDashboard() {
   const [articles, setArticles] = useState([]);
-  const [tasks, setTasks]       = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,59 +59,58 @@ export default function WriterDashboard() {
   }, []);
 
   const counts = {
-    total:     articles.length,
-    draft:     articles.filter((a) => a.status === "draft").length,
+    total: articles.length,
+    draft: articles.filter((a) => a.status === "draft").length,
     submitted: articles.filter((a) => a.status === "submitted").length,
     published: articles.filter((a) => a.status === "published").length,
-    rejected:  articles.filter((a) => a.status === "rejected").length,
+    rejected: articles.filter((a) => a.status === "rejected").length,
   };
 
-  if (loading) return (
-    <div className="cms-page-center">
-      <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="cms-page-center">
+        <div className="h-9 w-9 animate-spin rounded-full border-[3px] border-slate-200 border-t-brand" />
+      </div>
+    );
 
   return (
     <div className="cms-page">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">My Dashboard</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Manage your articles and assigned tasks</p>
-        </div>
+      <DashboardHero
+        eyebrow="Writer desk"
+        title="Your workspace"
+        description="Track drafts, submissions, and editor feedback. Tasks from the desk appear on the right."
+      >
         <button
+          type="button"
           onClick={() => navigate("/writer/new")}
-          className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+          className="cms-btn-primary min-h-11 rounded-2xl px-5 shadow-md shadow-brand/20"
         >
-          <PlusCircle size={16} />
-          New Article
+          <PlusCircle size={18} strokeWidth={2.25} />
+          New article
         </button>
+      </DashboardHero>
+
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatTile icon={FileText} label="Total articles" value={counts.total} variant="neutral" />
+        <StatTile icon={CheckCircle} label="Published" value={counts.published} variant="success" />
+        <StatTile icon={Clock} label="In review" value={counts.submitted} variant="warn" />
+        <StatTile icon={XCircle} label="Rejected" value={counts.rejected} variant="danger" />
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={FileText}    label="Total Articles" value={counts.total}     color="bg-slate-100 text-slate-600" />
-        <StatCard icon={CheckCircle} label="Published"      value={counts.published} color="bg-green-100 text-green-600" />
-        <StatCard icon={Clock}       label="In Review"      value={counts.submitted} color="bg-yellow-100 text-yellow-600" />
-        <StatCard icon={XCircle}     label="Rejected"       value={counts.rejected}  color="bg-red-100 text-red-600" />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Articles table */}
-        <div className="xl:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <h2 className="font-semibold text-slate-800">My Articles</h2>
-            <span className="text-xs text-slate-400">{articles.length} total</span>
-          </div>
-
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <PanelCard
+          title="My articles"
+          aside={<span className="text-xs font-semibold text-slate-400">{articles.length} total</span>}
+          className="xl:col-span-2"
+        >
           {articles.length === 0 ? (
             <div className="py-16 text-center">
-              <FileText size={32} className="mx-auto text-slate-300 mb-3" />
-              <p className="text-slate-500 text-sm">No articles yet</p>
+              <FileText size={36} className="mx-auto text-slate-200" strokeWidth={1.5} />
+              <p className="mt-3 text-sm font-medium text-slate-500">No articles yet</p>
               <button
+                type="button"
                 onClick={() => navigate("/writer/new")}
-                className="mt-3 text-brand text-sm font-semibold hover:underline"
+                className="mt-4 text-sm font-bold text-brand hover:underline"
               >
                 Write your first article →
               </button>
@@ -122,42 +120,56 @@ export default function WriterDashboard() {
               {articles.map((a) => {
                 const s = STATUS_STYLE[a.status] || STATUS_STYLE.draft;
                 return (
-                  <div key={a._id} className="flex items-start gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <p className="font-medium text-slate-800 text-sm truncate">{articleListTitle(a)}</p>
-                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded flex-shrink-0 ${a.primaryLocale === "hi" ? "bg-indigo-100 text-indigo-800" : "bg-sky-100 text-sky-800"}`}>
+                  <div
+                    key={a._id}
+                    className="flex items-start gap-4 px-4 py-4 transition-colors hover:bg-slate-50/90 sm:px-6"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="truncate text-sm font-bold text-slate-900">{articleListTitle(a)}</p>
+                        <span
+                          className={`flex-shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide ${
+                            a.primaryLocale === "hi"
+                              ? "bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200/60"
+                              : "bg-sky-50 text-sky-800 ring-1 ring-sky-200/60"
+                          }`}
+                        >
                           {a.primaryLocale === "hi" ? "HI" : "EN"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-400 capitalize">{a.category}</span>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                        <span className="capitalize">{a.category}</span>
                         <span className="text-slate-300">·</span>
-                        <span className="text-xs text-slate-400">{new Date(a.updatedAt).toLocaleDateString()}</span>
+                        <span>{new Date(a.updatedAt).toLocaleDateString()}</span>
                         {a.rejectionReason && (
-                          <span className="flex items-center gap-1 text-xs text-red-500">
-                            <AlertCircle size={11} /> Rejected: {a.rejectionReason.slice(0, 30)}…
+                          <span className="flex items-center gap-1 text-red-600">
+                            <AlertCircle size={11} strokeWidth={2.5} />
+                            {a.rejectionReason.slice(0, 40)}…
                           </span>
                         )}
                       </div>
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${s.cls}`}>
+                    <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase ${s.cls}`}>
                       {s.label}
                     </span>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      {["draft","rejected"].includes(a.status) && (
+                    <div className="flex flex-shrink-0 items-center gap-1">
+                      {["draft", "rejected"].includes(a.status) && (
                         <button
+                          type="button"
                           onClick={() => navigate(`/writer/edit/${a._id}`)}
-                          className="p-1.5 rounded text-slate-400 hover:text-brand hover:bg-brand/10 transition-colors"
+                          className="flex min-h-9 min-w-9 items-center justify-center rounded-xl text-slate-400 ring-1 ring-slate-200/80 transition-colors hover:bg-brand/10 hover:text-brand"
+                          aria-label="Edit article"
                         >
-                          <Edit3 size={14} />
+                          <Edit3 size={15} />
                         </button>
                       )}
                       <button
+                        type="button"
                         onClick={() => navigate(`/editor/review/${a._id}`)}
-                        className="p-1.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        className="flex min-h-9 min-w-9 items-center justify-center rounded-xl text-slate-400 ring-1 ring-slate-200/80 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                        aria-label="View article"
                       >
-                        <Eye size={14} />
+                        <Eye size={15} />
                       </button>
                     </div>
                   </div>
@@ -165,45 +177,37 @@ export default function WriterDashboard() {
               })}
             </div>
           )}
-        </div>
+        </PanelCard>
 
-        {/* Tasks panel */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-            <h2 className="font-semibold text-slate-800">Assigned Tasks</h2>
-            <span className="text-xs text-slate-400">{tasks.length}</span>
-          </div>
-
+        <PanelCard title="Assigned tasks" aside={<span className="text-xs font-semibold text-slate-400">{tasks.length}</span>}>
           {tasks.length === 0 ? (
-            <div className="py-12 text-center">
-              <CheckCircle size={28} className="mx-auto text-slate-300 mb-2" />
-              <p className="text-slate-500 text-sm">No tasks assigned</p>
+            <div className="py-14 text-center">
+              <CheckCircle size={32} className="mx-auto text-slate-200" strokeWidth={1.5} />
+              <p className="mt-3 text-sm font-medium text-slate-500">No tasks assigned</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
               {tasks.map((t) => {
                 const isOverdue = t.status !== "completed" && new Date(t.deadline) < new Date();
-                const ts = isOverdue ? TASK_STYLE.overdue : (TASK_STYLE[t.status] || TASK_STYLE.pending);
+                const ts = isOverdue ? TASK_STYLE.overdue : TASK_STYLE[t.status] || TASK_STYLE.pending;
                 return (
-                  <div key={t._id} className="px-6 py-4">
+                  <div key={t._id} className="px-4 py-4 sm:px-5">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-medium text-slate-800 leading-snug">{t.title}</p>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${ts.cls}`}>
+                      <p className="text-sm font-semibold leading-snug text-slate-900">{t.title}</p>
+                      <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase ${ts.cls}`}>
                         {ts.label}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded capitalize ${PRIORITY_STYLE[t.priority]}`}>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${PRIORITY_STYLE[t.priority]}`}>
                         {t.priority}
                       </span>
-                      <span className="text-xs text-slate-400">
-                        Due {new Date(t.deadline).toLocaleDateString()}
-                      </span>
+                      <span className="text-xs text-slate-400">Due {new Date(t.deadline).toLocaleDateString()}</span>
                     </div>
                     {t.article && (
-                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                        <ChevronRight size={10} />
-                        Linked: {articleListTitle(t.article).slice(0, 35)}…
+                      <p className="mt-2 flex items-center gap-1 text-xs text-slate-400">
+                        <ChevronRight size={12} className="text-slate-300" />
+                        Linked: {articleListTitle(t.article).slice(0, 36)}…
                       </p>
                     )}
                   </div>
@@ -211,7 +215,7 @@ export default function WriterDashboard() {
               })}
             </div>
           )}
-        </div>
+        </PanelCard>
       </div>
     </div>
   );

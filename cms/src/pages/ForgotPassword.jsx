@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Rss } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { requestPasswordReset, resetPasswordWithOtp } from "../api";
 import AuthShell from "../components/AuthShell";
+import CmsBrandLogo from "../components/CmsBrandLogo";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -93,12 +94,12 @@ export default function ForgotPassword() {
   return (
     <AuthShell>
       <header className="cms-auth-brand">
-        <div className="cms-auth-brand-mark">
-          <Rss size={22} className="text-white" strokeWidth={2.5} aria-hidden />
+        <div className="cms-auth-brand-mark cms-auth-brand-mark--logo">
+          <CmsBrandLogo height={34} decorative />
         </div>
         <div className="cms-auth-brand-text">
           <p className="cms-auth-kicker">Account recovery</p>
-          <p className="cms-auth-title-line">Kothari News</p>
+          <p className="cms-auth-title-line">News Kothari</p>
           <p className="cms-auth-sub">Reset access with a one-time code</p>
         </div>
       </header>
@@ -263,7 +264,7 @@ export default function ForgotPassword() {
         </div>
       </div>
 
-      <p className="cms-auth-footer">Kothari News CMS · Internal use only</p>
+      <p className="cms-auth-footer">News Kothari · Editorial CMS · Internal use only</p>
     </AuthShell>
   );
 }
