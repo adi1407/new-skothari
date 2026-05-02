@@ -400,7 +400,8 @@
 
 /* Padding for navbar: brand strip + row1 + row2 (~3 + 64 + 46) */
 .hero-section, .hero-cinematic-wrap { padding-top: 113px }
-.article-page  { padding-top: 113px }
+.article-page,
+.inst-page     { padding-top: 113px }
 .cat-page      { padding-top: 113px }
 .shows-page    { padding-top: 113px }
 
@@ -576,11 +577,13 @@
     padding-top: calc(134px + env(safe-area-inset-top, 0px)) !important;
   }
   .article-page,
+  .inst-page,
   .cat-page,
   .shows-page {
     padding-top: calc(118px + env(safe-area-inset-top, 0px)) !important;
   }
   [data-lang="hi"] .article-page,
+  [data-lang="hi"] .inst-page,
   [data-lang="hi"] .cat-page,
   [data-lang="hi"] .shows-page {
     padding-top: calc(134px + env(safe-area-inset-top, 0px)) !important;

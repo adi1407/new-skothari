@@ -83,7 +83,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
         "shadow-drawer ring-1 ring-white/[0.04]",
         "fixed inset-y-0 left-0 z-50 overflow-y-auto overscroll-y-contain",
         "max-lg:rounded-r-3xl max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[env(safe-area-inset-bottom)]",
-        "transition-transform duration-300 ease-drawer will-change-transform lg:static lg:z-0 lg:max-h-none lg:min-h-screen lg:w-[17rem] lg:rounded-none lg:shadow-none lg:ring-0 lg:transition-none lg:will-change-auto",
+        "transition-transform duration-300 ease-drawer will-change-transform lg:static lg:z-0 lg:h-full lg:max-h-full lg:min-h-0 lg:w-[17rem] lg:self-stretch lg:overflow-y-auto lg:rounded-none lg:shadow-none lg:ring-0 lg:transition-none lg:will-change-auto",
         mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
       ].join(" ")}
     >

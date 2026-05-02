@@ -134,7 +134,7 @@ body {
   background: #94a3b8;
 }
 
-/* Logged-in shell — premium scroll surface */
+/* Logged-in shell — premium scroll surface (mobile: thin; desktop: visible track) */
 .cms-shell-main {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
@@ -156,6 +156,34 @@ body {
 .cms-shell-main::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.55);
   background-clip: padding-box;
+}
+
+@media (min-width: 1024px) {
+  .cms-shell-main {
+    scrollbar-width: auto;
+    scrollbar-color: #94a3b8 #e2e8f0;
+  }
+
+  .cms-shell-main::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .cms-shell-main::-webkit-scrollbar-track {
+    background: #e2e8f0;
+    border-radius: 10px;
+    margin-block: 4px;
+  }
+
+  .cms-shell-main::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    background-clip: padding-box;
+  }
+
+  .cms-shell-main::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
 }
 
 /* Prose for article preview */

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import Sidebar from "./Sidebar";
@@ -7,10 +7,18 @@ import CmsBrandLogo from "./CmsBrandLogo";
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const mainRef = useRef(null);
 
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  /** Desktop: scroll lives on `main`; reset to top on every navigation. */
+  useLayoutEffect(() => {
+    const el = mainRef.current;
+    if (el) el.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -22,7 +30,7 @@ export default function Layout() {
   }, [sidebarOpen]);
 
   return (
-    <div className="flex min-h-screen min-h-[100dvh] bg-slate-50">
+    <div className="flex min-h-[100dvh] w-full flex-row bg-slate-50 lg:h-[100dvh] lg:max-h-[100dvh] lg:overflow-hidden">
       {sidebarOpen && (
         <button
           type="button"
@@ -56,7 +64,10 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="cms-shell-main min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain max-lg:pb-[max(1rem,env(safe-area-inset-bottom))] scroll-smooth">
+        <main
+          ref={mainRef}
+          className="cms-shell-main min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain max-lg:pb-[max(1rem,env(safe-area-inset-bottom))] scroll-smooth lg:min-h-0 lg:overflow-y-scroll"
+        >
           <Outlet />
         </main>
       </div>

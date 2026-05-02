@@ -40,23 +40,28 @@ export default function SiteFooter() {
 
   const browseCats = categories.filter((c) => c.slug !== "home");
 
-  const company = lang === "hi"
-    ? [
-        { hi: "हमारे बारे में", en: "About" },
-        { hi: "संपर्क", en: "Contact" },
-        { hi: "विज्ञापन", en: "Advertise" },
-        { hi: "करियर", en: "Careers" },
-        { hi: "प्राइवेसी", en: "Privacy" },
-        { hi: "नियम", en: "Terms" },
-      ]
-    : [
-        { hi: "About", en: "About" },
-        { hi: "Contact", en: "Contact" },
-        { hi: "Advertise", en: "Advertise" },
-        { hi: "Careers", en: "Careers" },
-        { hi: "Privacy", en: "Privacy" },
-        { hi: "Terms", en: "Terms" },
-      ];
+  const company: { hi: string; en: string; to?: string }[] =
+    lang === "hi"
+      ? [
+          { hi: "हमारे बारे में", en: "About", to: "/about" },
+          { hi: "मिशन", en: "Mission", to: "/mission" },
+          { hi: "विजन", en: "Vision", to: "/vision" },
+          { hi: "संपर्क", en: "Contact" },
+          { hi: "विज्ञापन", en: "Advertise" },
+          { hi: "करियर", en: "Careers" },
+          { hi: "प्राइवेसी", en: "Privacy", to: "/privacy" },
+          { hi: "नियम", en: "Terms" },
+        ]
+      : [
+          { hi: "About", en: "About", to: "/about" },
+          { hi: "Mission", en: "Mission", to: "/mission" },
+          { hi: "Vision", en: "Vision", to: "/vision" },
+          { hi: "Contact", en: "Contact" },
+          { hi: "Advertise", en: "Advertise" },
+          { hi: "Careers", en: "Careers" },
+          { hi: "Privacy", en: "Privacy", to: "/privacy" },
+          { hi: "Terms", en: "Terms" },
+        ];
 
   const onNewsletter = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,9 +176,15 @@ export default function SiteFooter() {
           <ul className="footer-premium-links">
             {company.map((row, i) => (
               <li key={i}>
-                <button type="button" className="footer-premium-text-link footer-premium-text-btn">
-                  {lang === "hi" ? row.hi : row.en}
-                </button>
+                {row.to ? (
+                  <Link to={row.to} className="footer-premium-text-link">
+                    {lang === "hi" ? row.hi : row.en}
+                  </Link>
+                ) : (
+                  <button type="button" className="footer-premium-text-link footer-premium-text-btn">
+                    {lang === "hi" ? row.hi : row.en}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
