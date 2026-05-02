@@ -1,5 +1,7 @@
+"use client";
+
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, useScroll, useSpring } from "framer-motion";
 import {
   ArrowLeft, Clock, Eye, Bookmark, Share2, Link2, ThumbsUp,
@@ -143,9 +145,9 @@ function PremiumRecCard({ item, lang }: { item: NewsItem; lang: string }) {
   );
 }
 
-/* ─── Main component ─────────────────────────────────────── */
-export default function ArticlePage() {
-  const { id } = useParams<{ id: string }>();
+/* ─── Main component — id comes from `app/article/[id]/page.tsx` (no fake 404 from SSR). ── */
+export default function ArticlePage({ articleId }: { articleId: string }) {
+  const id = articleId;
   const navigate = useNavigate();
   const { lang, t } = useLang();
   const { token } = useReaderAuth();
