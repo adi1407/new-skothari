@@ -1,6 +1,27 @@
 import axios from "axios";
 
-const http = axios.create({ baseURL: "/api" });
+function stripTrailingSlash(s) {
+  return String(s || "").replace(/\/+$/, "");
+}
+
+/** Railway / Render API origin (no path). Empty in local dev → Vite proxies `/api` and `/uploads`. */
+const apiOrigin = stripTrailingSlash(import.meta.env.VITE_API_ORIGIN || "");
+
+const baseURL = apiOrigin ? `${apiOrigin}/api` : "/api";
+
+const http = axios.create({ baseURL });
+
+/**
+ * Image or upload path from the API (`/uploads/...`). In production, prefix with `VITE_API_ORIGIN`.
+ * Absolute URLs are returned unchanged.
+ */
+export function mediaUrl(pathOrUrl) {
+  if (!pathOrUrl) return "";
+  const s = String(pathOrUrl).trim();
+  if (/^https?:\/\//i.test(s)) return s;
+  if (!apiOrigin) return s.startsWith("/") ? s : `/${s}`;
+  return `${apiOrigin}${s.startsWith("/") ? s : `/${s}`}`;
+}
 
 // Attach JWT to every request
 http.interceptors.request.use((cfg) => {
@@ -24,6 +45,10 @@ http.interceptors.response.use(
 
 // ── Auth ─────────────────────────────────────────────
 export const login  = (email, password) => http.post("/auth/login", { email, password });
+export const requestPasswordReset = (email) =>
+  http.post("/auth/forgot-password", { email });
+export const resetPasswordWithOtp = ({ email, otp, newPassword }) =>
+  http.post("/auth/reset-password", { email, otp, newPassword });
 export const getMe  = ()               => http.get("/auth/me");
 export const updateMe       = (data)   => http.put("/auth/me", data);
 export const changePassword = (data)   => http.put("/auth/me/password", data);

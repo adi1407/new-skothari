@@ -29,8 +29,8 @@ const taskSchema = new mongoose.Schema(
 
     category: {
       type: String,
-      enum: ["politics", "sports", "tech", "business", "entertainment", "health", "world", "state"],
-      default: "politics",
+      enum: ["desh", "videsh", "rajneeti", "khel", "health", "krishi", "business", "manoranjan"],
+      default: "desh",
     },
 
     priority: {

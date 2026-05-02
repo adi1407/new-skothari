@@ -5,9 +5,11 @@ import {
 } from "lucide-react";
 import {
   getArticle, createArticle, updateArticle, submitArticle, uploadImages, deleteImage, getTasks,
+  mediaUrl,
 } from "../../api";
+import { useAuth } from "../../context/AuthContext";
 
-const CATEGORIES = ["politics","sports","tech","business","entertainment","health","world","state"];
+const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
 
 function Field({ label, required, children }) {
   return (
@@ -42,13 +44,16 @@ function Textarea({ rows = 4, className = "", ...props }) {
 export default function ArticleEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const fileRef  = useRef(null);
   const isEdit   = Boolean(id);
+  const lockPrimaryEn = user?.role === "writer_en";
+  const lockPrimaryHi = user?.role === "writer_hi";
 
   const [form, setForm] = useState({
     primaryLocale: "en",
     title: "", titleHi: "", summary: "", summaryHi: "",
-    body: "", bodyHi: "", category: "politics",
+    body: "", bodyHi: "", category: "desh",
     tags: "", isBreaking: false, task: "",
   });
   const [images, setImages]         = useState([]);
@@ -62,6 +67,15 @@ export default function ArticleEditor() {
   const [loading, setLoading]       = useState(isEdit);
 
   useEffect(() => {
+    if (!isEdit && user?.role === "writer_en") {
+      setForm((f) => ({ ...f, primaryLocale: "en" }));
+    }
+    if (!isEdit && user?.role === "writer_hi") {
+      setForm((f) => ({ ...f, primaryLocale: "hi" }));
+    }
+  }, [isEdit, user?.role]);
+
+  useEffect(() => {
     const loads = [getTasks()];
     if (isEdit) loads.push(getArticle(id));
     Promise.all(loads).then(([t, a]) => {
@@ -73,7 +87,7 @@ export default function ArticleEditor() {
           title: art.title || "", titleHi: art.titleHi || "",
           summary: art.summary || "", summaryHi: art.summaryHi || "",
           body: art.body || "", bodyHi: art.bodyHi || "",
-          category: art.category || "politics",
+          category: art.category || "desh",
           tags: (art.tags || []).join(", "),
           isBreaking: art.isBreaking || false,
           task: art.task?._id || "",
@@ -381,7 +395,7 @@ export default function ArticleEditor() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
                 {images.map((img, i) => (
                   <div key={i} className="relative group rounded-lg overflow-hidden aspect-video bg-slate-100">
-                    <img src={img.url} alt={img.caption || `img-${i}`} className="w-full h-full object-cover" />
+                    <img src={mediaUrl(img.url)} alt={img.caption || `img-${i}`} className="w-full h-full object-cover" />
                     {img.isHero && (
                       <span className="absolute top-1.5 left-1.5 bg-brand text-white text-xs px-1.5 py-0.5 rounded font-semibold">
                         Hero
@@ -417,13 +431,20 @@ export default function ArticleEditor() {
             <Field label="Primary language" required>
               <select
                 value={form.primaryLocale}
-                disabled={!canEdit}
+                disabled={!canEdit || lockPrimaryEn || lockPrimaryHi}
                 onChange={(e) => set("primaryLocale", e.target.value)}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
               >
                 <option value="en">English — separate upload per language</option>
                 <option value="hi">हिंदी (Hindi)</option>
               </select>
+              {(lockPrimaryEn || lockPrimaryHi) && (
+                <p className="text-xs text-slate-500 mt-1.5">
+                  {lockPrimaryEn
+                    ? "English desk: articles must use English as the primary language."
+                    : "Hindi desk: articles must use Hindi as the primary language."}
+                </p>
+              )}
             </Field>
 
             <Field label="Category" required>

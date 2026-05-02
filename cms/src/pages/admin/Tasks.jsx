@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, X, Loader2, AlertCircle } from "lucide-react";
 import { getTasks, createTask, deleteTask, getUsers } from "../../api";
+import { writerDeskLabel } from "../../constants/roles";
 
 const PRIORITY_BADGE = {
   low:    "bg-slate-100 text-slate-500",
@@ -14,7 +15,7 @@ const STATUS_BADGE = {
   completed:   "bg-green-100 text-green-700",
   overdue:     "bg-red-100 text-red-700",
 };
-const CATEGORIES = ["politics","sports","tech","business","entertainment","health","world","state"];
+const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
 
 function Modal({ open, onClose, children }) {
   if (!open) return null;
@@ -45,7 +46,7 @@ export default function Tasks({ readOnly = false }) {
   const [error, setError]     = useState("");
   const [form, setForm]       = useState({
     title: "", description: "", assignedTo: "", deadline: "",
-    priority: "medium", category: "politics", notes: "",
+    priority: "medium", category: "desh", notes: "",
   });
 
   const load = () => {
@@ -56,7 +57,7 @@ export default function Tasks({ readOnly = false }) {
   useEffect(() => { load(); }, [filterStatus]);
 
   useEffect(() => {
-    getUsers({ role: "writer", isActive: true }).then((r) => setWriters(r.data.users));
+    getUsers({ deskWriters: true, isActive: true, limit: 200 }).then((r) => setWriters(r.data.users));
   }, []);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -69,7 +70,7 @@ export default function Tasks({ readOnly = false }) {
     try {
       await createTask(form);
       setShowModal(false);
-      setForm({ title:"", description:"", assignedTo:"", deadline:"", priority:"medium", category:"politics", notes:"" });
+      setForm({ title:"", description:"", assignedTo:"", deadline:"", priority:"medium", category:"desh", notes:"" });
       load();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to create task");
@@ -239,7 +240,11 @@ export default function Tasks({ readOnly = false }) {
                 className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand bg-white"
               >
                 <option value="">Select writer</option>
-                {writers.map((w) => <option key={w._id} value={w._id}>{w.name}</option>)}
+                {writers.map((w) => (
+                  <option key={w._id} value={w._id}>
+                    {w.name} ({writerDeskLabel(w.role)})
+                  </option>
+                ))}
               </select>
             </div>
             <div>

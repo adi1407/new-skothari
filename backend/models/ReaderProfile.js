@@ -15,6 +15,8 @@ const readerProfileSchema = new mongoose.Schema(
     newsletterEnabled: { type: Boolean, default: false },
     newsletterTopics: [{ type: String, trim: true }],
     digestCadence: { type: String, enum: ["daily", "weekly", "off"], default: "daily" },
+    /** Last automated / welcome digest email (daily/weekly cron respects this). */
+    lastDigestSentAt: { type: Date, default: null },
     profileVisibility: { type: String, enum: ["private", "public"], default: "private" },
     bio: { type: String, default: "", maxlength: 300 },
     socialLinks: {

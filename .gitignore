@@ -9,6 +9,9 @@ lerna-debug.log*
 
 node_modules
 .env
+backend/.env
+cms/.env
+web-next/.env.local
 dist
 dist-ssr
 *.local
@@ -23,3 +26,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local Claude / Cursor worktrees (not part of the app)
+.claude/

@@ -3,6 +3,7 @@ const { body, validationResult } = require("express-validator");
 const Task = require("../models/Task");
 const User = require("../models/User");
 const { authenticate, authorize } = require("../middleware/auth");
+const { isWriterRole } = require("../utils/roles");
 
 // ── GET /api/tasks ───────────────────────────────────
 // Admin: all tasks (with filters) | Writer: own tasks | Editor: view only
@@ -11,7 +12,7 @@ router.get("/", authenticate, async (req, res) => {
     const { status, priority, assignedTo, page = 1, limit = 20 } = req.query;
     const q = {};
 
-    if (req.user.role === "writer") {
+    if (isWriterRole(req.user.role)) {
       q.assignedTo = req.user._id;
     } else if (assignedTo) {
       q.assignedTo = assignedTo;
@@ -61,7 +62,7 @@ router.get("/:id", authenticate, async (req, res) => {
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     // Writers can only view their own
-    if (req.user.role === "writer" &&
+    if (isWriterRole(req.user.role) &&
         task.assignedTo._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Access denied" });
     }
@@ -82,7 +83,7 @@ router.post(
     body("assignedTo").notEmpty().withMessage("assignedTo (writer ID) is required"),
     body("deadline").isISO8601().withMessage("Valid deadline date required"),
     body("priority").optional().isIn(["low","medium","high","urgent"]),
-    body("category").optional().isIn(["politics","sports","tech","business","entertainment","health","world","state"]),
+    body("category").optional().isIn(["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"]),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -93,7 +94,7 @@ router.post(
 
       // Verify assignee is a writer
       const writer = await User.findById(assignedTo);
-      if (!writer || writer.role !== "writer")
+      if (!writer || !isWriterRole(writer.role))
         return res.status(400).json({ message: "assignedTo must be an active writer" });
 
       const task = await Task.create({
@@ -184,7 +185,7 @@ router.patch("/:id/complete", authenticate, authorize("writer","admin"), async (
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
-    if (req.user.role === "writer" &&
+    if (isWriterRole(req.user.role) &&
         task.assignedTo.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your task" });
 

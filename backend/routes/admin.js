@@ -5,6 +5,7 @@ const User = require("../models/User");
 const Article = require("../models/Article");
 const Task = require("../models/Task");
 const { authenticate, authorize } = require("../middleware/auth");
+const { WRITER_ROLES, isWriterRole } = require("../utils/roles");
 
 // All admin routes require authentication + admin role
 router.use(authenticate, authorize("admin"));
@@ -32,7 +33,7 @@ router.get("/stats", async (_req, res) => {
       overdueTasks,
     ] = await Promise.all([
       User.countDocuments({ isActive: true }),
-      User.countDocuments({ role: "writer", isActive: true }),
+      User.countDocuments({ role: { $in: WRITER_ROLES }, isActive: true }),
       User.countDocuments({ role: "editor", isActive: true }),
       Article.countDocuments(),
       Article.countDocuments({ status: "draft" }),
@@ -108,7 +109,7 @@ router.get("/stats", async (_req, res) => {
 // List all writers with their article counts
 router.get("/writers", async (_req, res) => {
   try {
-    const writers = await User.find({ role: "writer" }).lean();
+    const writers = await User.find({ role: { $in: WRITER_ROLES } }).lean();
 
     // Aggregate article counts per writer
     const articleStats = await Article.aggregate([
@@ -154,7 +155,7 @@ router.get("/writers", async (_req, res) => {
 router.get("/writers/:id/stats", async (req, res) => {
   try {
     const writer = await User.findById(req.params.id).lean();
-    if (!writer || writer.role !== "writer")
+    if (!writer || !isWriterRole(writer.role))
       return res.status(404).json({ message: "Writer not found" });
 
     const [articles, tasks, recentArticles] = await Promise.all([
@@ -255,9 +256,10 @@ router.get("/writers/:id/tasks", async (req, res) => {
 // ── GET /api/admin/users ──────────────────────────────
 router.get("/users", async (req, res) => {
   try {
-    const { role, isActive, page = 1, limit = 50 } = req.query;
+    const { role, deskWriters, isActive, page = 1, limit = 50 } = req.query;
     const q = {};
-    if (role)     q.role     = role;
+    if (deskWriters === "true") q.role = { $in: WRITER_ROLES };
+    else if (role) q.role = role;
     if (isActive !== undefined) q.isActive = isActive === "true";
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -282,7 +284,7 @@ router.post(
     body("name").trim().notEmpty(),
     body("email").isEmail().normalizeEmail(),
     body("password").isLength({ min: 8 }),
-    body("role").isIn(["admin","editor","writer"]),
+    body("role").isIn(["admin", "editor", "writer", "writer_en", "writer_hi"]),
   ],
   async (req, res) => {
     const errors = validationResult(req);

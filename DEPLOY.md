@@ -1,70 +1,116 @@
-# Deploy: Vercel (web) + Render (API)
+# Deploy: Railway (API) + Vercel (web-next) + Vercel (CMS)
 
-The public site (`web/`) calls the API with `VITE_PUBLIC_API_ORIGIN`. The API (`backend/`) allows browser requests only from origins you list in `CLIENT_URL` / `CLIENT_URLS`.
+Target layout:
 
-## 1. MongoDB
+| Piece | Host | Repo path |
+|-------|------|------------|
+| **API** | [Railway](https://railway.app) | `backend/` |
+| **Public site** | [Vercel](https://vercel.com) | `web-next/` |
+| **Staff CMS** | Vercel (second project) | `cms/` |
 
-Use [MongoDB Atlas](https://www.mongodb.com/atlas) (or any hosted Mongo). Create a database user, allow network access (`0.0.0.0/0` for Render, or Render’s outbound IPs if you lock it down), and copy the **SRV connection string** into `MONGO_URI` on Render.
+The API does **not** run on Vercel as this Express app. The browser talks to Railway for `/api/*` and `/uploads/*`. CORS on the API must allow **both** Vercel origins (public site + CMS).
 
-## 2. Render (backend)
+---
 
-1. In [Render](https://dashboard.render.com): **New +** → **Web Service**, connect this repo.
-2. **Root directory:** `backend`
-3. **Build command:** `npm install`  
-   **Start command:** `npm start`
-4. **Instance type:** Free is fine for testing; note **cold starts** and that the **filesystem is ephemeral** — uploaded images in `uploads/` can disappear on redeploy. For production media, plan object storage (e.g. S3) or a persistent disk.
-5. **Environment** (Render → Environment):
+## 1. MongoDB Atlas
 
-   | Key | Value |
-   |-----|--------|
-   | `NODE_ENV` | `production` |
-   | `MONGO_URI` | Your Atlas URI |
-   | `JWT_SECRET` | Long random string |
-   | `JWT_EXPIRES_IN` | `7d` (optional) |
-   | `CLIENT_URL` | Your Vercel URL, e.g. `https://your-app.vercel.app` |
-   | `SEED_ADMIN_EMAIL` | First admin email |
-   | `SEED_ADMIN_PASSWORD` | Strong password |
-   | `SEED_ADMIN_NAME` | Display name |
-   | `GOOGLE_CLIENT_ID` | (Optional) Web client ID from [Google Cloud Console](https://console.cloud.google.com/apis/credentials) — enables **Google Sign-In** for public readers (`POST /api/reader/auth/google`). |
-   | `READER_JWT_SECRET` | (Optional) Separate secret for reader JWTs; if omitted, `JWT_SECRET` is used with an `aud: "reader"` claim. |
+1. Create a cluster and database user.
+2. **Network Access** → allow **`0.0.0.0/0`** (simplest for Railway) or Railway’s egress IPs if you lock it down.
+3. Copy the **`mongodb+srv://…`** string into Railway as **`MONGO_URI`** (encode special characters in the password, e.g. `@` → `%40`).
 
-   Render sets `PORT` automatically — do not override unless you know you need to.
+---
 
-6. Deploy and copy the service URL (e.g. `https://kothari-news-backend.onrender.com`).
+## 2. Railway (backend)
 
-Optional: connect the repo and use the root [`render.yaml`](./render.yaml) as a **Blueprint** so the service is created from the file; you still add secrets in the dashboard.
+1. [Railway](https://railway.app) → **New Project** → **Deploy from GitHub repo** (or empty project + **GitHub** plugin).
+2. Add a **service** from this repo; set **Root directory** to **`backend`** (or deploy only the `backend` folder).
+3. **Start command:** `npm start` (see [`backend/package.json`](./backend/package.json)). Railway sets **`PORT`** automatically.
+4. Optional: repo includes [`backend/railway.toml`](./backend/railway.toml) with **`/api/health`** for health checks.
 
-## 3. Vercel (frontend)
+### Environment variables (Railway → service → **Variables**)
 
-1. [Vercel](https://vercel.com) → **Add New** → **Project** → import this repo.
-2. **Root directory:** `web`
-3. **Framework:** Vite (auto-detected).
-4. **Environment variables:**
+| Key | Example / notes |
+|-----|------------------|
+| `NODE_ENV` | `production` |
+| `MONGO_URI` | Atlas `mongodb+srv://…` |
+| `JWT_SECRET` | Long random string |
+| `JWT_EXPIRES_IN` | `7d` (optional) |
+| **`CLIENT_URLS`** | **Comma-separated, no spaces:** your **web-next** Vercel URL **and** your **CMS** Vercel URL, e.g. `https://news.vercel.app,https://news-cms.vercel.app` — exact `https://` origins, no path. Alternatively set a single **`CLIENT_URL`** if you only need one. |
+| `SEED_ADMIN_EMAIL` | First admin login email |
+| `SEED_ADMIN_PASSWORD` | Strong password |
+| `SEED_ADMIN_NAME` | Display name |
+| `GOOGLE_CLIENT_ID` | (Optional) Google **Web** OAuth client — reader sign-in on the public site |
+| `READER_JWT_SECRET` | (Optional) Reader JWT secret; defaults to `JWT_SECRET` |
 
-   | Key | Value |
-   |-----|--------|
-   | `VITE_PUBLIC_API_ORIGIN` | Same as Render URL, **no trailing slash**, e.g. `https://kothari-news-backend.onrender.com` |
-   | `VITE_GOOGLE_CLIENT_ID` | (Optional) Same value as `GOOGLE_CLIENT_ID` — shows “Continue with Google” on `/login` and `/register`. |
+5. **Generate domain** (Railway → **Networking** → public URL) and copy the HTTPS origin, e.g. `https://kothari-news-api.up.railway.app` — no trailing slash. This is your **`NEXT_PUBLIC_API_ORIGIN`** (web-next) and **`VITE_API_ORIGIN`** (CMS).
 
-5. Deploy. If client-side routes 404 on refresh, [`web/vercel.json`](./web/vercel.json) already rewrites to `index.html`.
+**Uploads:** Railway’s filesystem is **ephemeral**. Images under `uploads/` can disappear on redeploy. For production, use object storage (e.g. S3) or a volume.
 
-## 4. Point CORS at the live site
+---
 
-After Vercel gives you a URL, set Render **`CLIENT_URL`** (or **`CLIENT_URLS`**, comma-separated) to that exact origin, including `https://`, no path. Redeploy the API if it was deployed before the frontend URL existed.
+## 3. Vercel — public site (`web-next`)
 
-## 5. CMS (optional)
+1. **New Project** → import the same Git repo.
+2. **Root directory:** **`web-next`** (or rely on root [`vercel.json`](./vercel.json) `rootDirectory` when importing from monorepo root).
+3. **Framework:** Next.js. Build: `npm run build` (see [`web-next/package.json`](./web-next/package.json)).
 
-For local dev, `cms/vite.config.js` proxies `/api` to your machine. If you host the CMS on its own URL later, set `axios` `baseURL` in `cms/src/api.js` to your Render API origin and add that CMS origin to **`CLIENT_URLS`** on Render so CORS allows it.
+### Environment variables
 
-## Health check
+| Key | Value |
+|-----|-------|
+| `NEXT_PUBLIC_API_ORIGIN` | Railway public API URL, **no trailing slash** |
+| `NEXT_PUBLIC_SITE_URL` | This Vercel deployment URL, e.g. `https://your-news.vercel.app` |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | (Optional) Same as Railway `GOOGLE_CLIENT_ID` |
 
-Render can use **`/api/health`** (see `render.yaml`) to verify the service is up.
+Redeploy after env changes. `next.config.ts` whitelists that host for **Next/Image** when articles use `/uploads/…` on the API.
+
+---
+
+## 4. Vercel — CMS (`cms`)
+
+Use a **second Vercel project** (same repo, different root).
+
+1. **New Project** → same repo.
+2. **Root directory:** **`cms`**.
+3. **Framework:** Vite (or “Other” with [`cms/vercel.json`](./cms/vercel.json)). **Output directory:** `dist` (from `vite build`).
+4. SPA fallback is configured in **`cms/vercel.json`** (rewrites to `index.html`).
+
+### Environment variables
+
+| Key | Value |
+|-----|-------|
+| **`VITE_API_ORIGIN`** | Same Railway URL as above, **no trailing slash** |
+
+`VITE_*` vars are inlined at **build** time — trigger a **redeploy** after changing them.
+
+Local dev: leave unset; `cms/vite.config.js` proxies `/api` and `/uploads` to `localhost:5050`.
+
+---
+
+## 5. CORS checklist
+
+After both Vercel URLs exist, set Railway **`CLIENT_URLS`** to **both** origins (comma-separated). If you add a custom domain, add those `https://` origins too.
+
+---
 
 ## 6. Google Sign-In (optional)
 
-1. In Google Cloud Console, create **OAuth 2.0 Client ID** → Application type **Web application**.
-2. **Authorized JavaScript origins:** `http://localhost:5280` (public `web/` dev server), and your production site `https://your-app.vercel.app` (no path).
-3. You do **not** need a redirect URI for the ID-token (popup) flow used here.
-4. Copy the **Client ID** into Render `GOOGLE_CLIENT_ID` and Vercel `VITE_GOOGLE_CLIENT_ID` (same string).
+In [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → OAuth Web client → **Authorized JavaScript origins**, add:
 
-Public reader APIs live under **`/api/reader`** (register, login, Google auth, profile, saved articles). They are separate from CMS staff auth under **`/api/auth`**.
+- `http://localhost:5280` (local web-next)
+- Your **production** web-next origin, e.g. `https://your-news.vercel.app`
+- (Only if you use Google on CMS) your CMS origin
+
+Use the same **Client ID** in Railway `GOOGLE_CLIENT_ID` and Vercel `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
+
+---
+
+## 7. Alternative: Render for API
+
+You can host **`backend/`** on [Render](https://render.com) instead of Railway; use the same env vars and point **`NEXT_PUBLIC_API_ORIGIN`** / **`VITE_API_ORIGIN`** at the Render URL. See [`render.yaml`](./render.yaml).
+
+---
+
+## Health check
+
+`GET /api/health` → `{ "status": "ok" }` — use on Railway/Render as the health check path.

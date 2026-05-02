@@ -7,7 +7,7 @@ const recommendationSignalSchema = new mongoose.Schema(
     category: { type: String, default: "", index: true },
     eventType: {
       type: String,
-      enum: ["view", "bookmark", "share", "complete", "category_click"],
+      enum: ["view", "bookmark", "share", "complete", "category_click", "upvote"],
       required: true,
       index: true,
     },

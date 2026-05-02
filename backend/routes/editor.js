@@ -3,6 +3,7 @@ const User = require("../models/User");
 const Article = require("../models/Article");
 const Task = require("../models/Task");
 const { authenticate, authorize } = require("../middleware/auth");
+const { WRITER_ROLES, isWriterRole } = require("../utils/roles");
 
 router.use(authenticate, authorize("editor", "admin"));
 
@@ -22,7 +23,7 @@ router.get("/stats", async (_req, res) => {
       completedTasks,
       overdueTasks,
     ] = await Promise.all([
-      User.countDocuments({ role: "writer", isActive: true }),
+      User.countDocuments({ role: { $in: WRITER_ROLES }, isActive: true }),
       Article.countDocuments(),
       Article.countDocuments({ status: "draft" }),
       Article.countDocuments({ status: "submitted" }),
@@ -89,7 +90,7 @@ router.get("/stats", async (_req, res) => {
 // ── GET /api/editor/writers ───────────────────────────
 router.get("/writers", async (_req, res) => {
   try {
-    const writers = await User.find({ role: "writer" }).select("-password").lean();
+    const writers = await User.find({ role: { $in: WRITER_ROLES } }).select("-password").lean();
 
     const articleStats = await Article.aggregate([
       {
@@ -146,7 +147,7 @@ router.get("/writers", async (_req, res) => {
 router.get("/writers/:id/stats", async (req, res) => {
   try {
     const writer = await User.findById(req.params.id).select("-password").lean();
-    if (!writer || writer.role !== "writer")
+    if (!writer || !isWriterRole(writer.role))
       return res.status(404).json({ message: "Writer not found" });
 
     const [articles, tasks, recentArticles] = await Promise.all([

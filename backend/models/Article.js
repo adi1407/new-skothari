@@ -53,8 +53,8 @@ const articleSchema = new mongoose.Schema(
 
     category: {
       type: String,
-      enum: ["politics", "sports", "tech", "business", "entertainment", "health", "world", "state"],
-      default: "politics",
+      enum: ["desh", "videsh", "rajneeti", "khel", "health", "krishi", "business", "manoranjan"],
+      default: "desh",
     },
 
     tags: [{ type: String, trim: true }],
@@ -102,6 +102,7 @@ const articleSchema = new mongoose.Schema(
 
     // ── Metadata ──
     views: { type: Number, default: 0 },
+    upvotes: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

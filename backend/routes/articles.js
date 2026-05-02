@@ -5,6 +5,10 @@ const { body, query, validationResult } = require("express-validator");
 const Article = require("../models/Article");
 const Task = require("../models/Task");
 const { authenticate, authorize } = require("../middleware/auth");
+const {
+  isWriterRole,
+  writerPrimaryLocaleConstraint,
+} = require("../utils/roles");
 const upload = require("../middleware/upload");
 
 // ── Helpers ──────────────────────────────────────────
@@ -25,11 +29,11 @@ function buildQuery(role, userId, filters = {}) {
   const q = {};
 
   // Writers only see their own articles
-  if (role === "writer") q.author = userId;
+  if (isWriterRole(role)) q.author = userId;
 
   // Status filter
   if (filters.status) q.status = filters.status;
-  else if (role === "writer") {
+  else if (isWriterRole(role)) {
     // writers see all their own statuses (default: no filter beyond author)
   } else if (role === "editor") {
     // editors see submitted + published articles by default
@@ -97,7 +101,7 @@ router.get("/:id", authenticate, async (req, res) => {
     if (!article) return res.status(404).json({ message: "Article not found" });
 
     // Writers can only view their own
-    if (req.user.role === "writer" && article.author._id.toString() !== req.user._id.toString()) {
+    if (isWriterRole(req.user.role) && article.author._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -119,7 +123,7 @@ router.post(
   authorize("writer", "admin"),
   [
     body("category")
-      .isIn(["politics","sports","tech","business","entertainment","health","world","state"])
+      .isIn(["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"])
       .withMessage("Invalid category"),
   ],
   async (req, res) => {
@@ -128,6 +132,9 @@ router.post(
 
     try {
       const primaryLocale = normalizePrimaryLocale(req.body.primaryLocale);
+      const localeErr = writerPrimaryLocaleConstraint(req.user.role, primaryLocale);
+      if (localeErr) return res.status(400).json({ message: localeErr });
+
       const { title, titleHi, summary, summaryHi, body: bodyText, bodyHi,
               category, tags, isBreaking, task: taskId } = req.body;
 
@@ -174,7 +181,7 @@ router.put("/:id", authenticate, async (req, res) => {
 
     const isOwner = article.author.toString() === req.user._id.toString();
 
-    if (req.user.role === "writer") {
+    if (isWriterRole(req.user.role)) {
       if (!isOwner) return res.status(403).json({ message: "Not your article" });
       if (!["draft", "rejected"].includes(article.status))
         return res.status(400).json({ message: "Cannot edit a submitted or published article" });
@@ -191,7 +198,10 @@ router.put("/:id", authenticate, async (req, res) => {
       }
     });
 
-    if (req.user.role !== "writer") {
+    const putLocaleErr = writerPrimaryLocaleConstraint(req.user.role, article.primaryLocale);
+    if (putLocaleErr) return res.status(400).json({ message: putLocaleErr });
+
+    if (!isWriterRole(req.user.role)) {
       article.lastEditedBy = req.user._id;
     }
 
@@ -349,7 +359,7 @@ router.post(
       const article = await Article.findById(req.params.id);
       if (!article) return res.status(404).json({ message: "Article not found" });
 
-      if (req.user.role === "writer") {
+      if (isWriterRole(req.user.role)) {
         if (article.author.toString() !== req.user._id.toString())
           return res.status(403).json({ message: "Not your article" });
         if (!["draft", "rejected"].includes(article.status))
@@ -382,7 +392,7 @@ router.delete("/:id/images/:filename", authenticate, async (req, res) => {
     const article = await Article.findById(req.params.id);
     if (!article) return res.status(404).json({ message: "Article not found" });
 
-    if (req.user.role === "writer" && article.author.toString() !== req.user._id.toString())
+    if (isWriterRole(req.user.role) && article.author.toString() !== req.user._id.toString())
       return res.status(403).json({ message: "Not your article" });
 
     const { filename } = req.params;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckSquare, Clock, Globe, XCircle, Eye, Search } from "lucide-react";
-import { getArticles } from "../../api";
+import { getArticles, mediaUrl } from "../../api";
 
 const TAB_FILTER = {
   submitted: { label: "Pending Review", color: "text-yellow-600 border-yellow-500" },
@@ -143,7 +143,7 @@ export default function EditorDashboard() {
                 {/* Hero image */}
                 <div className="w-20 h-14 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
                   {a.images?.[0] ? (
-                    <img src={a.images[0].url} alt="" className="w-full h-full object-cover" />
+                    <img src={mediaUrl(a.images[0].url)} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Eye size={16} className="text-slate-300" />

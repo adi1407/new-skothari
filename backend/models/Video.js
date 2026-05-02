@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const videoSchema = new mongoose.Schema(
   {
+    primaryLocale: {
+      type: String,
+      enum: ["hi", "en"],
+      default: "en",
+      index: true,
+    },
     title: { type: String, required: true, trim: true, maxlength: 220 },
     titleEn: { type: String, trim: true, maxlength: 220, default: "" },
     summary: { type: String, trim: true, maxlength: 500, default: "" },
@@ -11,8 +17,8 @@ const videoSchema = new mongoose.Schema(
     views: { type: String, trim: true, default: "" },
     category: {
       type: String,
-      enum: ["politics", "sports", "tech", "business", "entertainment", "health", "world", "state"],
-      default: "politics",
+      enum: ["desh", "videsh", "rajneeti", "khel", "health", "krishi", "business", "manoranjan"],
+      default: "desh",
     },
     /** Manual poster override; otherwise web uses YouTube hqdefault from URL */
     thumbnailOverride: { type: String, trim: true, default: "" },
@@ -24,6 +30,8 @@ const videoSchema = new mongoose.Schema(
       index: true,
     },
     publishedAt: { type: Date, default: null },
+    /** Cleared before demo re-seed (`seed.js`) */
+    seedTag: { type: String, trim: true, default: "", index: true },
   },
   { timestamps: true }
 );

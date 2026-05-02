@@ -50,7 +50,7 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain max-lg:pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <main className="cms-shell-main min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain max-lg:pb-[max(1rem,env(safe-area-inset-bottom))] scroll-smooth">
           <Outlet />
         </main>
       </div>

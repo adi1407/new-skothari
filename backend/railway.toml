@@ -1,0 +1,10 @@
+# Railway — https://docs.railway.com/deploy/config-as-code
+# Service root should be `backend/` (set in Railway dashboard or via Railpack).
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+restartPolicyType = "ON_FAILURE"

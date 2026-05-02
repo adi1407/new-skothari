@@ -4,6 +4,7 @@ import {
   LayoutDashboard, FileText, PlusCircle, CheckSquare,
   Users, ClipboardList, LogOut, Rss, ChevronRight, Video, X,
 } from "lucide-react";
+import { isWriterRole, writerDeskLabel } from "../constants/roles";
 
 const WRITER_NAV = [
   { to: "/writer",     label: "My Articles", icon: FileText },
@@ -30,18 +31,25 @@ const ADMIN_NAV = [
   { to: "/editor/queue",   label: "Review",     icon: CheckSquare },
 ];
 
-const NAV_MAP = { admin: ADMIN_NAV, editor: EDITOR_NAV, writer: WRITER_NAV };
+function navForUser(role) {
+  if (role === "admin") return ADMIN_NAV;
+  if (role === "editor") return EDITOR_NAV;
+  if (isWriterRole(role)) return WRITER_NAV;
+  return WRITER_NAV;
+}
 
 const ROLE_BADGE = {
   admin:  "bg-purple-500/15 text-purple-200 ring-1 ring-purple-400/25",
   editor: "bg-sky-500/15 text-sky-200 ring-1 ring-sky-400/25",
   writer: "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/25",
+  writer_en: "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/25",
+  writer_hi: "bg-emerald-500/15 text-emerald-200 ring-1 ring-emerald-400/25",
 };
 
 export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const nav = NAV_MAP[user?.role] || [];
+  const nav = navForUser(user?.role);
 
   const handleSignOut = () => {
     onMobileClose();
@@ -93,8 +101,8 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white">{user?.name}</p>
-            <span className={`mt-1 inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold capitalize ${ROLE_BADGE[user?.role]}`}>
-              {user?.role}
+            <span className={`mt-1 inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold ${ROLE_BADGE[user?.role] || ROLE_BADGE.writer}`}>
+              {writerDeskLabel(user?.role)}
             </span>
           </div>
         </div>

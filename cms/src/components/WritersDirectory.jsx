@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, ChevronRight, FileText, CheckCircle, Clock } from "lucide-react";
+import { writerDeskLabel } from "../constants/roles";
 
 /**
  * @param {object} props
@@ -83,6 +84,9 @@ export default function WritersDirectory({
                   <div>
                     <p className="font-semibold text-slate-800 text-sm">{w.name}</p>
                     <p className="text-xs text-slate-400">{w.email}</p>
+                    <p className="mt-1 text-[11px] font-semibold text-emerald-700">
+                      {writerDeskLabel(w.role)}
+                    </p>
                   </div>
                 </div>
                 <span

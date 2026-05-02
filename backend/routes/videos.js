@@ -23,7 +23,7 @@ router.get(
   [
     query("status").optional().isIn(["draft", "published"]),
     query("category").optional().isIn([
-      "politics", "sports", "tech", "business", "entertainment", "health", "world", "state",
+      "desh", "videsh", "rajneeti", "khel", "health", "krishi", "business", "manoranjan",
     ]),
   ],
   async (req, res) => {
@@ -85,7 +85,7 @@ router.post(
     }),
     body("category")
       .optional()
-      .isIn(["politics", "sports", "tech", "business", "entertainment", "health", "world", "state"]),
+      .isIn(["desh", "videsh", "rajneeti", "khel", "health", "krishi", "business", "manoranjan"]),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -127,8 +127,10 @@ router.put(
       if (!video) return res.status(404).json({ message: "Video not found" });
 
       const allowed = [
+        "primaryLocale",
         "title", "titleEn", "summary", "summaryEn", "youtubeUrl",
         "duration", "views", "category", "thumbnailOverride", "sortOrder", "status", "publishedAt",
+        "seedTag",
       ];
       allowed.forEach((f) => {
         if (req.body[f] !== undefined) video[f] = req.body[f];

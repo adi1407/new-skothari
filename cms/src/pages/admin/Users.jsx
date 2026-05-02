@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { Plus, X, Loader2, AlertCircle, Edit3, UserX } from "lucide-react";
 import { getUsers, createUser, updateUser, deactivateUser } from "../../api";
+import { ALL_USER_ROLES, writerDeskLabel } from "../../constants/roles";
 
 const ROLE_BADGE = {
   admin:  "bg-purple-100 text-purple-700",
   editor: "bg-blue-100 text-blue-700",
   writer: "bg-green-100 text-green-700",
+  writer_en: "bg-green-100 text-green-700",
+  writer_hi: "bg-green-100 text-green-700",
 };
 
 function Modal({ open, onClose, title, children }) {
@@ -32,7 +35,7 @@ function Modal({ open, onClose, title, children }) {
 
 function UserForm({ initial, onSubmit, saving, error, submitLabel }) {
   const [form, setForm] = useState(initial || {
-    name: "", email: "", password: "", role: "writer", bio: "",
+    name: "", email: "", password: "", role: "writer_en", bio: "",
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   return (
@@ -66,7 +69,9 @@ function UserForm({ initial, onSubmit, saving, error, submitLabel }) {
         <label className="block text-sm font-medium text-slate-700 mb-1">Role *</label>
         <select value={form.role} onChange={(e) => set("role", e.target.value)}
           className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-brand bg-white capitalize">
-          {["writer","editor","admin"].map((r) => <option key={r} value={r}>{r}</option>)}
+          {ALL_USER_ROLES.map((r) => (
+            <option key={r} value={r}>{writerDeskLabel(r)}</option>
+          ))}
         </select>
       </div>
       <div>
@@ -155,7 +160,7 @@ export default function Users() {
 
       {/* Role filter */}
       <div className="flex gap-2 mb-6">
-        {["", "admin", "editor", "writer"].map((r) => (
+        {["", ...ALL_USER_ROLES].map((r) => (
           <button
             key={r}
             onClick={() => { setRoleFilter(r); setLoading(true); }}
@@ -165,7 +170,7 @@ export default function Users() {
                 : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
             }`}
           >
-            {r || "All"}
+            {r ? writerDeskLabel(r) : "All"}
           </button>
         ))}
       </div>
@@ -200,8 +205,8 @@ export default function Users() {
                     </div>
                   </td>
                   <td className="px-5 py-3.5">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${ROLE_BADGE[u.role]}`}>
-                      {u.role}
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ROLE_BADGE[u.role] || "bg-slate-100 text-slate-600"}`}>
+                      {writerDeskLabel(u.role)}
                     </span>
                   </td>
                   <td className="px-5 py-3.5">

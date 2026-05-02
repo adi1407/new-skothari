@@ -3,10 +3,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Globe, XCircle, Edit3, Save, Loader2, AlertCircle, CheckCircle,
 } from "lucide-react";
-import { getArticle, updateArticle, publishArticle, unpublishArticle, rejectArticle } from "../../api";
+import {
+  getArticle, updateArticle, publishArticle, unpublishArticle, rejectArticle, mediaUrl,
+} from "../../api";
 import { useAuth } from "../../context/AuthContext";
 
-const CATEGORIES = ["politics","sports","tech","business","entertainment","health","world","state"];
+const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
 
 function Badge({ status }) {
   const map = {
@@ -257,7 +259,7 @@ export default function ArticleReview() {
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               <div className="relative aspect-video">
                 <img
-                  src={article.images[0].url}
+                  src={mediaUrl(article.images[0].url)}
                   alt={(article.primaryLocale === "hi" ? article.titleHi : article.title) || "Article"}
                   className="w-full h-full object-cover"
                 />
@@ -265,7 +267,7 @@ export default function ArticleReview() {
               {article.images.length > 1 && (
                 <div className="flex gap-2 p-3 overflow-x-auto">
                   {article.images.slice(1).map((img, i) => (
-                    <img key={i} src={img.url} alt="" className="w-24 h-16 object-cover rounded flex-shrink-0" />
+                    <img key={i} src={mediaUrl(img.url)} alt="" className="w-24 h-16 object-cover rounded flex-shrink-0" />
                   ))}
                 </div>
               )}

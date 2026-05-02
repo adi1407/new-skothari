@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { WRITER_ROLES } = require("../utils/roles");
 
 // Verify JWT and attach user to req
 async function authenticate(req, res, next) {
@@ -22,10 +23,15 @@ async function authenticate(req, res, next) {
   }
 }
 
-// Role guard factory — usage: authorize("admin"), authorize("admin","editor")
+// Role guard factory — usage: authorize("admin"), authorize("writer","admin")
+// When "writer" is listed, any desk writer role (writer / writer_en / writer_hi) is accepted.
 function authorize(...roles) {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    const ok = roles.some((wanted) => {
+      if (wanted === "writer") return WRITER_ROLES.includes(req.user.role);
+      return req.user.role === wanted;
+    });
+    if (!ok) {
       return res.status(403).json({
         message: `Access denied. Required role: ${roles.join(" or ")}`,
       });

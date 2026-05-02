@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const mongoose = require("mongoose");
 const router = require("express").Router();
 const { body, validationResult } = require("express-validator");
 const Reader = require("../models/Reader");
@@ -9,6 +10,8 @@ const ReaderSession = require("../models/ReaderSession");
 const RecommendationSignal = require("../models/RecommendationSignal");
 const Article = require("../models/Article");
 const { authenticateReader, signReaderToken, readerPublic } = require("../middleware/readerAuth");
+const { setNewsletterSubscription } = require("../services/newsletterSubscription");
+const { sendLatestStoriesNewsletter } = require("../services/newsletterDigest");
 
 function err400(req, res) {
   const errors = validationResult(req);
@@ -51,8 +54,12 @@ router.post(
       const { email, name, googleId, avatar = "" } = req.body;
       let reader = await Reader.findOne({ email });
       if (!reader) {
-        reader = await Reader.create({ email, name, googleId: googleId || null, avatar });
+        const createPayload = { email, name, avatar };
+        if (googleId) createPayload.googleId = googleId;
+        reader = await Reader.create(createPayload);
       } else {
+        // Allow a previously soft-deleted/inactive reader to sign in again via Google.
+        reader.isActive = true;
         reader.name = name || reader.name;
         if (googleId) reader.googleId = googleId;
         if (avatar) reader.avatar = avatar;
@@ -67,6 +74,9 @@ router.post(
 
       res.json({ token, reader: readerPublic(reader, profile) });
     } catch (err) {
+      if (err && err.code === 11000) {
+        return res.status(409).json({ message: "Reader account conflict. Try signing in again." });
+      }
       res.status(500).json({ message: err.message });
     }
   }
@@ -102,6 +112,7 @@ router.put(
     if (err400(req, res)) return;
     try {
       const profile = await ensureProfile(req.reader._id);
+      const prevNl = !!profile.newsletterEnabled;
       const fields = [
         "primaryLanguage",
         "preferredCategories",
@@ -114,7 +125,42 @@ router.put(
         if (req.body[k] !== undefined) profile[k] = req.body[k];
       });
       await profile.save();
+      const nextNl = !!profile.newsletterEnabled;
       res.json({ profile });
+
+      if (!nextNl && prevNl) {
+        void setNewsletterSubscription({
+          email: req.reader.email,
+          displayName: req.reader.name,
+          optIn: false,
+        }).catch((e) => console.warn("[newsletter unsubscribe]", e.message));
+      }
+
+      if (nextNl && !prevNl) {
+        void setNewsletterSubscription({
+          email: req.reader.email,
+          displayName: req.reader.name,
+          optIn: true,
+        }).catch((e) => console.warn("[newsletter subscribe sync]", e.message));
+
+        void (async () => {
+          try {
+            const r = await sendLatestStoriesNewsletter({
+              email: req.reader.email,
+              displayName: req.reader.name,
+              isWelcome: true,
+              digestCadence: profile.digestCadence || "daily",
+              preferredCategories: profile.preferredCategories || [],
+              newsletterTopics: profile.newsletterTopics || [],
+            });
+            if (r.ok && !r.skipped) {
+              await ReaderProfile.findByIdAndUpdate(profile._id, { lastDigestSentAt: new Date() });
+            }
+          } catch (e) {
+            console.warn("[newsletter welcome email]", e.message);
+          }
+        })();
+      }
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
@@ -161,6 +207,23 @@ router.get("/bookmarks", authenticateReader, async (req, res) => {
   }
 });
 
+router.get("/bookmarks/:articleId", authenticateReader, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.articleId)) {
+      return res.json({ bookmarked: false });
+    }
+    const bookmarked = Boolean(
+      await Bookmark.findOne({
+        reader: req.reader._id,
+        article: req.params.articleId,
+      }).select("_id")
+    );
+    res.json({ bookmarked });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.post(
   "/bookmarks",
   authenticateReader,
@@ -193,6 +256,106 @@ router.delete("/bookmarks/:articleId", authenticateReader, async (req, res) => {
   try {
     await Bookmark.deleteOne({ reader: req.reader._id, article: req.params.articleId });
     res.json({ message: "Bookmark removed" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/upvotes/:articleId", authenticateReader, async (req, res) => {
+  try {
+    const hasUpvoted = Boolean(
+      await RecommendationSignal.findOne({
+        reader: req.reader._id,
+        article: req.params.articleId,
+        eventType: "upvote",
+      }).select("_id")
+    );
+    res.json({ hasUpvoted });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/upvotes", authenticateReader, async (req, res) => {
+  try {
+    const rows = await RecommendationSignal.find({ reader: req.reader._id, eventType: "upvote" })
+      .populate({
+        path: "article",
+        match: { status: "published" },
+        select: "primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views upvotes author body bodyHi",
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const seen = new Set();
+    const upvotes = [];
+    for (const row of rows) {
+      if (!row.article?._id) continue;
+      const key = String(row.article._id);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      upvotes.push(row);
+    }
+    res.json({ upvotes });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post(
+  "/upvotes",
+  authenticateReader,
+  [body("articleId").isMongoId()],
+  async (req, res) => {
+    if (err400(req, res)) return;
+    try {
+      const exists = await Article.findOne({ _id: req.body.articleId, status: "published" }).select("category");
+      if (!exists) return res.status(404).json({ message: "Article not found" });
+      const existingUpvote = await RecommendationSignal.findOne({
+        reader: req.reader._id,
+        article: req.body.articleId,
+        eventType: "upvote",
+      }).select("_id");
+      if (!existingUpvote) {
+        await RecommendationSignal.create({
+          reader: req.reader._id,
+          article: req.body.articleId,
+          eventType: "upvote",
+          category: exists.category || "",
+          weight: 4,
+          meta: {},
+        });
+        await Article.updateOne({ _id: req.body.articleId }, { $inc: { upvotes: 1 } });
+      }
+      const signal = await RecommendationSignal.findOne({
+        reader: req.reader._id,
+        article: req.body.articleId,
+        eventType: "upvote",
+      }).lean();
+      const article = await Article.findById(req.body.articleId).select("upvotes").lean();
+      res.status(201).json({ signal, upvoteCount: Number(article?.upvotes || 0) });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.delete("/upvotes/:articleId", authenticateReader, async (req, res) => {
+  try {
+    const result = await RecommendationSignal.deleteMany({
+      reader: req.reader._id,
+      article: req.params.articleId,
+      eventType: "upvote",
+    });
+    if (result.deletedCount > 0) {
+      await Article.updateOne({ _id: req.params.articleId }, { $inc: { upvotes: -1 } });
+      await Article.updateOne(
+        { _id: req.params.articleId, upvotes: { $lt: 0 } },
+        { $set: { upvotes: 0 } }
+      );
+    }
+    const article = await Article.findById(req.params.articleId).select("upvotes").lean();
+    res.json({ message: "Upvote removed", upvoteCount: Number(article?.upvotes || 0) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

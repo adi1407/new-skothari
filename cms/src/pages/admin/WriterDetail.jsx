@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, FileText, Eye, CheckCircle, Clock, XCircle, ClipboardList } from "lucide-react";
 import { getWriterStats as getWriterStatsDefault } from "../../api";
+import { writerDeskLabel } from "../../constants/roles";
 
 const STATUS_BADGE = {
   draft:     "bg-slate-100 text-slate-600",
@@ -57,6 +58,7 @@ export default function WriterDetail({
           <div>
             <h1 className="text-2xl font-bold text-slate-800">{writer.name}</h1>
             <p className="text-slate-400 text-sm">{writer.email}</p>
+            <p className="mt-1 text-xs font-semibold text-emerald-700">{writerDeskLabel(writer.role)}</p>
           </div>
         </div>
       </div>

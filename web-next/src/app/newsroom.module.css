@@ -1,0 +1,376 @@
+.homeMain {
+  /* Navbar offset is applied on .hero-cinematic-wrap inside HeroSection only —
+     do not add padding here or content is double-pushed on mobile. */
+  padding-top: 0;
+  background:
+    radial-gradient(1200px 380px at 50% -160px, color-mix(in srgb, var(--brand-red) 8%, transparent), transparent 70%),
+    radial-gradient(520px 240px at 100% 0%, color-mix(in srgb, var(--accent) 4%, transparent), transparent 55%),
+    var(--bg);
+}
+
+:global([data-theme="dark"]) .homeMain {
+  background:
+    radial-gradient(1280px 420px at 50% -170px, color-mix(in srgb, var(--brand-red) 11%, transparent), transparent 72%),
+    radial-gradient(560px 260px at 100% 0%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 58%),
+    var(--bg);
+}
+
+.sectionStack {
+  display: grid;
+  gap: 36px;
+  min-width: 0;
+  width: 100%;
+}
+
+.sectionBlock {
+  display: grid;
+  gap: 14px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 420px;
+}
+
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--card-border) 86%, transparent);
+}
+
+.sectionHead :global(.section-title) {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.sectionHead :global(.editors-all-btn) {
+  flex-shrink: 0;
+}
+
+.cardsGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.storyLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.leadCard {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 86%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--card-bg) 98%, var(--bg-secondary) 2%) 0%,
+    var(--card-bg) 100%
+  );
+  box-shadow: var(--shadow-ui-rest);
+}
+
+.leadLink {
+  display: grid;
+  gap: 0;
+}
+
+.leadImage {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.leadTextWrap {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.leadTitle {
+  margin: 0;
+  font-size: clamp(21px, 2.2vw, 30px);
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--ink-900);
+  text-wrap: balance;
+}
+
+.leadSummary {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.58;
+  color: var(--ink-600);
+  text-wrap: pretty;
+}
+
+.cardBody {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--card-border) 88%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--card-bg) 98%, var(--bg-secondary) 2%) 0%,
+    var(--card-bg) 100%
+  );
+  box-shadow: var(--shadow-ui-rest);
+  transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), border-color 180ms var(--ease);
+}
+
+.cardBody:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--brand-red) 18%, var(--card-border));
+  box-shadow: var(--shadow-ui-hover);
+}
+
+.cardLink {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.cardImage {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 12px;
+  transition: transform 220ms var(--ease), filter 220ms var(--ease);
+}
+
+.cardBody:hover .cardImage {
+  transform: scale(1.02);
+  filter: saturate(1.03);
+}
+
+.articleLayout {
+  max-width: min(920px, 100%);
+  margin: 0 auto;
+  padding: 0 var(--gutter) max(var(--sp-20), calc(var(--kn-bottom-nav-h, 0px) + var(--sp-10)));
+}
+
+.articleHero {
+  margin-bottom: var(--sp-6);
+  border-radius: var(--r-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-ui-rest);
+}
+
+.articleMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4) 0 var(--sp-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid color-mix(in srgb, var(--card-border) 85%, transparent);
+  margin-bottom: var(--sp-4);
+}
+
+.articleMetaRow a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.articleMetaRow a:hover {
+  color: var(--brand-red);
+}
+
+.articleCrumbSep {
+  opacity: 0.5;
+  user-select: none;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .articleHero {
+  box-shadow: var(--shadow-ui-rest), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+@media (min-width: 1200px) {
+  .homeMain {
+    padding-top: 0;
+    background:
+      radial-gradient(1300px 400px at 50% -170px, color-mix(in srgb, var(--brand-red) 9%, transparent), transparent 72%),
+      radial-gradient(600px 280px at 100% 4%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 58%),
+      var(--bg);
+  }
+
+  :global([data-theme="dark"]) .homeMain {
+    background:
+      radial-gradient(1400px 440px at 50% -175px, color-mix(in srgb, var(--brand-red) 12%, transparent), transparent 74%),
+      radial-gradient(640px 300px at 100% 4%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%),
+      var(--bg);
+  }
+
+  .sectionStack {
+    gap: 48px;
+  }
+
+  .sectionHead {
+    padding-bottom: 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--card-border) 72%, transparent);
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--brand-red) 10%, transparent) 0%,
+      transparent 32%
+    );
+  }
+
+  .cardsGrid {
+    gap: 20px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .storyLayout {
+    grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
+    gap: 22px;
+  }
+
+  .leadCard {
+    border-radius: 18px;
+    box-shadow: var(--shadow-ui-hover);
+    border-color: color-mix(in srgb, var(--card-border) 72%, transparent);
+  }
+
+  .cardBody {
+    border-radius: 16px;
+  }
+
+  .leadTitle {
+    font-size: clamp(22px, 2.1vw, 32px);
+  }
+}
+
+@media (max-width: 900px) {
+  .homeMain {
+    padding-top: 0;
+    padding-bottom: max(20px, calc(var(--kn-bottom-nav-h, 72px) + 8px));
+  }
+
+  .sectionStack {
+    gap: 26px;
+  }
+
+  .sectionHead {
+    gap: 10px;
+    padding-bottom: 6px;
+  }
+
+  .cardsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .storyLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .homeMain {
+    padding-top: 0;
+    padding-bottom: max(24px, calc(var(--kn-bottom-nav-h, 72px) + 12px));
+  }
+
+  .sectionStack {
+    gap: 22px;
+  }
+
+  .sectionHead {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-bottom: 10px;
+  }
+
+  .sectionHead :global(.section-title) {
+    flex: 1 1 100%;
+    font-size: clamp(17px, 5.2vw, 21px);
+    line-height: 1.22;
+    padding-left: 12px;
+    border-left-width: 3px;
+  }
+
+  .sectionHead :global(.editors-all-btn) {
+    margin-left: auto;
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 13px;
+    border-radius: 12px;
+  }
+
+  .cardsGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .sectionBlock {
+    gap: 12px;
+  }
+
+  .leadCard {
+    border-radius: 12px;
+  }
+
+  .leadTextWrap {
+    gap: 8px;
+    padding: 11px 12px 12px;
+  }
+
+  .leadTitle {
+    font-size: clamp(18px, 5.4vw, 23px);
+    line-height: 1.23;
+  }
+
+  .leadSummary {
+    font-size: 14px;
+    line-height: 1.52;
+  }
+
+  .cardBody {
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-ui-rest);
+  }
+
+  .cardBody:hover {
+    transform: none;
+    box-shadow: var(--shadow-ui-rest);
+  }
+
+  .cardLink {
+    gap: 8px;
+  }
+
+  .articleLayout {
+    padding-bottom: calc(var(--sp-20) + var(--kn-bottom-nav-h, 0px));
+  }
+}
+
+/* Dark mode — premium lift on home cards (module-scoped classes) */
+:global([data-theme="dark"]) .leadCard {
+  box-shadow: var(--shadow-ui-hover), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+  border-color: color-mix(in srgb, var(--card-border) 78%, transparent);
+}
+
+:global([data-theme="dark"]) .cardBody {
+  box-shadow: var(--shadow-ui-rest), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:global([data-theme="dark"]) .cardBody:hover {
+  box-shadow: var(--shadow-ui-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardBody:hover .cardImage {
+    transform: none !important;
+    filter: none !important;
+  }
+}

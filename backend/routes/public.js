@@ -1,6 +1,10 @@
 const router = require("express").Router();
+const { body, validationResult } = require("express-validator");
 const Article = require("../models/Article");
 const Video = require("../models/Video");
+const NewsletterSubscriber = require("../models/NewsletterSubscriber");
+const { setNewsletterSubscription } = require("../services/newsletterSubscription");
+const { sendLatestStoriesNewsletter } = require("../services/newsletterDigest");
 
 function localeMatchQuery(req) {
   const loc = String(req.query.locale || "").toLowerCase();
@@ -9,11 +13,22 @@ function localeMatchQuery(req) {
   return {};
 }
 
+function localeVideoMatch(req) {
+  const loc = String(req.query.locale || "").toLowerCase();
+  if (loc === "hi") return { primaryLocale: "hi" };
+  if (loc === "en") {
+    return {
+      $or: [{ primaryLocale: "en" }, { primaryLocale: null }, { primaryLocale: { $exists: false } }],
+    };
+  }
+  return {};
+}
+
 // GET /api/public/videos — published only, for web /shows
 router.get("/videos", async (req, res) => {
   try {
     const { category, limit = 30, page = 1 } = req.query;
-    const q = { status: "published" };
+    const q = { status: "published", ...localeVideoMatch(req) };
     if (category) q.category = category;
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -122,5 +137,65 @@ router.get("/articles/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// POST /api/public/newsletter/subscribe — email-only signup from website footer
+router.post(
+  "/newsletter/subscribe",
+  [
+    body("email").isEmail().normalizeEmail(),
+    body("digestCadence").optional().isIn(["daily", "weekly"]),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const email = String(req.body.email || "").toLowerCase().trim();
+    const digestCadence = req.body.digestCadence === "weekly" ? "weekly" : "daily";
+    try {
+      let sub = await NewsletterSubscriber.findOne({ email });
+      if (sub?.active) {
+        return res.status(200).json({ ok: true, already: true, message: "Already subscribed" });
+      }
+
+      if (!sub) {
+        await NewsletterSubscriber.create({
+          email,
+          active: true,
+          source: "footer",
+          digestCadence,
+        });
+      } else {
+        sub.active = true;
+        sub.digestCadence = digestCadence;
+        await sub.save();
+      }
+
+      await setNewsletterSubscription({
+        email,
+        displayName: "",
+        optIn: true,
+      }).catch((e) => console.warn("[newsletter footer sync]", e.message));
+
+      const r = await sendLatestStoriesNewsletter({
+        email,
+        displayName: "",
+        isWelcome: true,
+        digestCadence,
+      });
+
+      if (r.ok && !r.skipped) {
+        await NewsletterSubscriber.updateOne({ email }, { $set: { lastDigestSentAt: new Date() } });
+      }
+
+      res.status(201).json({ ok: true, message: "Subscribed" });
+    } catch (err) {
+      if (err && err.code === 11000) {
+        return res.status(200).json({ ok: true, already: true });
+      }
+      console.error("[newsletter/subscribe]", err);
+      res.status(500).json({ message: err.message || "Subscribe failed" });
+    }
+  }
+);
 
 module.exports = router;

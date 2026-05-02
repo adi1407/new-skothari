@@ -3,6 +3,7 @@ import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 
 // Writer
 import WriterDashboard from "./pages/writer/WriterDashboard";
@@ -24,11 +25,15 @@ import Tasks          from "./pages/admin/Tasks"; // also used read-only on /edi
 import Users          from "./pages/admin/Users";
 import Videos         from "./pages/admin/Videos";
 import VideoEditor    from "./pages/admin/VideoEditor";
+import { isWriterRole } from "./constants/roles";
+
+const WRITER_ROUTE_ROLES = ["writer", "writer_en", "writer_hi", "admin"];
 
 function RoleHome() {
   const { user } = useAuth();
   if (user?.role === "admin")  return <Navigate to="/admin" replace />;
   if (user?.role === "editor") return <Navigate to="/editor" replace />; // overview
+  if (isWriterRole(user?.role)) return <Navigate to="/writer" replace />;
   return <Navigate to="/writer" replace />;
 }
 
@@ -44,15 +49,16 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* Protected shell */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<RoleHome />} />
 
         {/* Writer */}
-        <Route path="writer" element={<ProtectedRoute roles={["writer","admin"]}><WriterDashboard /></ProtectedRoute>} />
-        <Route path="writer/new"  element={<ProtectedRoute roles={["writer","admin"]}><ArticleEditor /></ProtectedRoute>} />
-        <Route path="writer/edit/:id" element={<ProtectedRoute roles={["writer","admin"]}><ArticleEditor /></ProtectedRoute>} />
+        <Route path="writer" element={<ProtectedRoute roles={WRITER_ROUTE_ROLES}><WriterDashboard /></ProtectedRoute>} />
+        <Route path="writer/new"  element={<ProtectedRoute roles={WRITER_ROUTE_ROLES}><ArticleEditor /></ProtectedRoute>} />
+        <Route path="writer/edit/:id" element={<ProtectedRoute roles={WRITER_ROUTE_ROLES}><ArticleEditor /></ProtectedRoute>} />
 
         {/* Editor desk (editor + admin) */}
         <Route path="editor" element={<ProtectedRoute roles={["editor","admin"]}><EditorOverview /></ProtectedRoute>} />

@@ -10,7 +10,7 @@ const STATUS_BADGE = {
   rejected: "bg-red-100 text-red-700",
 };
 
-const CATEGORIES = ["", "politics", "sports", "tech", "business", "entertainment", "health", "world", "state"];
+const CATEGORIES = ["", "desh", "videsh", "rajneeti", "khel", "health", "krishi", "business", "manoranjan"];
 
 function articleListTitle(a) {
   const pl = a.primaryLocale === "hi" ? "hi" : "en";

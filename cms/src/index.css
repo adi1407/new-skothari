@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import "./cms-auth.css";
 
 @tailwind base;
 @tailwind components;
@@ -131,6 +132,30 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Logged-in shell — premium scroll surface */
+.cms-shell-main {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+  background-image:
+    radial-gradient(ellipse 120% 90% at 50% -30%, rgba(187, 25, 25, 0.055), transparent 52%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.99) 40%, #f1f5f9 100%);
+}
+
+.cms-shell-main::-webkit-scrollbar {
+  width: 8px;
+}
+.cms-shell-main::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.cms-shell-main::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.55);
+  background-clip: padding-box;
 }
 
 /* Prose for article preview */

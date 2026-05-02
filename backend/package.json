@@ -7,7 +7,12 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed:articles": "node scripts/seedArticles.js",
-    "migrate:primary-locale": "node scripts/migrate-primary-locale.js"
+    "seed:refresh-news": "node scripts/refresh-seed-news.js",
+    "seed:news-40": "node scripts/seed-news-40.js",
+    "articles:clear": "node scripts/clear-articles.js",
+    "seed:hindi": "node scripts/seed-hindi-from-existing.js",
+    "migrate:primary-locale": "node scripts/migrate-primary-locale.js",
+    "newsletter:digest": "node scripts/send-newsletter-digest.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

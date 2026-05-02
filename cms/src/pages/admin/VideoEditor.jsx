@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Save, Loader2, AlertCircle } from "lucide-react";
 import { getVideo, createVideo, updateVideo } from "../../api";
 
-const CATEGORIES = ["politics", "sports", "tech", "business", "entertainment", "health", "world", "state"];
+const CATEGORIES = ["desh", "videsh", "rajneeti", "khel", "health", "krishi", "business", "manoranjan"];
 
 function Field({ label, required, children }) {
   return (
@@ -50,7 +50,7 @@ export default function VideoEditor() {
     youtubeUrl: "",
     duration: "",
     views: "",
-    category: "politics",
+    category: "desh",
     thumbnailOverride: "",
     sortOrder: 0,
     status: "draft",
@@ -73,7 +73,7 @@ export default function VideoEditor() {
           youtubeUrl: v.youtubeUrl || "",
           duration: v.duration || "",
           views: v.views || "",
-          category: v.category || "politics",
+          category: v.category || "desh",
           thumbnailOverride: v.thumbnailOverride || "",
           sortOrder: v.sortOrder ?? 0,
           status: v.status || "draft",

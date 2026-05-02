@@ -1,12 +1,12 @@
 {
   "name": "news-kothari",
   "private": true,
-  "description": "Monorepo root — run scripts in web, cms, or backend",
+  "description": "Monorepo root — run scripts in web-next, cms, or backend",
   "scripts": {
-    "dev:web": "npm --prefix web run dev",
-    "build:web": "npm --prefix web run build",
-    "lint:web": "npm --prefix web run lint",
-    "preview:web": "npm --prefix web run preview",
+    "dev:web-next": "npm --prefix web-next run dev",
+    "build:web-next": "npm --prefix web-next run build",
+    "start:web-next": "npm --prefix web-next run start",
+    "lint:web-next": "npm --prefix web-next run lint",
     "dev:cms": "npm --prefix cms run dev",
     "build:cms": "npm --prefix cms run build",
     "dev:backend": "npm --prefix backend run dev",
