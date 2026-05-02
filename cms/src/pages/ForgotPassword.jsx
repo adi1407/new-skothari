@@ -26,18 +26,28 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const { data } = await requestPasswordReset(email.trim());
-      setInfo(data?.message || "");
       const code = typeof data?.otp === "string" ? data.otp : null;
+      setInfo(data?.message || "");
+      if (!code) {
+        /* API returns 200 without `otp` when email is unknown, rate-limited, or throttled — same message for privacy */
+        setInlineOtp(null);
+        setStep(1);
+        return;
+      }
       setInlineOtp(code);
-      setOtp(code ?? "");
+      setOtp(code);
       setStep(2);
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
+      const data = err.response?.data;
+      const firstErr = Array.isArray(data?.errors) ? data.errors[0] : null;
       const msg =
-        err.response?.data?.message ||
-        err.response?.data?.errors?.[0]?.msg ||
-        "Could not request a verification code.";
+        (typeof data?.message === "string" && data.message) ||
+        (typeof firstErr?.msg === "string" && firstErr.msg) ||
+        (err.code === "ERR_NETWORK" || err.message === "Network Error"
+          ? "Cannot reach the API. Set VITE_API_ORIGIN on Vercel (CMS) to your backend URL and redeploy; on Render set CLIENT_URLS to include this CMS site."
+          : "Could not request a verification code.");
       setError(msg);
     } finally {
       setLoading(false);

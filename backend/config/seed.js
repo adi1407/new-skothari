@@ -104,17 +104,36 @@ function buildVideoSeedDocs(now) {
 
 async function seedAdmin() {
   try {
-    const exists = await User.findOne({ role: "admin" });
-    if (exists) return;
+    const email = String(process.env.SEED_ADMIN_EMAIL || "admin@kotharinews.com")
+      .toLowerCase()
+      .trim();
+    const name = process.env.SEED_ADMIN_NAME || "Super Admin";
+    const password = process.env.SEED_ADMIN_PASSWORD || "Admin@1234";
+    const hash = await bcrypt.hash(password, 12);
 
-    const hash = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD || "Admin@1234", 12);
+    const existing = await User.findOne({ email }).select("+password");
+    if (existing) {
+      // One-time recovery: set SEED_ADMIN_SYNC_PASSWORD=1 on Render, redeploy once, then remove it.
+      if (
+        process.env.SEED_ADMIN_SYNC_PASSWORD === "1" &&
+        existing.role === "admin" &&
+        existing.isActive
+      ) {
+        existing.password = hash;
+        existing.name = name;
+        await existing.save();
+        console.log("Admin password/name synced from env (remove SEED_ADMIN_SYNC_PASSWORD after use):", email);
+      }
+      return;
+    }
+
     await User.create({
-      name: process.env.SEED_ADMIN_NAME || "Super Admin",
-      email: process.env.SEED_ADMIN_EMAIL || "admin@kotharinews.com",
+      name,
+      email,
       password: hash,
       role: "admin",
     });
-    console.log("Admin account seeded:", process.env.SEED_ADMIN_EMAIL);
+    console.log("Admin account seeded:", email);
   } catch (err) {
     console.error("Seed error:", err.message);
   }

@@ -206,8 +206,8 @@ export default function ProfilePage() {
               ) : (
                 <div className="profile-alert" role="status">
                   {t(
-                    "Google sign-in कॉन्फ़िगर नहीं है। NEXT_PUBLIC_GOOGLE_CLIENT_ID सेट करें।",
-                    "Google sign-in is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in web-next/.env.local."
+                    "Google sign-in कॉन्फ़िगर नहीं है। Vercel पर web-next प्रोजेक्ट में NEXT_PUBLIC_GOOGLE_CLIENT_ID सेट करके रीडिप्लॉय करें (लोकल: .env.local)।",
+                    "Google sign-in is not configured. In your Vercel web-next project, add Environment Variable NEXT_PUBLIC_GOOGLE_CLIENT_ID (same as Google Cloud Web client ID), then Redeploy. Locally use web-next/.env.local."
                   )}
                 </div>
               )}

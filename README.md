@@ -61,7 +61,7 @@ The public site is backed by **published articles** and **published YouTube vide
 
 ## Production deploy
 
-**Railway** (`backend/`) + **Vercel** (`web-next/`) + **Vercel** (`cms/` — second project). Env vars, CORS (`CLIENT_URLS`), and Google OAuth origins are documented in [`DEPLOY.md`](./DEPLOY.md).
+**Railway** or **Render** (`backend/`) + **Vercel** (`web-next/`) + **Vercel** (`cms/` — second project). CORS and frontends: [`DEPLOY.md`](./DEPLOY.md). **Render** build/start and every API env key: [`RENDER.md`](./RENDER.md).
 
 ## Scripts (root)
 

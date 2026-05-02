@@ -8,7 +8,9 @@ Target layout:
 | **Public site** | [Vercel](https://vercel.com) | `web-next/` |
 | **Staff CMS** | Vercel (second project) | `cms/` |
 
-The API does **not** run on Vercel as this Express app. The browser talks to Railway for `/api/*` and `/uploads/*`. CORS on the API must allow **both** Vercel origins (public site + CMS).
+The API does **not** run on Vercel as this Express app. The browser talks to your API host for `/api/*` and `/uploads/*`. CORS on the API must allow **both** Vercel origins (public site + CMS).
+
+**Hosting the API on Render instead of Railway:** full **build/start commands**, **health check**, and **all environment variable keys and example values** are in **[`RENDER.md`](./RENDER.md)**.
 
 ---
 

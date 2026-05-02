@@ -24,7 +24,20 @@ export default function Login() {
       signIn(data.token, data.user);
       navigate("/");
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed");
+      const dataMsg = err.response?.data?.message;
+      const status = err.response?.status;
+      let msg = dataMsg;
+      if (!msg) {
+        if (err.code === "ERR_NETWORK" || err.message === "Network Error") {
+          msg =
+            "Cannot reach the API. On Vercel set CMS env VITE_API_ORIGIN to your API URL (no trailing slash) and redeploy. On Render set CLIENT_URLS to include this CMS origin.";
+        } else if (status === 401) {
+          msg = "Invalid email or password.";
+        } else {
+          msg = "Login failed.";
+        }
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
