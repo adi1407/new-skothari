@@ -3,12 +3,12 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, useScroll, useSpring } from "framer-motion";
 import {
   ArrowLeft, Clock, Eye, Bookmark, Share2, Link2, ThumbsUp,
-  ChevronRight, Loader2, ArrowUp, MessageCircle,
+  ChevronRight, Loader2, ArrowUp, MessageCircle, Sparkles,
 } from "lucide-react";
 import { categories } from "../data/publicCategories";
 import type { NewsItem } from "../data/mockData";
 import { useLang } from "../context/LangContext";
-import { fetchArticleById, fetchPublishedArticles } from "../services/newsApi";
+import { fetchArticleById, fetchPublishedArticles, fetchRecommendedForArticle } from "../services/newsApi";
 import { adaptArticle, adaptArticles } from "../services/articleAdapter";
 import { useReaderAuth } from "../context/ReaderAuthContext";
 import {
@@ -77,19 +77,67 @@ function RelatedCard({ item, lang }: { item: NewsItem; lang: string }) {
   const color = categoryColors[item.categorySlug] || "#BB1919";
   return (
     <article
-      className="aside-related-card"
+      className="aside-related-card aside-related-card--premium"
       onClick={() => navigate(`/article/${item.id}`)}
       style={{ cursor: "pointer" }}
     >
       <div className="aside-related-img">
         {!err
-          ? <img src={item.image} alt={title} onError={() => setErr(true)} loading="lazy" />
+          ? <img src={item.image} alt="" onError={() => setErr(true)} loading="lazy" />
           : <div style={{ width: "100%", height: "100%", background: color + "22" }} />}
       </div>
       <div className="aside-related-body">
         <span className="aside-related-cat" style={{ color }}>{cat}</span>
         <h4 className="aside-related-title">{title}</h4>
         <div className="aside-related-meta"><Clock size={10} /><span>{time}</span></div>
+      </div>
+    </article>
+  );
+}
+
+/** Large recommendation tiles (main column — desktop grid / mobile carousel). */
+function PremiumRecCard({ item, lang }: { item: NewsItem; lang: string }) {
+  const navigate = useNavigate();
+  const [err, setErr] = useState(false);
+  const title = lang === "hi" ? item.title : item.titleEn;
+  const time  = lang === "hi" ? item.time  : item.timeEn;
+  const cat   = lang === "hi" ? item.category : item.categoryEn;
+  const color = categoryColors[item.categorySlug] || "#BB1919";
+  const go = () => navigate(`/article/${item.id}`);
+
+  return (
+    <article
+      className="article-rec-card"
+      role="link"
+      tabIndex={0}
+      onClick={go}
+      onKeyDown={(e) => e.key === "Enter" && go()}
+    >
+      <div className="article-rec-card-media">
+        {!err ? (
+          <img src={item.image} alt="" className="article-rec-card-img" onError={() => setErr(true)} loading="lazy" />
+        ) : (
+          <div className="article-rec-card-fallback" style={{ background: `linear-gradient(145deg, ${color}33, var(--bg-secondary))` }} />
+        )}
+        <div className="article-rec-card-shade" aria-hidden />
+        {item.isBreaking && (
+          <span className="article-rec-card-breaking">{lang === "hi" ? "ब्रेकिंग" : "Breaking"}</span>
+        )}
+      </div>
+      <div className="article-rec-card-body">
+        <span className="article-rec-card-cat" style={{ color }}>{cat}</span>
+        <h3 className="article-rec-card-title">{title}</h3>
+        <div className="article-rec-card-meta">
+          <Clock size={11} strokeWidth={2} aria-hidden />
+          <span>{time}</span>
+          {typeof item.viewCount === "number" && item.viewCount > 0 && (
+            <>
+              <span className="article-rec-card-dot" aria-hidden>·</span>
+              <Eye size={11} strokeWidth={2} aria-hidden />
+              <span>{formatViewCount(item.viewCount)}</span>
+            </>
+          )}
+        </div>
       </div>
     </article>
   );
@@ -113,7 +161,7 @@ export default function ArticlePage() {
   const [upvoteCount, setUpvoteCount] = useState(0);
   const [copied, setCopied]       = useState(false);
   const [showBackTop, setShowBackTop] = useState(false);
-  const [relatedStories, setRelatedStories] = useState<NewsItem[]>([]);
+  const [recommendedArticles, setRecommendedArticles] = useState<NewsItem[]>([]);
   const [mostReadSidebar, setMostReadSidebar] = useState<NewsItem[]>([]);
 
   useEffect(() => {
@@ -132,21 +180,24 @@ export default function ArticlePage() {
   }, [id]);
 
   useEffect(() => {
-    if (!id || !article || String(article.id) !== id || !article.categorySlug) {
-      setRelatedStories([]);
+    if (!id || !article || String(article.id) !== id) {
+      setRecommendedArticles([]);
       setMostReadSidebar([]);
       return;
     }
     const aid = id;
     let cancelled = false;
     Promise.all([
-      fetchPublishedArticles({ category: article.categorySlug, limit: 14, locale: lang }),
-      fetchPublishedArticles({ limit: 12, page: 2, locale: lang }),
-    ]).then(([relRaw, moreRaw]) => {
+      fetchRecommendedForArticle(aid, { limit: 14, locale: lang }),
+      fetchPublishedArticles({ limit: 24, page: 2, locale: lang }),
+    ]).then(([recRaw, moreRaw]) => {
       if (cancelled) return;
-      const rel = adaptArticles(relRaw).filter((n) => String(n.id) !== aid).slice(0, 6);
-      const more = adaptArticles(moreRaw).filter((n) => String(n.id) !== aid).slice(0, 5);
-      setRelatedStories(rel);
+      const recItems = adaptArticles(recRaw).filter((n) => String(n.id) !== aid);
+      setRecommendedArticles(recItems);
+      const recIds = new Set(recItems.map((r) => String(r.id)));
+      const more = adaptArticles(moreRaw)
+        .filter((n) => String(n.id) !== aid && !recIds.has(String(n.id)))
+        .slice(0, 5);
       setMostReadSidebar(more);
     });
     return () => {
@@ -279,8 +330,8 @@ export default function ArticlePage() {
 
   const color   = categoryColors[article.categorySlug] || "#BB1919";
   const cat     = categories.find(c => c.slug === article.categorySlug);
-  const sideRelated = relatedStories.slice(0, 4);
-  const bottomRelated = relatedStories.slice(0, 3);
+  const sideRelated = recommendedArticles.slice(0, 4);
+  const stripItems = recommendedArticles.slice(0, 8);
   const views   = formatViewCount(article.viewCount ?? 0);
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
   const isHtml  = (s: string) => /<[a-z][\s\S]*>/i.test(s);
@@ -450,18 +501,31 @@ export default function ArticlePage() {
             </div>
           </div>
 
-          {/* Related stories — mobile / bottom (shows only on mobile via CSS) */}
-          {bottomRelated.length > 0 && (
-            <div className="article-related-mobile">
-              <h3 className="article-related-mobile-title" style={{ borderLeftColor: color }}>
-                {t("और खबरें", "More Stories")}
-              </h3>
-              <div className="article-related-mobile-list">
-                {bottomRelated.map(item => (
-                  <RelatedCard key={String(item.id)} item={item} lang={lang} />
+          {/* Recommended — same API mix (category + tags + trending); premium layout all breakpoints */}
+          {stripItems.length > 0 && (
+            <section className="article-rec-strip" aria-labelledby="article-rec-heading">
+              <div className="article-rec-strip-head">
+                <div className="article-rec-strip-icon-wrap" aria-hidden>
+                  <Sparkles size={20} strokeWidth={2} />
+                </div>
+                <div className="article-rec-strip-head-text">
+                  <h2 id="article-rec-heading" className="article-rec-strip-title">
+                    {t("आपके लिए सिफारिश", "Recommended for you")}
+                  </h2>
+                  <p className="article-rec-strip-sub">
+                    {t(
+                      "इसी श्रेणी, टैग और पाठकों में लोकप्रिय खबरों से चुना गया।",
+                      "Picked from this category, shared topics, and what readers are opening next."
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="article-rec-strip-scroll">
+                {stripItems.map((item) => (
+                  <PremiumRecCard key={String(item.id)} item={item} lang={lang} />
                 ))}
               </div>
-            </div>
+            </section>
           )}
         </main>
 
@@ -472,7 +536,7 @@ export default function ArticlePage() {
           {sideRelated.length > 0 && (
             <div className="aside-block">
               <div className="aside-block-header" style={{ borderLeftColor: color }}>
-                <span>{t(`${category} में और`, `More in ${category}`)}</span>
+                <span>{t("संबंधित खबरें", "Related picks")}</span>
               </div>
               <div className="aside-related-list">
                 {sideRelated.map(item => (

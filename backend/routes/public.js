@@ -1,4 +1,5 @@
 const router = require("express").Router();
+const mongoose = require("mongoose");
 const { body, validationResult } = require("express-validator");
 const Article = require("../models/Article");
 const Video = require("../models/Video");
@@ -115,6 +116,83 @@ router.get("/articles", async (req, res) => {
 
     res.json({ articles, total, page: Number(page) });
   } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// GET /api/public/articles/:id/recommendations — same category, tag overlap, then popular/recent (must be before /articles/:id)
+router.get("/articles/:id/recommendations", async (req, res) => {
+  try {
+    const rawId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(rawId)) {
+      return res.json({ articles: [] });
+    }
+    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 24);
+    const localeQ = localeMatchQuery(req);
+
+    const base = await Article.findOne({ _id: rawId, status: "published" }).select("category tags").lean();
+    if (!base) {
+      return res.json({ articles: [] });
+    }
+
+    const sameCat = await Article.find({
+      status: "published",
+      category: base.category,
+      _id: { $ne: base._id },
+      ...localeQ,
+    })
+      .populate("author", "name")
+      .sort({ publishedAt: -1 })
+      .limit(Math.min(10, limit))
+      .lean();
+
+    const pickedIds = [base._id, ...sameCat.map((a) => a._id)];
+    const tagArr = Array.isArray(base.tags)
+      ? base.tags.map((t) => String(t).trim()).filter(Boolean)
+      : [];
+
+    let tagMatches = [];
+    if (tagArr.length) {
+      tagMatches = await Article.find({
+        status: "published",
+        _id: { $nin: pickedIds },
+        tags: { $in: tagArr },
+        ...localeQ,
+      })
+        .populate("author", "name")
+        .sort({ publishedAt: -1 })
+        .limit(8)
+        .lean();
+      pickedIds.push(...tagMatches.map((a) => a._id));
+    }
+
+    const need = limit - sameCat.length - tagMatches.length;
+    const fill =
+      need > 0
+        ? await Article.find({
+            status: "published",
+            _id: { $nin: pickedIds },
+            ...localeQ,
+          })
+            .populate("author", "name")
+            .sort({ views: -1, publishedAt: -1 })
+            .limit(need + 6)
+            .lean()
+        : [];
+
+    const out = [];
+    const seen = new Set();
+    for (const a of [...sameCat, ...tagMatches, ...fill]) {
+      const s = String(a._id);
+      if (seen.has(s)) continue;
+      seen.add(s);
+      out.push(a);
+      if (out.length >= limit) break;
+    }
+
+    res.json({ articles: out });
+  } catch (err) {
+    console.error("[public/articles/:id/recommendations]", err);
     res.status(500).json({ message: "Server error" });
   }
 });

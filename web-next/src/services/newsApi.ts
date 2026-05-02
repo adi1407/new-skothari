@@ -76,6 +76,27 @@ export async function fetchArticleById(id: string): Promise<BackendArticle | nul
   }
 }
 
+/** Personalized mix: same category → shared tags → popular/recent (public). */
+export async function fetchRecommendedForArticle(
+  articleId: string,
+  opts: { limit?: number; locale?: "hi" | "en" } = {}
+): Promise<BackendArticle[]> {
+  try {
+    if (!/^[a-f0-9]{24}$/i.test(articleId)) return [];
+    const params = new URLSearchParams();
+    if (opts.limit) params.set("limit", String(opts.limit));
+    if (opts.locale) params.set("locale", opts.locale);
+    const res = await fetch(publicUrl(`${BASE}/articles/${articleId}/recommendations?${params}`), {
+      signal: apiFetchSignal(),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.articles ?? [];
+  } catch {
+    return [];
+  }
+}
+
 /** Published articles flagged breaking (ticker). */
 export async function fetchBreakingArticles(limit = 20, locale?: "hi" | "en"): Promise<BackendArticle[]> {
   try {
