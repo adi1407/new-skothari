@@ -5,8 +5,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion, useScroll, useSpring } from "framer-motion";
 import {
   ArrowLeft, Clock, Eye, Bookmark, Share2, Link2, ThumbsUp,
-  ChevronRight, Loader2, ArrowUp, MessageCircle, Sparkles,
+  ChevronRight, Loader2, ArrowUp, Sparkles,
 } from "lucide-react";
+import { IconFacebook, IconWhatsApp, IconXLogo } from "../components/icons/ShareBrandIcons";
 import { categories } from "../data/publicCategories";
 import type { NewsItem } from "../data/mockData";
 import { useLang } from "../context/LangContext";
@@ -442,10 +443,13 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
                 {upvoteCount} {t("अपवोट", "upvotes")}
               </span>
               <button className="article-share-btn art-share-wa" onClick={() => shareToWhatsApp(title, pageUrl)}>
-                <MessageCircle size={13} /> WhatsApp
+                <IconWhatsApp size={14} aria-hidden className="article-share-brand-icon" /> WhatsApp
+              </button>
+              <button type="button" className="article-share-btn art-share-tw" onClick={() => shareToTwitter(title, pageUrl)} title="X / Twitter" aria-label="X / Twitter">
+                <IconXLogo size={14} aria-hidden className="article-share-brand-icon" />
               </button>
               <button className="article-share-btn" onClick={handleCopyLink}>
-                <Link2 size={13} />{copied ? t("कॉपी!", "Copied!") : t("लिंक", "Link")}
+                <Link2 size={13} aria-hidden strokeWidth={2} />{copied ? t("कॉपी!", "Copied!") : t("लिंक", "Link")}
               </button>
             </div>
           </div>
@@ -478,20 +482,20 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
             <p className="article-share-section-label">{t("इस खबर को शेयर करें", "Share this story")}</p>
             <div className="article-share-full-row">
               <button className="art-share-btn-full art-share-wa" onClick={() => shareToWhatsApp(title, pageUrl)}>
-                <MessageCircle size={16} /> WhatsApp
+                <IconWhatsApp size={18} aria-hidden className="article-share-brand-icon" /> WhatsApp
               </button>
               <button className="art-share-btn-full art-share-tw" onClick={() => shareToTwitter(title, pageUrl)}>
-                <Share2 size={16} /> X (Twitter)
+                <IconXLogo size={18} aria-hidden className="article-share-brand-icon" /> X (Twitter)
               </button>
               <button className="art-share-btn-full art-share-fb" onClick={() => shareToFacebook(pageUrl)}>
-                <Share2 size={16} /> Facebook
+                <IconFacebook size={18} aria-hidden className="article-share-brand-icon" /> Facebook
               </button>
               <button className="art-share-btn-full" onClick={handleCopyLink}>
-                <Link2 size={16} />{copied ? t("कॉपी हो गया!", "Copied!") : t("लिंक कॉपी करें", "Copy Link")}
+                <Link2 size={18} aria-hidden strokeWidth={2} />{copied ? t("कॉपी हो गया!", "Copied!") : t("लिंक कॉपी करें", "Copy Link")}
               </button>
               {"share" in navigator && (
                 <button className="art-share-btn-full art-share-native" onClick={() => nativeShare(title, pageUrl)}>
-                  <Share2 size={16} /> {t("अन्य", "More")}
+                  <Share2 size={18} aria-hidden strokeWidth={2} /> {t("अन्य", "More")}
                 </button>
               )}
             </div>
@@ -549,19 +553,19 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
             </div>
             <div className="aside-share-grid">
               <button className="aside-share-btn aside-wa" onClick={() => shareToWhatsApp(title, pageUrl)}>
-                <MessageCircle size={16} />
+                <IconWhatsApp size={18} aria-hidden className="article-share-brand-icon" />
                 <span>WhatsApp</span>
               </button>
               <button className="aside-share-btn aside-tw" onClick={() => shareToTwitter(title, pageUrl)}>
-                <Share2 size={16} />
+                <IconXLogo size={18} aria-hidden className="article-share-brand-icon" />
                 <span>X / Twitter</span>
               </button>
               <button className="aside-share-btn aside-fb" onClick={() => shareToFacebook(pageUrl)}>
-                <Share2 size={16} />
+                <IconFacebook size={18} aria-hidden className="article-share-brand-icon" />
                 <span>Facebook</span>
               </button>
               <button className="aside-share-btn" onClick={handleCopyLink}>
-                <Link2 size={16} />
+                <Link2 size={18} aria-hidden strokeWidth={2} />
                 <span>{copied ? t("कॉपी!", "Copied!") : t("लिंक", "Copy Link")}</span>
               </button>
             </div>
@@ -633,7 +637,15 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
           onClick={() => shareToWhatsApp(title, pageUrl)}
           aria-label="WhatsApp"
         >
-          <MessageCircle size={18} />
+          <IconWhatsApp size={22} aria-hidden className="article-share-brand-icon" />
+        </button>
+        <button
+          type="button"
+          className="mobile-strip-btn mobile-strip-tw"
+          onClick={() => shareToTwitter(title, pageUrl)}
+          aria-label="X / Twitter"
+        >
+          <IconXLogo size={20} aria-hidden className="article-share-brand-icon" />
         </button>
         <button
           type="button"
@@ -641,7 +653,7 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
           onClick={() => void handleUnifiedMobileShare()}
           aria-label={t("शेयर करें", "Share")}
         >
-          <Share2 size={18} aria-hidden />
+          <Share2 size={18} strokeWidth={2} aria-hidden />
           <span className="mobile-strip-share-unified-text">{t("शेयर", "Share")}</span>
         </button>
         <button
@@ -650,7 +662,7 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
           onClick={handleCopyLink}
           aria-label={copied ? t("लिंक कॉपी हो गया", "Link copied") : t("लिंक कॉपी करें", "Copy link")}
         >
-          <Link2 size={18} />
+          <Link2 size={18} strokeWidth={2} aria-hidden />
         </button>
         <button
           type="button"
