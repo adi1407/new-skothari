@@ -16,27 +16,22 @@ export default function ForgotPassword() {
   const [showPw2, setShowPw2] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-  const [inlineOtp, setInlineOtp] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const sendCode = async (e) => {
     e.preventDefault();
     setError("");
     setInfo("");
-    setInlineOtp(null);
     setLoading(true);
     try {
       const { data } = await requestPasswordReset(email.trim());
-      const code = typeof data?.otp === "string" ? data.otp : null;
       setInfo(data?.message || "");
-      if (!code) {
-        /* API returns 200 without `otp` when email is unknown, rate-limited, or throttled — same message for privacy */
-        setInlineOtp(null);
+      if (!data?.otpSent) {
+        /* Same generic message when email is unknown, rate-limited, or throttled */
         setStep(1);
         return;
       }
-      setInlineOtp(code);
-      setOtp(code);
+      setOtp("");
       setStep(2);
       setNewPassword("");
       setConfirmPassword("");
@@ -120,7 +115,7 @@ export default function ForgotPassword() {
               <p className="cms-auth-lede">
                 {step === 1
                   ? "Enter your CMS email. If the account exists, you can continue with a verification code."
-                  : "Enter the 6-digit OTP and choose a strong new password."}
+                  : "Enter the 6-digit code from your email and choose a strong new password."}
               </p>
             </div>
           </div>
@@ -128,16 +123,6 @@ export default function ForgotPassword() {
           {info && step === 2 && (
             <div className="cms-auth-alert cms-auth-alert--ok" role="status">
               {info}
-            </div>
-          )}
-
-          {inlineOtp && step === 2 && (
-            <div className="cms-auth-alert cms-auth-alert--otp">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-100/90">
-                Verification code (OTP)
-              </p>
-              <p className="cms-auth-otp-value">{inlineOtp}</p>
-              <p className="cms-auth-otp-note">Valid for 15 minutes. Do not share this code.</p>
             </div>
           )}
 
@@ -178,7 +163,6 @@ export default function ForgotPassword() {
                   setStep(1);
                   setError("");
                   setInfo("");
-                  setInlineOtp(null);
                 }}
               >
                 ← Use a different email

@@ -89,6 +89,13 @@ router.post(
     const now = Date.now();
 
     try {
+      if (!isPasswordResetMailConfigured()) {
+        return res.status(503).json({
+          message:
+            "Password reset email is not configured on the server. Set RESEND_API_KEY and CMS_PASSWORD_RESET_FROM.",
+        });
+      }
+
       const user = await User.findOne({ email }).select(PASSWORD_RESET_FIELDS);
       if (!user || !user.isActive) {
         return res.json({ message: FORGOT_PASSWORD_MESSAGE });
@@ -114,6 +121,18 @@ router.post(
       const otp = generateSixDigitOtp();
       const otpHash = await bcrypt.hash(otp, 10);
 
+      const mailResult = await sendCmsPasswordResetOtp({
+        to: user.email,
+        otp,
+        minutesValid: OTP_EXPIRY_MS / 60000,
+      });
+      if (!mailResult.ok) {
+        console.error("[forgot-password] Resend failed:", mailResult.status, mailResult.data);
+        return res.status(502).json({
+          message: "Could not send the verification email. Try again later or contact support.",
+        });
+      }
+
       user.passwordResetOtpHash = otpHash;
       user.passwordResetOtpExpiresAt = new Date(now + OTP_EXPIRY_MS);
       user.passwordResetLastSentAt = new Date(now);
@@ -121,20 +140,8 @@ router.post(
       user.passwordResetWindowCount = windowCount + 1;
       await user.save();
 
-      if (isPasswordResetMailConfigured()) {
-        const mailResult = await sendCmsPasswordResetOtp({
-          to: user.email,
-          otp,
-          minutesValid: OTP_EXPIRY_MS / 60000,
-        });
-        if (!mailResult.ok) {
-          console.error("[forgot-password] Resend failed:", mailResult.status, mailResult.data);
-        }
-      }
-
-      // Always return `otp` when a new code was issued so the CMS UI can display it.
-      // Optional Resend send above does not hide the code from the API response.
-      return res.json({ message: FORGOT_PASSWORD_MESSAGE, otp });
+      // OTP is only delivered by email — never return it in JSON.
+      return res.json({ message: FORGOT_PASSWORD_MESSAGE, otpSent: true });
     } catch (err) {
       console.error("[forgot-password]", err);
       res.status(500).json({ message: err.message });
