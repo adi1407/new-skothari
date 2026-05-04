@@ -202,12 +202,20 @@ Used by your **frontend** Google SDK; keep in Render if you document it for ops 
 |-----|----------------|--------|
 | `GOOGLE_CLIENT_ID` | `123456789-xxxx.apps.googleusercontent.com` | Same ID as Vercel `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. |
 
-### Optional — Resend (CMS forgot-password email)
+### CMS forgot-password email (SMTP — set on the API service)
+
+CMS “Forgot password” sends a one-time code **only by email** (nodemailer). Without these variables, password reset by email is disabled.
 
 | Key | Example value | Notes |
 |-----|----------------|--------|
-| `RESEND_API_KEY` | `re_xxxxxxxx` | Without this + `CMS_PASSWORD_RESET_FROM`, reset still returns OTP in JSON for CMS UI only. |
-| `CMS_PASSWORD_RESET_FROM` | `"Kothari CMS <onboarding@resend.dev>"` | Verified sender in Resend. |
+| `SMTP_HOST` | `smtp.gmail.com`, `smtp.sendgrid.net`, Amazon SES endpoint, or your mail server | Required. |
+| `SMTP_PORT` | `587` | STARTTLS (typical). Use `465` with `SMTP_SECURE=true` for implicit TLS. |
+| `SMTP_SECURE` | *(omit)*, `false`, or `true` | Set `true` when using port **465**. For port **587**, leave unset or `false`. |
+| `SMTP_USER` | mailbox or API user | Often required (Gmail: full email; use an **app password**, not your login password). |
+| `SMTP_PASS` | secret | Omit only if your relay allows unauthenticated SMTP (rare in production). |
+| `CMS_PASSWORD_RESET_FROM` | `"Kothari CMS <noreply@yourdomain.com>"` | Must be allowed by your provider (same domain / verified sender). |
+
+Optional: `SMTP_FROM` — same role as `CMS_PASSWORD_RESET_FROM` if you prefer that name.
 
 ### Optional — public newsletter (Resend audience or webhook)
 
@@ -287,8 +295,12 @@ Use the **same variable names** on Render as in your machine `backend/.env`. Do 
 | `SEED_ADMIN_EMAIL` | First admin login email |
 | `SEED_ADMIN_PASSWORD` | First admin login password |
 | `SEED_ADMIN_NAME` | Display name, e.g. `Super Admin` |
-| `RESEND_API_KEY` | `re_…` from Resend (or leave empty; CMS still gets OTP in JSON) |
-| `CMS_PASSWORD_RESET_FROM` | Verified sender, e.g. `"Kothari News <onboarding@resend.dev>"` |
+| `SMTP_HOST` | Your SMTP server hostname (required for CMS forgot-password email) |
+| `SMTP_PORT` | Usually `587` (STARTTLS) or `465` (SSL + `SMTP_SECURE=true`) |
+| `SMTP_SECURE` | `true` for port 465; omit or `false` for 587 |
+| `SMTP_USER` | SMTP username (often the mailbox email) |
+| `SMTP_PASS` | SMTP password or app password |
+| `CMS_PASSWORD_RESET_FROM` | `"Kothari CMS <noreply@yourdomain.com>"` — must match what your provider allows |
 
 ### Copy-paste block for Render (edit every value)
 
@@ -302,8 +314,12 @@ GOOGLE_CLIENT_ID=YOUR_NUMERIC_CLIENT_ID.apps.googleusercontent.com
 SEED_ADMIN_EMAIL=admin@yourdomain.com
 SEED_ADMIN_PASSWORD=YourStrongAdminPassword
 SEED_ADMIN_NAME=Super Admin
-RESEND_API_KEY=re_your_resend_key
-CMS_PASSWORD_RESET_FROM="Kothari News <onboarding@resend.dev>"
+SMTP_HOST=smtp.yourprovider.com
+SMTP_PORT=587
+SMTP_SECURE=
+SMTP_USER=noreply@yourdomain.com
+SMTP_PASS=your_smtp_or_app_password
+CMS_PASSWORD_RESET_FROM="Kothari CMS <noreply@yourdomain.com>"
 ```
 
 Add any **optional** keys from §2 (newsletter digest, extra writers, etc.) when you need them. See also [`backend/.env.example`](./backend/.env.example) for the full template including commented options.

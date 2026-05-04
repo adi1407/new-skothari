@@ -89,7 +89,7 @@ router.post(
   }
 );
 
-// ── POST /api/auth/forgot-password  (CMS — OTP via SMTP or Resend) ─
+// ── POST /api/auth/forgot-password  (CMS — OTP via SMTP only) ─
 router.post(
   "/forgot-password",
   forgotPasswordIpLimit,
@@ -105,7 +105,7 @@ router.post(
       if (!isPasswordResetMailConfigured()) {
         return res.status(503).json({
           message:
-            "Password reset email is not configured. Set SMTP_HOST and CMS_PASSWORD_RESET_FROM (and SMTP_USER / SMTP_PASS if required), or use Resend with RESEND_API_KEY and CMS_PASSWORD_RESET_FROM. See backend .env.example.",
+            "Password reset email is not configured. Set SMTP_HOST, CMS_PASSWORD_RESET_FROM, and SMTP_PORT (and SMTP_USER / SMTP_PASS if your server requires auth). See backend .env.example.",
         });
       }
 
@@ -142,14 +142,14 @@ router.post(
       if (!mailResult.ok) {
         const errDetail = mailResult.errorMessage || "";
         console.error(
-          "[forgot-password] Email send failed:",
-          mailResult.via || mailResult.reason,
+          "[forgot-password] SMTP send failed:",
+          mailResult.reason,
           mailResult.status,
           mailResult.data,
           errDetail
         );
         const generic =
-          "Could not send the verification email. For SMTP: check SMTP_HOST, SMTP_PORT, CMS_PASSWORD_RESET_FROM, and credentials. For Resend: check the API key and verified domain/sender.";
+          "Could not send the verification email. Check SMTP_HOST, SMTP_PORT, SMTP_SECURE, CMS_PASSWORD_RESET_FROM, and SMTP_USER / SMTP_PASS (must match what your mail provider expects).";
         const message =
           process.env.NODE_ENV !== "production" && errDetail
             ? `${errDetail}${mailResult.status ? ` (HTTP ${mailResult.status})` : ""}`

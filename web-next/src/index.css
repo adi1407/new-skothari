@@ -2313,6 +2313,7 @@ a { text-decoration:none; color:inherit }
   /* Article page: single column on mobile */
   .article-page-layout { grid-template-columns:1fr; gap:0; padding:0 var(--gutter) var(--sp-20) }
   .article-sidebar { display:none }
+  .article-share-section.article-share-section--desktop-only { display:none !important }
   .article-share-bar-mobile { display:block; padding:var(--sp-4) 0; border-bottom:1px solid var(--card-border); margin-bottom:var(--sp-5) }
   .article-share-bar-label { font-size:11px; font-weight:800; font-family:var(--font-ui); color:var(--text-light); text-transform:uppercase; letter-spacing:.7px; margin-bottom:var(--sp-2) }
   .article-share-bar-btns { display:flex; flex-wrap:wrap; gap:7px }
@@ -2344,6 +2345,11 @@ a { text-decoration:none; color:inherit }
     background:rgba(20,18,16,.94);
     box-shadow:0 -4px 24px rgba(0,0,0,.35);
   }
+  [data-theme="dark"] .mobile-strip-share-unified {
+    background:linear-gradient(180deg, rgba(232,67,67,.12), rgba(232,67,67,.06));
+    border-color:rgba(232,67,67,.65);
+    color:#f87171;
+  }
   .mobile-strip-btn {
     display:flex; align-items:center; justify-content:center;
     width:44px; height:44px; min-width:44px; min-height:44px; border-radius:50%;
@@ -2354,6 +2360,17 @@ a { text-decoration:none; color:inherit }
   .mobile-strip-tw { color:#1DA1F2; border-color:#1DA1F240 }
   .mobile-strip-fb { color:#1877F2; border-color:#1877F240 }
   .mobile-strip-native { color:var(--brand-red); border-color:var(--brand-red) }
+  .mobile-strip-share-unified {
+    display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    flex:1 1 auto; min-width:0; max-width:min(200px, 36vw);
+    height:44px; padding:0 14px; border-radius:22px;
+    border:1.5px solid var(--brand-red); color:var(--brand-red);
+    background:linear-gradient(180deg, rgba(187,25,25,.08), rgba(187,25,25,.04));
+    font-size:13px; font-weight:800; font-family:var(--font-ui);
+    transition:background var(--t), transform .15s;
+  }
+  .mobile-strip-share-unified:active { transform:scale(.98) }
+  .mobile-strip-share-unified-text { white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
   .mobile-strip-bookmark {
     display:flex; align-items:center; justify-content:center;
     width:44px; height:44px; min-width:44px; min-height:44px; border-radius:50%;

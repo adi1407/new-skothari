@@ -338,6 +338,24 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
   const isHtml  = (s: string) => /<[a-z][\s\S]*>/i.test(s);
 
+  const handleUnifiedMobileShare = async () => {
+    if (typeof navigator !== "undefined" && "share" in navigator && navigator.share) {
+      try {
+        await navigator.share({
+          title,
+          text: (summary && summary.length > 0 ? summary : title).slice(0, 500),
+          url: pageUrl,
+        });
+      } catch (e: unknown) {
+        const n = e && typeof e === "object" && "name" in e ? String((e as { name: string }).name) : "";
+        if (n === "AbortError") return;
+        handleCopyLink();
+      }
+    } else {
+      handleCopyLink();
+    }
+  };
+
   return (
     <motion.div className="article-page" initial={false} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
 
@@ -432,30 +450,6 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
             </div>
           </div>
 
-          {/* ── FULL SHARE BAR (mobile: shown after byline, desktop: hidden) ── */}
-          <div className="article-share-bar-mobile">
-            <p className="article-share-bar-label">{t("शेयर करें", "Share")}</p>
-            <div className="article-share-bar-btns">
-              <button className="art-share-pill art-share-wa" onClick={() => shareToWhatsApp(title, pageUrl)}>
-                <MessageCircle size={14} /> WhatsApp
-              </button>
-              <button className="art-share-pill art-share-tw" onClick={() => shareToTwitter(title, pageUrl)}>
-                <Share2 size={14} /> X (Twitter)
-              </button>
-              <button className="art-share-pill art-share-fb" onClick={() => shareToFacebook(pageUrl)}>
-                <Share2 size={14} /> Facebook
-              </button>
-              <button className="art-share-pill" onClick={handleCopyLink}>
-                <Link2 size={14} />{copied ? t("कॉपी!", "Copied!") : t("लिंक कॉपी", "Copy Link")}
-              </button>
-              {"share" in navigator && (
-                <button className="art-share-pill art-share-native" onClick={() => nativeShare(title, pageUrl)}>
-                  <Share2 size={14} /> {t("और", "More")}
-                </button>
-              )}
-            </div>
-          </div>
-
           {/* Article body */}
           <motion.div className="article-body" initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, duration: 0.45 }}>
             {paragraphs.map((para, i) => (
@@ -479,8 +473,8 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
             </div>
           )}
 
-          {/* Bottom share section */}
-          <div className="article-share-section">
+          {/* Bottom share — desktop only (mobile uses sticky strip below nav) */}
+          <div className="article-share-section article-share-section--desktop-only">
             <p className="article-share-section-label">{t("इस खबर को शेयर करें", "Share this story")}</p>
             <div className="article-share-full-row">
               <button className="art-share-btn-full art-share-wa" onClick={() => shareToWhatsApp(title, pageUrl)}>
@@ -631,33 +625,47 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
         </motion.button>
       )}
 
-      {/* ── MOBILE STICKY SHARE BAR ── */}
-      <div className="article-mobile-share-strip">
-        <button className="mobile-strip-btn mobile-strip-wa" onClick={() => shareToWhatsApp(title, pageUrl)}>
+      {/* ── MOBILE: single share row — WhatsApp quick action + system Share sheet + copy + saves ── */}
+      <div className="article-mobile-share-strip" role="toolbar" aria-label={t("शेयर", "Share")}>
+        <button
+          type="button"
+          className="mobile-strip-btn mobile-strip-wa"
+          onClick={() => shareToWhatsApp(title, pageUrl)}
+          aria-label="WhatsApp"
+        >
           <MessageCircle size={18} />
         </button>
-        <button className="mobile-strip-btn mobile-strip-tw" onClick={() => shareToTwitter(title, pageUrl)}>
-          <Share2 size={18} />
+        <button
+          type="button"
+          className="mobile-strip-share-unified"
+          onClick={() => void handleUnifiedMobileShare()}
+          aria-label={t("शेयर करें", "Share")}
+        >
+          <Share2 size={18} aria-hidden />
+          <span className="mobile-strip-share-unified-text">{t("शेयर", "Share")}</span>
         </button>
-        <button className="mobile-strip-btn mobile-strip-fb" onClick={() => shareToFacebook(pageUrl)}>
-          <Share2 size={18} />
-        </button>
-        <button className="mobile-strip-btn" onClick={handleCopyLink}>
+        <button
+          type="button"
+          className="mobile-strip-btn"
+          onClick={handleCopyLink}
+          aria-label={copied ? t("लिंक कॉपी हो गया", "Link copied") : t("लिंक कॉपी करें", "Copy link")}
+        >
           <Link2 size={18} />
         </button>
-        {"share" in navigator && (
-          <button className="mobile-strip-btn mobile-strip-native" onClick={() => nativeShare(title, pageUrl)}>
-            <Share2 size={18} />
-          </button>
-        )}
-        <button className="mobile-strip-bookmark"
+        <button
+          type="button"
+          className="mobile-strip-bookmark"
           onClick={() => void handleBookmarkToggle()}
-          style={bookmarked ? { color: "#BB1919" } : {}}>
+          aria-label={t("बुकमार्क", "Bookmark")}
+          style={bookmarked ? { color: "#BB1919" } : {}}
+        >
           <Bookmark size={18} fill={bookmarked ? "currentColor" : "none"} />
         </button>
         <button
+          type="button"
           className="mobile-strip-bookmark"
           onClick={() => void handleUpvoteToggle()}
+          aria-label={t("अपवोट", "Upvote")}
           style={upvoted ? { color: "#BB1919" } : {}}
         >
           <ThumbsUp size={18} fill={upvoted ? "currentColor" : "none"} />
