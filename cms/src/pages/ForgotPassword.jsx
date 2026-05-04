@@ -25,16 +25,21 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const { data } = await requestPasswordReset(email.trim());
-      setInfo(data?.message || "");
-      if (!data?.otpSent) {
-        /* Same generic message when email is unknown, rate-limited, or throttled */
-        setStep(1);
+      if (data?.otpSent === true) {
+        setOtp("");
+        setStep(2);
+        setNewPassword("");
+        setConfirmPassword("");
+        setInfo(
+          [data?.message, "Check your email for the 6-digit code, then enter it below."]
+            .filter((s) => typeof s === "string" && s.trim())
+            .join(" ")
+        );
         return;
       }
-      setOtp("");
-      setStep(2);
-      setNewPassword("");
-      setConfirmPassword("");
+      /* Same generic message when email is unknown, rate-limited, or throttled */
+      setInfo(data?.message || "");
+      setStep(1);
     } catch (err) {
       const data = err.response?.data;
       const firstErr = Array.isArray(data?.errors) ? data.errors[0] : null;
@@ -120,7 +125,7 @@ export default function ForgotPassword() {
             </div>
           </div>
 
-          {info && step === 2 && (
+          {info && (
             <div className="cms-auth-alert cms-auth-alert--ok" role="status">
               {info}
             </div>

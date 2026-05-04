@@ -23,10 +23,17 @@ export function mediaUrl(pathOrUrl) {
   return `${apiOrigin}${s.startsWith("/") ? s : `/${s}`}`;
 }
 
-// Attach JWT to every request
+// Attach JWT to authenticated CMS routes (omit on public auth endpoints)
 http.interceptors.request.use((cfg) => {
-  const token = localStorage.getItem("cms_token");
-  if (token) cfg.headers.Authorization = `Bearer ${token}`;
+  const path = cfg.url || "";
+  const publicAuth =
+    path.includes("/auth/login") ||
+    path.includes("/auth/forgot-password") ||
+    path.includes("/auth/reset-password");
+  if (!publicAuth) {
+    const token = localStorage.getItem("cms_token");
+    if (token) cfg.headers.Authorization = `Bearer ${token}`;
+  }
   return cfg;
 });
 
