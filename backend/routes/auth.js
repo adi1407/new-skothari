@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const rateLimit = require("express-rate-limit");
 const router = require("express").Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -22,6 +23,17 @@ const PASSWORD_RESET_FIELDS =
   "+passwordResetOtpHash +passwordResetOtpExpiresAt +passwordResetLastSentAt +passwordResetWindowStart +passwordResetWindowCount";
 
 const RESET_PASSWORD_SELECT = `${PASSWORD_RESET_FIELDS} +password`;
+
+/** Per-IP cap on forgot-password (in addition to per-user DB limits below). */
+const forgotPasswordIpLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    message: "Too many password reset attempts from this network. Please try again later.",
+  },
+});
 
 function normalizeOtp(input) {
   return String(input ?? "").replace(/\D/g, "").slice(0, 12);
@@ -77,9 +89,10 @@ router.post(
   }
 );
 
-// ── POST /api/auth/forgot-password  (CMS — OTP, optional Resend) ─
+// ── POST /api/auth/forgot-password  (CMS — OTP via SMTP or Resend) ─
 router.post(
   "/forgot-password",
+  forgotPasswordIpLimit,
   [body("email").isEmail().normalizeEmail()],
   async (req, res) => {
     const errors = validationResult(req);
@@ -92,7 +105,7 @@ router.post(
       if (!isPasswordResetMailConfigured()) {
         return res.status(503).json({
           message:
-            "Password reset email is not configured on the server. Set RESEND_API_KEY and CMS_PASSWORD_RESET_FROM.",
+            "Password reset email is not configured. Set SMTP_HOST and CMS_PASSWORD_RESET_FROM (and SMTP_USER / SMTP_PASS if required), or use Resend with RESEND_API_KEY and CMS_PASSWORD_RESET_FROM. See backend .env.example.",
         });
       }
 
@@ -127,10 +140,21 @@ router.post(
         minutesValid: OTP_EXPIRY_MS / 60000,
       });
       if (!mailResult.ok) {
-        console.error("[forgot-password] Resend failed:", mailResult.status, mailResult.data);
-        return res.status(502).json({
-          message: "Could not send the verification email. Try again later or contact support.",
-        });
+        const errDetail = mailResult.errorMessage || "";
+        console.error(
+          "[forgot-password] Email send failed:",
+          mailResult.via || mailResult.reason,
+          mailResult.status,
+          mailResult.data,
+          errDetail
+        );
+        const generic =
+          "Could not send the verification email. For SMTP: check SMTP_HOST, SMTP_PORT, CMS_PASSWORD_RESET_FROM, and credentials. For Resend: check the API key and verified domain/sender.";
+        const message =
+          process.env.NODE_ENV !== "production" && errDetail
+            ? `${errDetail}${mailResult.status ? ` (HTTP ${mailResult.status})` : ""}`
+            : generic;
+        return res.status(502).json({ message });
       }
 
       user.passwordResetOtpHash = otpHash;

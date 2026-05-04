@@ -7,12 +7,18 @@ const seedAll = require("./config/seed");
 
 const app = express();
 
+// In development, reflect any Origin (LAN IP for phone testing). In production set CLIENT_URL or CLIENT_URLS (comma-separated).
+const isProd = process.env.NODE_ENV === "production";
+
+// Rate limiting and req.ip behind reverse proxies (Render, Railway, etc.)
+if (isProd) {
+  app.set("trust proxy", 1);
+}
+
 // ── Connect DB ──
 connectDB().then(() => seedAll());
 
 // ── Middleware ──
-// In development, reflect any Origin (LAN IP for phone testing). In production set CLIENT_URL or CLIENT_URLS (comma-separated).
-const isProd = process.env.NODE_ENV === "production";
 
 function corsOrigin() {
   if (!isProd) return true;
