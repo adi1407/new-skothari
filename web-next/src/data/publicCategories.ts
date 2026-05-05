@@ -1,6 +1,7 @@
 /** Nav + category routes — no mock article dependency */
 export const categories = [
   { name: "होम", nameEn: "Home", slug: "home" },
+  { name: "ताज़ा", nameEn: "Latest", slug: "latest" },
   { name: "देश", nameEn: "Country", slug: "desh" },
   { name: "विदेश", nameEn: "World", slug: "videsh" },
   { name: "राजनीति", nameEn: "Politics", slug: "rajneeti" },

@@ -16,8 +16,11 @@ export async function generateMetadata(
   const canonicalPath = `/category/${slug}`;
   const category = categories.find((c) => c.slug === slug);
   const label = category?.nameEn ?? slug;
-  const title = `${label} News`;
-  const description = `Latest ${label.toLowerCase()} coverage, breaking updates, explainers, and analysis on ${siteName}.`;
+  const title = slug === "latest" ? `Latest News — ${siteName}` : `${label} News`;
+  const description =
+    slug === "latest"
+      ? `Stories published in the last 3 days on ${siteName}.`
+      : `Latest ${label.toLowerCase()} coverage, breaking updates, explainers, and analysis on ${siteName}.`;
 
   return {
     title,
@@ -53,11 +56,22 @@ export default async function CategoryPage(
   const { slug } = await params;
   const locale = await getServerUiLang();
   const category = categories.find((c) => c.slug === slug);
-  const list = adaptArticles(await fetchPublicArticles({ category: slug, limit: 24, locale }));
+  const list = adaptArticles(
+    await fetchPublicArticles(
+      slug === "latest"
+        ? { latestDays: 3, limit: 24, locale }
+        : { category: slug, limit: 24, locale }
+    )
+  );
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    name: `${locale === "hi" ? category?.name ?? slug : category?.nameEn ?? slug} News`,
+    name:
+      slug === "latest"
+        ? locale === "hi"
+          ? "ताज़ा खबरें"
+          : "Latest news"
+        : `${locale === "hi" ? category?.name ?? slug : category?.nameEn ?? slug} News`,
     url: toAbsoluteUrl(`/category/${slug}`),
     hasPart: list.slice(0, 20).map((item) => ({
       "@type": "NewsArticle",
@@ -72,7 +86,13 @@ export default async function CategoryPage(
         <div className="cat-page-header-inner">
           <h1 className="cat-page-title">{locale === "hi" ? category?.name ?? slug : category?.nameEn ?? slug}</h1>
           <p className="cat-page-count">
-            {locale === "hi" ? `${list.length} खबरें` : `${list.length} stories`}
+            {slug === "latest"
+              ? locale === "hi"
+                ? `${list.length} खबरें · पिछले 3 दिन`
+                : `${list.length} stories · last 3 days`
+              : locale === "hi"
+                ? `${list.length} खबरें`
+                : `${list.length} stories`}
           </p>
         </div>
       </div>

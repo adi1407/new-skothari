@@ -7,12 +7,14 @@ export async function fetchPublicArticles(params: {
   limit?: number;
   page?: number;
   locale?: "hi" | "en";
+  latestDays?: number;
 } = {}): Promise<BackendArticle[]> {
   const qs = new URLSearchParams();
   if (params.category) qs.set("category", params.category);
   if (params.limit) qs.set("limit", String(params.limit));
   if (params.page) qs.set("page", String(params.page));
   if (params.locale) qs.set("locale", params.locale);
+  if (params.latestDays) qs.set("latestDays", String(params.latestDays));
 
   try {
     const res = await fetch(serverApiUrl(`/api/public/articles?${qs.toString()}`), {

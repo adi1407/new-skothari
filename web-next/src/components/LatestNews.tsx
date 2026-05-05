@@ -66,13 +66,13 @@ export default function LatestNews() {
         >
           <div className="section-title-wrap">
             <TrendingUp size={17} style={{ color: "var(--brand-red)" }} aria-hidden />
-            <h2 className="section-title">{t("देश खबरें", "Desh News")}</h2>
+            <h2 className="section-title">{t("ताज़ा खबरें", "Latest News")}</h2>
           </div>
           <button
             type="button"
             className="section-more-btn"
-            aria-label={`${viewAll} — ${t("देश", "Desh")}`}
-            onClick={() => navigate("/category/desh")}
+            aria-label={`${viewAll} — ${t("ताज़ा", "Latest")}`}
+            onClick={() => navigate("/category/latest")}
           >
             {viewAll} <ArrowRight size={14} aria-hidden />
           </button>

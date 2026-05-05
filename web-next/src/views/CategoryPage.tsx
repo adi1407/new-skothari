@@ -12,7 +12,7 @@ import { adaptArticles } from "../services/articleAdapter";
 const catColors: Record<string, string> = {
   desh: "#BB1919", videsh: "#1A3A6B", rajneeti: "#810102",
   khel: "#00695C", health: "#1B6B3A", krishi: "#2E7D32",
-  business: "#7C4A00", manoranjan: "#6B1FA5", home: "#BB1919",
+  business: "#7C4A00", manoranjan: "#6B1FA5", home: "#BB1919", latest: "#BB1919",
 };
 
 export default function CategoryPage() {
@@ -29,8 +29,10 @@ export default function CategoryPage() {
     if (!slug) { setLoading(false); return; }
     setLoading(true);
     const isAllFeed = slug === "home";
+    const isLatest = slug === "latest";
     fetchPublishedArticles({
-      ...(isAllFeed ? {} : { category: slug }),
+      ...(isAllFeed || isLatest ? {} : { category: slug }),
+      ...(isLatest ? { latestDays: 3 } : {}),
       limit: 40,
       locale: lang,
     }).then((articles) => {
@@ -71,7 +73,11 @@ export default function CategoryPage() {
           <div style={{ marginTop: 20 }}>
             <h1 className="cat-page-title">{catName}</h1>
             <p className="cat-page-count" style={{ color }}>
-              {loading ? "…" : stories.length} {t("खबरें", "stories")}
+              {loading
+                ? "…"
+                : slug === "latest"
+                  ? `${stories.length} ${t("खबरें · पिछले 3 दिन", "stories · last 3 days")}`
+                  : `${stories.length} ${t("खबरें", "stories")}`}
             </p>
           </div>
         </div>
