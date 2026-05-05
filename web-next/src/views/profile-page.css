@@ -243,40 +243,59 @@
 [data-theme="dark"] .profile-nav,
 [data-theme="dark"] .profile-card,
 [data-theme="dark"] .profile-head-signedin {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--card-bg) 92%, #000) 0%,
-    color-mix(in srgb, var(--card-bg) 98%, var(--bg-secondary)) 100%
-  );
+  background: linear-gradient(180deg, #231d19 0%, #1c1714 100%);
   border-color: color-mix(in srgb, var(--card-border) 82%, rgba(255, 255, 255, 0.1));
-  box-shadow: var(--shadow-ui-rest), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .profile-title,
+[data-theme="dark"] .profile-h3,
+[data-theme="dark"] .profile-row-title,
+[data-theme="dark"] .profile-signin-title,
+[data-theme="dark"] .profile-signin-card-title {
+  color: #f6f1ea;
+}
+
+[data-theme="dark"] .profile-sub,
+[data-theme="dark"] .profile-meta-line,
+[data-theme="dark"] .profile-signin-lead,
+[data-theme="dark"] .profile-trust-line,
+[data-theme="dark"] .profile-label,
+[data-theme="dark"] .profile-toast {
+  color: #d2c8bc;
+}
+
+[data-theme="dark"] .profile-head-signedin .profile-sub,
+[data-theme="dark"] .profile-head-signedin .profile-meta-line {
+  color: #ded4c8;
 }
 
 [data-theme="dark"] .profile-tab {
-  background: color-mix(in srgb, var(--bg-secondary) 84%, #000);
-  color: var(--ink-700);
+  background: #171311;
+  color: #e7ddd1;
 }
 [data-theme="dark"] .profile-tab:hover {
   border-color: color-mix(in srgb, var(--card-border) 76%, rgba(255, 255, 255, 0.1));
-  background: color-mix(in srgb, var(--bg-secondary) 66%, #000);
-  color: var(--ink-900);
+  background: #231b17;
+  color: #fff6ed;
 }
 [data-theme="dark"] .profile-tab.active {
   border-color: color-mix(in srgb, var(--brand-red) 66%, rgba(255, 255, 255, 0.12));
-  background: color-mix(in srgb, var(--brand-red) 22%, #000);
+  background: color-mix(in srgb, var(--brand-red) 30%, #000);
 }
 
 [data-theme="dark"] .profile-input {
-  background: color-mix(in srgb, var(--bg-secondary) 78%, #000);
+  background: #151210;
   border-color: color-mix(in srgb, var(--card-border) 78%, rgba(255, 255, 255, 0.08));
+  color: #f2ebe2;
 }
 [data-theme="dark"] .profile-input::placeholder {
-  color: var(--ink-500);
+  color: #ad9f90;
 }
 [data-theme="dark"] .profile-link,
 [data-theme="dark"] .profile-row,
 [data-theme="dark"] .profile-row-title {
-  color: var(--ink-800);
+  color: #ece3d7;
 }
 [data-theme="dark"] .profile-pill {
   background: color-mix(in srgb, var(--brand-red) 22%, #000);

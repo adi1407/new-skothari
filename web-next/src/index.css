@@ -5100,6 +5100,12 @@ a { text-decoration:none; color:inherit }
   color: #f4eee7;
 }
 
+[data-theme="dark"] .cat-page-title,
+[data-theme="dark"] .section-title,
+[data-theme="dark"] .article-headline {
+  color: #f7f1ea;
+}
+
 [data-theme="dark"] .reader-auth-label,
 [data-theme="dark"] .privacy-h2,
 [data-theme="dark"] .inst-h2,
@@ -5126,7 +5132,7 @@ a { text-decoration:none; color:inherit }
 [data-theme="dark"] .inst-section p,
 [data-theme="dark"] .inst-value-label,
 [data-theme="dark"] .inst-aside-accent-text {
-  color: var(--ink-700);
+  color: #ddd3c6;
 }
 
 [data-theme="dark"] .inst-pill {
@@ -5153,7 +5159,19 @@ a { text-decoration:none; color:inherit }
 }
 [data-theme="dark"] .shows-page-card-summary,
 [data-theme="dark"] .shows-meta {
-  color: var(--ink-600);
+  color: #cfc3b6;
+}
+
+[data-theme="dark"] .cat-page-count,
+[data-theme="dark"] .section-subtitle,
+[data-theme="dark"] .reader-auth-sub,
+[data-theme="dark"] .privacy-updated,
+[data-theme="dark"] .inst-lead,
+[data-theme="dark"] .card-summary,
+[data-theme="dark"] .latest-grid-meta,
+[data-theme="dark"] .mostread-meta,
+[data-theme="dark"] .cat-main-summary {
+  color: #cdbfae;
 }
 
 [data-theme="dark"] .profile-shell,
