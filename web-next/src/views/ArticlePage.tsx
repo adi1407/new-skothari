@@ -33,6 +33,12 @@ const categoryColors: Record<string, string> = {
 
 function isMongoId(id: string) { return /^[a-f0-9]{24}$/.test(id); }
 
+function upvoteCountFromApi(res: unknown): number | null {
+  if (!res || typeof res !== "object" || !("upvoteCount" in res)) return null;
+  const n = Number((res as { upvoteCount: unknown }).upvoteCount);
+  return Number.isFinite(n) ? n : null;
+}
+
 function formatViewCount(n: number): string {
   if (n >= 1_000_000) {
     const v = n / 1_000_000;
@@ -170,16 +176,31 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
   useEffect(() => {
     setLoading(true); setImgErr(false);
     window.scrollTo({ top: 0, behavior: "instant" });
-    if (!id) { setLoading(false); return; }
-    if (!isMongoId(id)) {
-      setArticle(null);
+    if (!id) {
       setLoading(false);
       return;
     }
-    fetchArticleById(id).then((a) => {
-      setArticle(a ? adaptArticle(a) : null);
+    if (!isMongoId(id)) {
+      setArticle(null);
+      setUpvoteCount(0);
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    fetchArticleById(id).then((raw) => {
+      if (cancelled) return;
+      const next = raw ? adaptArticle(raw) : null;
+      setArticle(next);
+      if (next) {
+        setUpvoteCount(typeof next.upvoteCount === "number" ? next.upvoteCount : 0);
+      } else {
+        setUpvoteCount(0);
+      }
       setLoading(false);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   useEffect(() => {
@@ -207,10 +228,6 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
       cancelled = true;
     };
   }, [id, article, lang]);
-
-  useEffect(() => {
-    setUpvoteCount(article?.upvoteCount ?? 0);
-  }, [article?.id, article?.upvoteCount]);
 
   useEffect(() => {
     const onScroll = () => setShowBackTop(window.scrollY > 600);
@@ -250,8 +267,9 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
       setUpvoted(false);
       setUpvoteCount((c) => Math.max(0, c - 1));
       const res = await removeUpvote(token, id).catch(() => null);
-      if (res && typeof res.upvoteCount === "number") {
-        setUpvoteCount(res.upvoteCount);
+      const serverCount = upvoteCountFromApi(res);
+      if (serverCount != null) {
+        setUpvoteCount(serverCount);
       } else {
         setUpvoted(true);
         setUpvoteCount((c) => c + 1);
@@ -261,8 +279,9 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
     setUpvoted(true);
     setUpvoteCount((c) => c + 1);
     const res = await addUpvote(token, id).catch(() => null);
-    if (res && typeof res.upvoteCount === "number") {
-      setUpvoteCount(res.upvoteCount);
+    const serverCount = upvoteCountFromApi(res);
+    if (serverCount != null) {
+      setUpvoteCount(serverCount);
     } else {
       setUpvoted(false);
       setUpvoteCount((c) => Math.max(0, c - 1));
@@ -274,9 +293,19 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
       setUpvoted(false);
       return;
     }
-    hasUpvoted(token, id)
-      .then((r) => setUpvoted(Boolean(r.hasUpvoted)))
-      .catch(() => setUpvoted(false));
+    let cancelled = false;
+    const tok = token;
+    const aid = id;
+    hasUpvoted(tok, aid)
+      .then((r) => {
+        if (!cancelled) setUpvoted(Boolean(r.hasUpvoted));
+      })
+      .catch(() => {
+        if (!cancelled) setUpvoted(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [token, id]);
 
   useEffect(() => {
@@ -284,9 +313,19 @@ export default function ArticlePage({ articleId }: { articleId: string }) {
       setBookmarked(false);
       return;
     }
-    hasBookmarked(token, id)
-      .then((r) => setBookmarked(Boolean(r.bookmarked)))
-      .catch(() => setBookmarked(false));
+    let cancelled = false;
+    const tok = token;
+    const aid = id;
+    hasBookmarked(tok, aid)
+      .then((r) => {
+        if (!cancelled) setBookmarked(Boolean(r.bookmarked));
+      })
+      .catch(() => {
+        if (!cancelled) setBookmarked(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [token, id]);
 
   useEffect(() => {

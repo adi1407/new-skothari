@@ -45,7 +45,6 @@ import {
   removeUpvote,
   sendSignal,
 } from "../../services/readerApi";
-import { fetchArticleById } from "../../services/newsApi";
 
 interface Props {
   articleId: string;
@@ -61,6 +60,12 @@ function openWin(url: string) {
 function buildShareText(title: string, summary: string | undefined, url: string) {
   const line = summary?.trim()?.slice(0, 160);
   return line ? `${title}\n\n${line}\n\n${url}` : `${title}\n\n${url}`;
+}
+
+function upvoteCountFromApi(res: unknown): number | null {
+  if (!res || typeof res !== "object" || !("upvoteCount" in res)) return null;
+  const n = Number((res as { upvoteCount: unknown }).upvoteCount);
+  return Number.isFinite(n) ? n : null;
 }
 
 export default function ArticleInteractions({
@@ -84,20 +89,6 @@ export default function ArticleInteractions({
   useEffect(() => {
     setUpvotes(initialUpvotes);
   }, [articleId, initialUpvotes]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchArticleById(articleId)
-      .then((a) => {
-        if (cancelled || !a) return;
-        const n = typeof a.upvotes === "number" ? a.upvotes : 0;
-        setUpvotes(n);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [articleId]);
 
   useEffect(() => {
     if (!token) return;
@@ -157,18 +148,16 @@ export default function ArticleInteractions({
       if (upvoted) {
         const res = await removeUpvote(token, articleId);
         setUpvoted(false);
-        setUpvotes(typeof res.upvoteCount === "number" ? res.upvoteCount : Math.max(0, upvotes - 1));
+        const n = upvoteCountFromApi(res);
+        setUpvotes(n != null ? n : Math.max(0, upvotes - 1));
       } else {
         const res = await addUpvote(token, articleId);
         setUpvoted(true);
-        setUpvotes(typeof res.upvoteCount === "number" ? res.upvoteCount : upvotes + 1);
+        const n = upvoteCountFromApi(res);
+        setUpvotes(n != null ? n : upvotes + 1);
       }
     } catch {
-      fetchArticleById(articleId)
-        .then((a) => {
-          if (a && typeof a.upvotes === "number") setUpvotes(a.upvotes);
-        })
-        .catch(() => {});
+      /* keep optimistic count; user can refresh */
     }
   };
 

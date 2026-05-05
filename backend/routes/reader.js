@@ -52,7 +52,13 @@ router.post(
     if (err400(req, res)) return;
     try {
       const { email, name, googleId, avatar = "" } = req.body;
-      let reader = await Reader.findOne({ email });
+      let reader = null;
+      if (googleId) {
+        reader = await Reader.findOne({ googleId });
+      }
+      if (!reader) {
+        reader = await Reader.findOne({ email });
+      }
       if (!reader) {
         const createPayload = { email, name, avatar };
         if (googleId) createPayload.googleId = googleId;
@@ -60,6 +66,7 @@ router.post(
       } else {
         // Allow a previously soft-deleted/inactive reader to sign in again via Google.
         reader.isActive = true;
+        reader.email = email;
         reader.name = name || reader.name;
         if (googleId) reader.googleId = googleId;
         if (avatar) reader.avatar = avatar;

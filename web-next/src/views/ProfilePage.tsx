@@ -59,15 +59,37 @@ export default function ProfilePage() {
   }, [profile]);
 
   useEffect(() => {
-    if (!token || !isAuthenticated) return;
+    if (!token || !isAuthenticated) {
+      setBookmarks([]);
+      setLikedPosts([]);
+      setPanelLoading(false);
+      setPanelError("");
+      return;
+    }
+    let cancelled = false;
+    const loadToken = token;
     setPanelLoading(true);
     setPanelError("");
     Promise.all([
-      listBookmarks(token).then((r) => setBookmarks(r.bookmarks || [])),
-      listUpvotes(token).then((r) => setLikedPosts(r.upvotes || [])),
+      listBookmarks(loadToken).then((r) => r.bookmarks || []),
+      listUpvotes(loadToken).then((r) => r.upvotes || []),
     ])
-      .catch(() => setPanelError(t("प्रोफ़ाइल डेटा लोड नहीं हुआ।", "Could not load profile data.")))
-      .finally(() => setPanelLoading(false));
+      .then(([nextBookmarks, nextLiked]) => {
+        if (cancelled) return;
+        setBookmarks(nextBookmarks);
+        setLikedPosts(nextLiked);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPanelError(t("प्रोफ़ाइल डेटा लोड नहीं हुआ।", "Could not load profile data."));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPanelLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [token, isAuthenticated, t]);
 
   const welcome = useMemo(
