@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Clock, Eye, ExternalLink, Tv2 } from "lucide-react";

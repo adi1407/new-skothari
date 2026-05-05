@@ -1,18 +1,31 @@
-import { Link } from "react-router-dom";
-import { useLang } from "../context/LangContext";
+"use client";
 
-export default function CookiesPage() {
+import { Link } from "react-router-dom";
+import { useLang } from "../../../context/LangContext";
+
+export default function CookiesPageClient() {
   const { t } = useLang();
   const updated = "May 5, 2026";
 
   return (
-    <main className="privacy-page article-page">
+    <main className="privacy-page legal-page article-page">
       <div className="privacy-page-inner section-inner">
-        <p className="privacy-kicker">{t("कानूनी", "Legal")}</p>
+        <p className="privacy-kicker">{t("कानूनी दस्तावेज", "Legal documentation")}</p>
         <h1 className="privacy-title">{t("कुकी नीति", "Cookies policy")}</h1>
         <p className="privacy-updated">
           {t("अंतिम अपडेट", "Last updated")}: {updated}
         </p>
+        <p className="legal-lead">
+          {t(
+            "यह कुकी नीति बताती है कि हम वेबसाइट पर कुकीज़, लोकल स्टोरेज और समान तकनीकों का उपयोग कैसे करते हैं, ताकि सेवा सुरक्षित, उपयोगी और व्यक्तिगत प्राथमिकताओं के अनुरूप रहे।",
+            "This Cookies Policy explains how we use cookies, local storage, and similar technologies to keep the service secure, useful, and aligned with your preferences."
+          )}
+        </p>
+        <div className="legal-chip-row" aria-label={t("मुख्य बिंदु", "Key highlights")}>
+          <span className="legal-chip">{t("आवश्यक कुकीज़", "Essential cookies")}</span>
+          <span className="legal-chip">{t("उपयोग नियंत्रण", "User controls")}</span>
+          <span className="legal-chip">{t("तृतीय-पक्ष संकेत", "Third-party signals")}</span>
+        </div>
 
         <section className="privacy-section">
           <h2 className="privacy-h2">{t("कुकी क्या हैं", "What cookies are")}</h2>
@@ -59,12 +72,54 @@ export default function CookiesPage() {
         </section>
 
         <section className="privacy-section">
+          <h2 className="privacy-h2">{t("प्रत्येक श्रेणी का उद्देश्य", "Purpose of each category")}</h2>
+          <ul className="privacy-list">
+            <li>
+              {t(
+                "आवश्यक कुकीज़: लॉगिन सत्र, API सुरक्षा, CSRF/दुरुपयोग सुरक्षा और बुनियादी कार्यप्रवाह बनाए रखने में मदद करती हैं।",
+                "Essential cookies: help maintain login sessions, API security, CSRF/abuse protections, and core workflows."
+              )}
+            </li>
+            <li>
+              {t(
+                "प्राथमिकता कुकीज़: आपकी भाषा, थीम और उपयोग अनुभव से संबंधित विकल्प याद रखती हैं।",
+                "Preference cookies: remember language, theme, and user-experience choices."
+              )}
+            </li>
+            <li>
+              {t(
+                "विश्लेषण श्रेणी: समेकित स्तर पर प्रदर्शन, एरर ट्रेंड और फीचर गुणवत्ता को समझने में सहायता करती है।",
+                "Analytics category: supports aggregate understanding of performance, error trends, and feature quality."
+              )}
+            </li>
+          </ul>
+        </section>
+
+        <section className="privacy-section">
           <h2 className="privacy-h2">{t("हमारी साइट पर सामान्य उदाहरण", "Common examples on our site")}</h2>
           <ul className="privacy-list">
             <li>{t("रीडर सत्र टोकन और ऑथ स्टेट", "Reader session token and auth state")}</li>
             <li>{t("भाषा/थीम प्राथमिकताएं", "Language/theme preferences")}</li>
             <li>{t("न्यूज़लेटर सदस्यता स्थिति", "Newsletter subscription state")}</li>
             <li>{t("सुरक्षा व दुरुपयोग रोकथाम संकेत", "Security and abuse-prevention signals")}</li>
+          </ul>
+        </section>
+
+        <section className="privacy-section">
+          <h2 className="privacy-h2">{t("कुकी की अवधि", "Cookie duration")}</h2>
+          <ul className="privacy-list">
+            <li>
+              {t(
+                "सेशन कुकीज़: ब्राउज़र सत्र समाप्त होने तक सक्रिय रहती हैं।",
+                "Session cookies: remain active until your browser session ends."
+              )}
+            </li>
+            <li>
+              {t(
+                "स्थायी कुकीज़/लोकल स्टोरेज: सेटिंग्स याद रखने के लिए अधिक समय तक रह सकती हैं, जब तक आप हटाएं या वे स्वतः समाप्त हों।",
+                "Persistent cookies/local storage: may stay longer to remember settings until deleted or expired."
+              )}
+            </li>
           </ul>
         </section>
 
@@ -76,6 +131,11 @@ export default function CookiesPage() {
               "You can delete or block cookies from your browser settings. Note: disabling essential cookies may impact sign-in, bookmarks, and some interactive features."
             )}
           </p>
+          <ul className="privacy-list">
+            <li>{t("ब्राउज़र सेटिंग्स से कुकी प्रबंधन करें", "Manage cookies through browser settings")}</li>
+            <li>{t("लोकल स्टोरेज/कैश समय-समय पर साफ करें", "Clear local storage/cache periodically")}</li>
+            <li>{t("न्यूज़लेटर ईमेल में अनसब्सक्राइब विकल्प का उपयोग करें", "Use unsubscribe options in newsletter emails")}</li>
+          </ul>
         </section>
 
         <section className="privacy-section">
@@ -86,9 +146,15 @@ export default function CookiesPage() {
               "Where applicable, we use limited third-party services (such as authentication, email delivery, or hosting). They may use technical cookies or similar signals to operate their services."
             )}
           </p>
+          <p>
+            {t(
+              "तृतीय-पक्ष सेवाओं द्वारा रखी गई कुकीज़ के लिए संबंधित सेवा प्रदाता की नीतियां लागू होंगी। हम केवल आवश्यक एकीकरण तक सीमित रहने का प्रयास करते हैं।",
+              "For cookies placed by third-party services, the respective provider's policy applies. We aim to keep integrations limited to what is operationally necessary."
+            )}
+          </p>
         </section>
 
-        <section className="privacy-section">
+        <section className="privacy-section legal-note-section">
           <h2 className="privacy-h2">{t("अपडेट", "Updates")}</h2>
           <p>
             {t(

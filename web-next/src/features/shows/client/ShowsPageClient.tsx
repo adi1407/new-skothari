@@ -1,6 +1,6 @@
 "use client";
 
-import ShowsPageView from "../../views/ShowsPage";
+import ShowsPageView from "../../../views/ShowsPage";
 
 export default function ShowsPageClient() {
   return <ShowsPageView />;

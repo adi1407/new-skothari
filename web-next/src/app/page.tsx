@@ -3,10 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import HeroSection from "../components/HeroSection";
 import NewsTicker from "../components/NewsTicker";
+import { homeSections } from "../features/home/config/sections";
+import { dek, headline, pickCategory } from "../features/home/server/homeFeed";
 import { adaptArticles } from "../services/articleAdapter";
 import { fetchPublicArticles } from "../lib/serverPublicApi";
 import { getServerUiLang } from "../lib/serverLocale";
-import type { NewsItem } from "../data/mockData";
 import { defaultDescription, siteName } from "../lib/seo/metadataHelpers";
 import styles from "./newsroom.module.css";
 
@@ -28,40 +29,17 @@ export const metadata: Metadata = {
   },
 };
 
-function pickCategory<T extends { categorySlug: string }>(feed: T[], slug: string, max: number): T[] {
-  return feed.filter((a) => a.categorySlug === slug).slice(0, max);
-}
-
-function headline(item: NewsItem, locale: "hi" | "en") {
-  return locale === "hi" ? item.title || item.titleEn : item.titleEn || item.title;
-}
-
-function dek(item: NewsItem, locale: "hi" | "en") {
-  return locale === "hi" ? item.summary || item.summaryEn : item.summaryEn || item.summary;
-}
-
 export default async function Home() {
   const locale = await getServerUiLang();
   const raw = await fetchPublicArticles({ limit: 120, locale });
   const feed = adaptArticles(raw);
-
-  const sections = [
-    { slug: "desh", title: "Country", titleHi: "देश" },
-    { slug: "videsh", title: "World", titleHi: "विदेश" },
-    { slug: "rajneeti", title: "Politics", titleHi: "राजनीति" },
-    { slug: "khel", title: "Sports", titleHi: "खेल" },
-    { slug: "health", title: "Health", titleHi: "स्वास्थ्य" },
-    { slug: "krishi", title: "Agriculture", titleHi: "कृषि" },
-    { slug: "business", title: "Business", titleHi: "व्यापार" },
-    { slug: "manoranjan", title: "Entertainment", titleHi: "मनोरंजन" },
-  ] as const;
 
   return (
     <main className={styles.homeMain}>
       <div className={`section-inner ${styles.sectionStack}`}>
         <HeroSection />
         <NewsTicker />
-        {sections.map((section) => {
+        {homeSections.map((section) => {
           const list = pickCategory(feed, section.slug, 6);
           if (!list.length) return null;
           const [lead, ...rest] = list;

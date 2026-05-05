@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import TermsPageClient from "../../features/legal/client/TermsPageClient";
 import { siteName, toAbsoluteUrl } from "../../lib/seo/metadataHelpers";
-import TermsPageClient from "./TermsPageClient";
 
 export const metadata: Metadata = {
   title: "Terms & conditions",

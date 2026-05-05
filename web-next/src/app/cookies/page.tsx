@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import CookiesPageClient from "../../features/legal/client/CookiesPageClient";
 import { siteName, toAbsoluteUrl } from "../../lib/seo/metadataHelpers";
-import CookiesPageClient from "./CookiesPageClient";
 
 export const metadata: Metadata = {
   title: "Cookies policy",

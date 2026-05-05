@@ -2,52 +2,19 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { categories } from "../../../data/publicCategories";
+import { buildCategoryMetadata } from "../../../features/category/seo/metadata";
+import { categoryDek, categoryHeadline } from "../../../features/category/server/categoryFeed";
 import { adaptArticles } from "../../../services/articleAdapter";
 import { fetchPublicArticles } from "../../../lib/serverPublicApi";
 import { getServerUiLang } from "../../../lib/serverLocale";
-import type { NewsItem } from "../../../data/mockData";
-import { defaultDescription, siteName, toAbsoluteUrl } from "../../../lib/seo/metadataHelpers";
+import { toAbsoluteUrl } from "../../../lib/seo/metadataHelpers";
 import styles from "../../newsroom.module.css";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
   const { slug } = await params;
-  const canonicalPath = `/category/${slug}`;
-  const category = categories.find((c) => c.slug === slug);
-  const label = category?.nameEn ?? slug;
-  const title = slug === "latest" ? `Latest News — ${siteName}` : `${label} News`;
-  const description =
-    slug === "latest"
-      ? `Stories published in the last 3 days on ${siteName}.`
-      : `Latest ${label.toLowerCase()} coverage, breaking updates, explainers, and analysis on ${siteName}.`;
-
-  return {
-    title,
-    description,
-    alternates: { canonical: canonicalPath },
-    openGraph: {
-      type: "website",
-      title,
-      description,
-      url: canonicalPath,
-      siteName,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-    },
-    keywords: [label, `${label} news`, "Kothari News"],
-  };
-}
-
-function headline(item: NewsItem, locale: "hi" | "en") {
-  return locale === "hi" ? item.title || item.titleEn : item.titleEn || item.title;
-}
-
-function dek(item: NewsItem, locale: "hi" | "en") {
-  return locale === "hi" ? item.summary || item.summaryEn : item.summaryEn || item.summary;
+  return buildCategoryMetadata(slug);
 }
 
 export default async function CategoryPage(
@@ -75,7 +42,7 @@ export default async function CategoryPage(
     url: toAbsoluteUrl(`/category/${slug}`),
     hasPart: list.slice(0, 20).map((item) => ({
       "@type": "NewsArticle",
-      headline: headline(item, locale),
+      headline: categoryHeadline(item, locale),
       url: toAbsoluteUrl(`/article/${item.id}`),
     })),
   };
@@ -104,13 +71,13 @@ export default async function CategoryPage(
               <Link href={`/article/${item.id}`} className={styles.cardLink}>
                 <Image
                   src={item.image}
-                  alt={headline(item, locale)}
+                  alt={categoryHeadline(item, locale)}
                   width={800}
                   height={450}
                   className={styles.cardImage}
                 />
-                <h3 className="card-title">{headline(item, locale)}</h3>
-                <p className="card-summary">{dek(item, locale)}</p>
+                <h3 className="card-title">{categoryHeadline(item, locale)}</h3>
+                <p className="card-summary">{categoryDek(item, locale)}</p>
               </Link>
             </article>
           ))}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import ProfilePageClient from "./ProfilePageClient";
+import ProfilePageClient from "../../features/profile/client/ProfilePageClient";
 import { buildNoIndexMetadata } from "../../lib/seo/metadataHelpers";
 
 export const metadata: Metadata = buildNoIndexMetadata("Profile");

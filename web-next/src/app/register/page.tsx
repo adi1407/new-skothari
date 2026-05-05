@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import RegisterPageClient from "./RegisterPageClient";
+import RegisterPageClient from "../../features/auth/client/RegisterPageClient";
 import { buildNoIndexMetadata } from "../../lib/seo/metadataHelpers";
 
 export const metadata: Metadata = buildNoIndexMetadata("Register");

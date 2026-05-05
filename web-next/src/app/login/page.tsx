@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import LoginPageClient from "./LoginPageClient";
+import LoginPageClient from "../../features/auth/client/LoginPageClient";
 import { buildNoIndexMetadata } from "../../lib/seo/metadataHelpers";
 
 export const metadata: Metadata = buildNoIndexMetadata("Login");

@@ -116,8 +116,19 @@
 [data-theme="dark"] .profile-toast,
 [data-theme="dark"] .profile-signin-lead,
 [data-theme="dark"] .profile-signin-progress,
-[data-theme="dark"] .profile-trust-line {
+[data-theme="dark"] .profile-trust-line,
+[data-theme="dark"] .legal-lead {
   color: #d8ccbd !important;
+}
+
+[data-theme="dark"] .legal-chip {
+  background: linear-gradient(180deg, #221a15 0%, #19130f 100%) !important;
+  border-color: #4f4036 !important;
+  color: #eadfce !important;
+}
+
+[data-theme="dark"] .legal-note-section {
+  border-left-color: color-mix(in srgb, var(--brand-red) 76%, #f8c9bf) !important;
 }
 
 /* Controls */
