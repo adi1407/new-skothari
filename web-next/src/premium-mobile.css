@@ -613,7 +613,11 @@
     transition: background .15s ease;
   }
   .video-stack-item:active {
-    background: rgba(255,255,255,.07);
+    background: var(--bg-secondary);
+  }
+
+  [data-theme="dark"] .video-stack-item:active {
+    background: color-mix(in srgb, var(--bg-secondary) 66%, #000);
   }
 
   .video-stack-thumb {

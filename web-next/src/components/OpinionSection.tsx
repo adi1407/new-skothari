@@ -31,7 +31,7 @@ export default function OpinionSection() {
           <div className="section-title-wrap">
             <PenLine size={17} style={{ color: "var(--ink-700)" }} />
             <div>
-              <h2 className="section-title" style={{ borderLeftColor: "#37474F" }}>
+              <h2 className="section-title" style={{ borderLeftColor: "var(--cat-analysis)" }}>
                 {t("विचार / विश्लेषण", "Opinion & Analysis")}
               </h2>
               <p className="section-subtitle" style={{ fontSize: 12, marginTop: 2 }}>
@@ -39,7 +39,7 @@ export default function OpinionSection() {
               </p>
             </div>
           </div>
-          <button className="section-more-btn" style={{ color: "#37474F", borderColor: "#37474F" }}>
+          <button className="section-more-btn" style={{ color: "var(--cat-analysis)", borderColor: "var(--cat-analysis)" }}>
             {t("सभी कॉलम", "All Columns")} <ArrowRight size={14} />
           </button>
         </motion.div>
