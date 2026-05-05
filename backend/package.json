@@ -7,6 +7,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed:articles": "node scripts/seedArticles.js",
+    "seed:cleanup": "node scripts/cleanup-seeded-content.js",
     "seed:refresh-news": "node scripts/refresh-seed-news.js",
     "seed:news-40": "node scripts/seed-news-40.js",
     "articles:clear": "node scripts/clear-articles.js",

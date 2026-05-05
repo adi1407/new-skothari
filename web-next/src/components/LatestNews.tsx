@@ -31,8 +31,8 @@ export default function LatestNews() {
 
   useEffect(() => {
     Promise.all([
-      fetchPublishedArticles({ limit: 10, locale: lang }),
-      fetchPublishedArticles({ limit: 10, page: 2, locale: lang }),
+      fetchPublishedArticles({ limit: 10, locale: lang, latestDays: 3 }),
+      fetchPublishedArticles({ limit: 10, page: 2, locale: lang, latestDays: 3 }),
     ]).then(([p1, p2]) => {
       setNews(adaptArticles(p1));
       setMostRead(adaptArticles(p2).slice(0, 5));

@@ -25,6 +25,13 @@ function localeVideoMatch(req) {
   return {};
 }
 
+function latestDaysFilter(latestDaysRaw) {
+  const latestDays = Number(latestDaysRaw);
+  if (!Number.isFinite(latestDays) || latestDays <= 0) return null;
+  const since = new Date(Date.now() - latestDays * 24 * 60 * 60 * 1000);
+  return { publishedAt: { $gte: since } };
+}
+
 // GET /api/public/videos — published only, for web /shows
 router.get("/videos", async (req, res) => {
   try {
@@ -51,7 +58,7 @@ router.get("/videos", async (req, res) => {
 // GET /api/public/breaking — published + isBreaking, newest first
 router.get("/breaking", async (req, res) => {
   try {
-    const limit = Math.min(Number(req.query.limit) || 15, 50);
+    const limit = Math.min(Number(req.query.limit) || 6, 6);
     const articles = await Article.find({ status: "published", isBreaking: true, ...localeMatchQuery(req) })
       .populate("author", "name")
       .sort({ publishedAt: -1 })
@@ -99,9 +106,11 @@ router.get("/search", async (req, res) => {
 // GET /api/public/articles — no auth required, only published
 router.get("/articles", async (req, res) => {
   try {
-    const { category, limit = 20, page = 1 } = req.query;
+    const { category, limit = 20, page = 1, latestDays } = req.query;
     const q = { status: "published", ...localeMatchQuery(req) };
     if (category) q.category = category;
+    const latestFilter = latestDaysFilter(latestDays);
+    if (latestFilter) Object.assign(q, latestFilter);
 
     const skip = (Number(page) - 1) * Number(limit);
     const [articles, total] = await Promise.all([
@@ -200,15 +209,18 @@ router.get("/articles/:id/recommendations", async (req, res) => {
 // GET /api/public/articles/:id — no auth required, published only
 router.get("/articles/:id", async (req, res) => {
   try {
-    const article = await Article.findOne({
-      _id: req.params.id,
-      status: "published",
-    }).populate("author", "name").lean();
+    const article = await Article.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        status: "published",
+      },
+      { $inc: { views: 1 } },
+      { new: true }
+    )
+      .populate("author", "name")
+      .lean();
 
     if (!article) return res.status(404).json({ message: "Article not found" });
-
-    // Increment views (fire and forget)
-    Article.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } }).exec();
 
     res.json({ article });
   } catch (err) {

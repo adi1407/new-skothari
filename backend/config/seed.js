@@ -212,8 +212,12 @@ async function seedSampleArticles() {
 async function seedAll() {
   await seedAdmin();
   await seedDeskWriters();
-  await seedSampleVideos();
-  await seedSampleArticles();
+  if (process.env.SEED_SAMPLE_CONTENT === "1") {
+    await seedSampleVideos();
+    await seedSampleArticles();
+  } else {
+    console.log("Skipping sample article/video seed. Set SEED_SAMPLE_CONTENT=1 to enable.");
+  }
 }
 
 /** Run without starting the HTTP server (e.g. `node scripts/seedArticles.js`). */

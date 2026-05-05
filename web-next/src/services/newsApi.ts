@@ -49,13 +49,20 @@ export interface BackendVideo {
   createdAt?: string;
 }
 
-export async function fetchPublishedArticles(opts: { category?: string; limit?: number; page?: number; locale?: "hi" | "en" } = {}): Promise<BackendArticle[]> {
+export async function fetchPublishedArticles(opts: {
+  category?: string;
+  limit?: number;
+  page?: number;
+  locale?: "hi" | "en";
+  latestDays?: number;
+} = {}): Promise<BackendArticle[]> {
   try {
     const params = new URLSearchParams();
     if (opts.category) params.set("category", opts.category);
     if (opts.limit) params.set("limit", String(opts.limit));
     if (opts.page) params.set("page", String(opts.page));
     if (opts.locale) params.set("locale", opts.locale);
+    if (opts.latestDays) params.set("latestDays", String(opts.latestDays));
     const res = await fetch(publicUrl(`${BASE}/articles?${params}`), { signal: apiFetchSignal() });
     if (!res.ok) return [];
     const data = await res.json();

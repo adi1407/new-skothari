@@ -51,6 +51,26 @@ function buildQuery(role, userId, filters = {}) {
   return q;
 }
 
+async function enforceBreakingCap(maxBreaking = 6, keepArticleId = null) {
+  const rows = await Article.find({ status: "published", isBreaking: true })
+    .sort({ publishedAt: -1, createdAt: -1 })
+    .select("_id")
+    .lean();
+  if (rows.length <= maxBreaking) return;
+
+  const keepId = keepArticleId ? String(keepArticleId) : "";
+  const demoteIds = [];
+  for (let i = rows.length - 1; i >= 0; i -= 1) {
+    const row = rows[i];
+    const id = String(row._id);
+    if (id === keepId) continue;
+    if (demoteIds.length >= rows.length - maxBreaking) break;
+    demoteIds.push(row._id);
+  }
+  if (demoteIds.length === 0) return;
+  await Article.updateMany({ _id: { $in: demoteIds } }, { $set: { isBreaking: false } });
+}
+
 // ── GET /api/articles ────────────────────────────────
 // Writer: own articles | Editor: submitted+published | Admin: all
 router.get("/", authenticate, async (req, res) => {
@@ -93,7 +113,7 @@ router.get("/", authenticate, async (req, res) => {
 // ── GET /api/articles/:id ────────────────────────────
 router.get("/:id", authenticate, async (req, res) => {
   try {
-    const article = await Article.findById(req.params.id)
+    let article = await Article.findById(req.params.id)
       .populate("author", "name email role avatar bio")
       .populate("lastEditedBy", "name role")
       .populate("task", "title deadline priority");
@@ -105,9 +125,18 @@ router.get("/:id", authenticate, async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // Increment views if published
     if (article.status === "published") {
-      Article.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } }).exec();
+      article = await Article.findOneAndUpdate(
+        { _id: req.params.id, status: "published" },
+        { $inc: { views: 1 } },
+        { new: true }
+      )
+        .populate("author", "name email role avatar bio")
+        .populate("lastEditedBy", "name role")
+        .populate("task", "title deadline priority");
+      if (!article) {
+        return res.status(404).json({ message: "Article not found" });
+      }
     }
 
     res.json({ article });
@@ -206,6 +235,9 @@ router.put("/:id", authenticate, async (req, res) => {
     }
 
     await article.save();
+    if (article.status === "published" && article.isBreaking) {
+      await enforceBreakingCap(6, article._id);
+    }
     const populated = await article.populate([
       { path: "author", select: "name email role" },
       { path: "lastEditedBy", select: "name role" },
@@ -283,6 +315,9 @@ router.patch("/:id/publish", authenticate, authorize("editor", "admin"), async (
     article.publishedAt = new Date();
     article.lastEditedBy = req.user._id;
     await article.save();
+    if (article.isBreaking) {
+      await enforceBreakingCap(6, article._id);
+    }
 
     // If article linked to a task, mark task complete
     if (article.task) {
