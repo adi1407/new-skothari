@@ -1,0 +1,129 @@
+import { Link } from "react-router-dom";
+import { useLang } from "../context/LangContext";
+
+export default function TermsPage() {
+  const { t } = useLang();
+  const updated = "May 5, 2026";
+
+  return (
+    <main className="privacy-page article-page">
+      <div className="privacy-page-inner section-inner">
+        <p className="privacy-kicker">{t("कानूनी", "Legal")}</p>
+        <h1 className="privacy-title">{t("नियम एवं शर्तें", "Terms & conditions")}</h1>
+        <p className="privacy-updated">
+          {t("अंतिम अपडेट", "Last updated")}: {updated}
+        </p>
+
+        <section className="privacy-section">
+          <h2 className="privacy-h2">{t("स्वीकार्यता", "Acceptance")}</h2>
+          <p>
+            {t(
+              "इस वेबसाइट का उपयोग करके आप इन नियमों और शर्तों से सहमत होते हैं। यदि आप सहमत नहीं हैं, तो कृपया सेवाओं का उपयोग न करें।",
+              "By using this website, you agree to these Terms and Conditions. If you do not agree, please do not use the services."
+            )}
+          </p>
+        </section>
+
+        <section className="privacy-section">
+          <h2 className="privacy-h2">{t("सेवाओं का दायरा", "Scope of services")}</h2>
+          <p>
+            {t(
+              "हम समाचार, विश्लेषण, वीडियो, और रीडर सुविधाएं (जैसे बुकमार्क, लाइक, प्रोफाइल, न्यूज़लेटर) प्रदान करते हैं। हम सेवाओं में सुधार, संशोधन, निलंबन या समाप्ति का अधिकार सुरक्षित रखते हैं।",
+              "We provide news, analysis, videos, and reader features (such as bookmarks, likes, profile, and newsletter). We reserve the right to improve, modify, suspend, or discontinue services."
+            )}
+          </p>
+        </section>
+
+        <section className="privacy-section">
+          <h2 className="privacy-h2">{t("खाता और उपयोगकर्ता जिम्मेदारी", "Account and user responsibility")}</h2>
+          <ul className="privacy-list">
+            <li>
+              {t(
+                "आप अपने खाते की जानकारी और लॉगिन एक्सेस की सुरक्षा के लिए जिम्मेदार हैं।",
+                "You are responsible for safeguarding your account information and login access."
+              )}
+            </li>
+            <li>
+              {t(
+                "गलत, अवैध, अपमानजनक, भ्रामक या दुरुपयोगात्मक गतिविधियों की अनुमति नहीं है।",
+                "Illegal, abusive, defamatory, misleading, or harmful activities are not permitted."
+              )}
+            </li>
+            <li>
+              {t(
+                "ऑटोमेटेड स्क्रैपिंग, असंगत बॉट ट्रैफिक, या सुरक्षा बाधित करने के प्रयास प्रतिबंधित हैं।",
+                "Automated scraping, abusive bot traffic, or attempts to disrupt security are prohibited."
+              )}
+            </li>
+          </ul>
+        </section>
+
+        <section className="privacy-section">
+          <h2 className="privacy-h2">{t("संपादकीय सामग्री और अस्वीकरण", "Editorial content and disclaimer")}</h2>
+          <p>
+            {t(
+              "हम सटीक और सत्यापित सामग्री प्रकाशित करने का प्रयास करते हैं, लेकिन पूर्ण त्रुटि-रहितता की गारंटी नहीं देते। समाचार परिस्थितियां बदल सकती हैं; इसलिए किसी भी निर्णय से पहले आधिकारिक स्रोतों की पुष्टि करें।",
+              "We strive to publish accurate and verified content, but we do not guarantee absolute error-free information. News conditions may evolve; please verify with official sources before making critical decisions."
+            )}
+          </p>
+        </section>
+
+        <section className="privacy-section">
+          <h2 className="privacy-h2">{t("बौद्धिक संपदा", "Intellectual property")}</h2>
+          <p>
+            {t(
+              "जब तक अलग से उल्लेख न हो, वेबसाइट की सामग्री, लेआउट, ब्रांडिंग, लोगो और संपादकीय प्रस्तुति हमारी बौद्धिक संपदा है। पूर्व लिखित अनुमति के बिना पुनर्प्रकाशन, व्यावसायिक उपयोग, या व्यापक पुनर्वितरण प्रतिबंधित है।",
+              "Unless otherwise stated, the website content, layout, branding, logo, and editorial presentation are our intellectual property. Republishing, commercial reuse, or large-scale redistribution without prior written permission is prohibited."
+            )}
+          </p>
+        </section>
+
+        <section className="privacy-section">
+          <h2 className="privacy-h2">{t("तृतीय-पक्ष लिंक", "Third-party links")}</h2>
+          <p>
+            {t(
+              "साइट में बाहरी लिंक हो सकते हैं। उन वेबसाइटों की सामग्री, गोपनीयता या उपलब्धता पर हमारा नियंत्रण नहीं होता और हम उसके लिए उत्तरदायी नहीं हैं।",
+              "The site may include external links. We do not control and are not responsible for the content, privacy practices, or availability of third-party websites."
+            )}
+          </p>
+        </section>
+
+        <section className="privacy-section">
+          <h2 className="privacy-h2">{t("जिम्मेदारी की सीमा", "Limitation of liability")}</h2>
+          <p>
+            {t(
+              "कानून द्वारा अनुमत सीमा तक, सेवा उपयोग से उत्पन्न प्रत्यक्ष/अप्रत्यक्ष नुकसान के लिए हमारी कुल जिम्मेदारी सीमित रहेगी। सेवा 'जैसी है' आधार पर उपलब्ध कराई जाती है।",
+              "To the maximum extent permitted by law, our liability for direct or indirect losses arising from use of the service is limited. The service is provided on an 'as-is' basis."
+            )}
+          </p>
+        </section>
+
+        <section className="privacy-section">
+          <h2 className="privacy-h2">{t("समापन और निलंबन", "Termination and suspension")}</h2>
+          <p>
+            {t(
+              "यदि किसी खाते द्वारा नियमों का उल्लंघन होता है, तो हम बिना पूर्व सूचना के पहुंच सीमित या समाप्त कर सकते हैं।",
+              "If an account violates these terms, we may restrict or terminate access without prior notice."
+            )}
+          </p>
+        </section>
+
+        <section className="privacy-section">
+          <h2 className="privacy-h2">{t("नियमों में बदलाव", "Changes to terms")}</h2>
+          <p>
+            {t(
+              "हम समय-समय पर इन शर्तों को अपडेट कर सकते हैं। अपडेट के बाद निरंतर उपयोग का अर्थ संशोधित शर्तों की स्वीकृति माना जाएगा।",
+              "We may update these terms from time to time. Continued use after updates means acceptance of the revised terms."
+            )}
+          </p>
+        </section>
+
+        <p className="privacy-back">
+          <Link to="/" className="privacy-back-link">
+            {t("होम पर वापस", "Back to home")}
+          </Link>
+        </p>
+      </div>
+    </main>
+  );
+}

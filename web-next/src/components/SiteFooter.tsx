@@ -50,7 +50,8 @@ export default function SiteFooter() {
           { hi: "विज्ञापन", en: "Advertise" },
           { hi: "करियर", en: "Careers" },
           { hi: "प्राइवेसी", en: "Privacy", to: "/privacy" },
-          { hi: "नियम", en: "Terms" },
+          { hi: "कुकी नीति", en: "Cookies", to: "/cookies" },
+          { hi: "नियम", en: "Terms", to: "/terms" },
         ]
       : [
           { hi: "About", en: "About", to: "/about" },
@@ -60,7 +61,8 @@ export default function SiteFooter() {
           { hi: "Advertise", en: "Advertise" },
           { hi: "Careers", en: "Careers" },
           { hi: "Privacy", en: "Privacy", to: "/privacy" },
-          { hi: "Terms", en: "Terms" },
+          { hi: "Cookies", en: "Cookies", to: "/cookies" },
+          { hi: "Terms", en: "Terms", to: "/terms" },
         ];
 
   const onNewsletter = async (e: React.FormEvent) => {
@@ -264,9 +266,12 @@ export default function SiteFooter() {
           <Link to="/privacy" className="footer-premium-legal-chip">
             {t("प्राइवेसी", "Privacy")}
           </Link>
-          <button type="button" className="footer-premium-legal-chip">
+          <Link to="/cookies" className="footer-premium-legal-chip">
+            {t("कुकी", "Cookies")}
+          </Link>
+          <Link to="/terms" className="footer-premium-legal-chip">
             {t("नियम", "Terms")}
-          </button>
+          </Link>
           <button type="button" className="footer-premium-legal-chip">
             {t("साइट मैप", "Sitemap")}
           </button>

@@ -57,6 +57,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absolute("/mission"), lastModified: now, changeFrequency: "monthly", priority: 0.45 },
     { url: absolute("/vision"), lastModified: now, changeFrequency: "monthly", priority: 0.45 },
     { url: absolute("/privacy"), lastModified: now, changeFrequency: "monthly", priority: 0.3 },
+    { url: absolute("/cookies"), lastModified: now, changeFrequency: "monthly", priority: 0.3 },
+    { url: absolute("/terms"), lastModified: now, changeFrequency: "monthly", priority: 0.3 },
   ];
 
   const categoryRoutes: MetadataRoute.Sitemap = categories
