@@ -302,6 +302,72 @@
   color: #ffb7b2;
 }
 
+/* High-contrast dark mode for profile/sign-in surfaces */
+[data-theme="dark"] .profile-shell,
+[data-theme="dark"] .profile-shell * {
+  color: #f3eee7;
+}
+
+[data-theme="dark"] .profile-sub,
+[data-theme="dark"] .profile-meta-line,
+[data-theme="dark"] .profile-signin-lead,
+[data-theme="dark"] .profile-trust-line,
+[data-theme="dark"] .profile-label,
+[data-theme="dark"] .profile-toast,
+[data-theme="dark"] .profile-signin-progress,
+[data-theme="dark"] .profile-author-line {
+  color: #ddd4c8;
+}
+
+[data-theme="dark"] .profile-signin-copy,
+[data-theme="dark"] .profile-signin-card,
+[data-theme="dark"] .profile-nav,
+[data-theme="dark"] .profile-card,
+[data-theme="dark"] .profile-head-signedin {
+  background: linear-gradient(180deg, #2a221d 0%, #201a16 100%);
+  border-color: #4a3e35;
+}
+
+[data-theme="dark"] .profile-tab {
+  background: #191410;
+  color: #f3eee7;
+}
+[data-theme="dark"] .profile-tab:hover {
+  background: #2a221d;
+  color: #ffffff;
+}
+[data-theme="dark"] .profile-tab.active {
+  background: #4a120f;
+  border-color: #a22a22;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .profile-input {
+  background: #15110e;
+  color: #ffffff;
+  border-color: #4a3e35;
+}
+[data-theme="dark"] .profile-input::placeholder {
+  color: #c7bbb0;
+}
+
+[data-theme="dark"] .profile-btn.ghost {
+  background: #1a1512;
+  color: #f8f2ea;
+  border-color: #4a3e35;
+}
+[data-theme="dark"] .profile-btn.ghost:hover:not(:disabled) {
+  background: #2a221d;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .profile-link,
+[data-theme="dark"] .profile-row,
+[data-theme="dark"] .profile-row-title,
+[data-theme="dark"] .profile-session-line {
+  color: #f3eee7;
+}
+
 /* ── Signed-in layout ─────────────────────────────────────── */
 
 .profile-layout {
