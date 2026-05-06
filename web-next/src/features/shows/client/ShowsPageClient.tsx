@@ -1,7 +1,33 @@
 "use client";
 
-import ShowsPageView from "../../../views/ShowsPage";
+import { motion } from "framer-motion";
+import { useLang } from "../../../context/LangContext";
+import ShowsCategoryGroup from "../components/ShowsCategoryGroup";
+import ShowsPageHeader from "../components/ShowsPageHeader";
+import ShowsStatsRow from "../components/ShowsStatsRow";
+import { useShowsVideos } from "../hooks/useShowsVideos";
 
 export default function ShowsPageClient() {
-  return <ShowsPageView />;
+  const { lang, t } = useLang();
+  const videos = useShowsVideos(lang);
+
+  const cats = [...new Set(videos.map((v) => (lang === "hi" ? v.category : v.categoryEn)))];
+
+  return (
+    <motion.div className="shows-page" initial={false} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+      <ShowsPageHeader t={t} />
+      <div className="shows-page-body">
+        <ShowsStatsRow t={t} />
+        {cats.filter(Boolean).map((cat) => (
+          <ShowsCategoryGroup
+            key={cat}
+            cat={cat}
+            catVideos={videos.filter((v) => (lang === "hi" ? v.category : v.categoryEn) === cat)}
+            lang={lang}
+            t={t}
+          />
+        ))}
+      </div>
+    </motion.div>
+  );
 }

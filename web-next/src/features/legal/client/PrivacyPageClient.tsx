@@ -2,31 +2,33 @@
 
 import { Link } from "react-router-dom";
 import { useLang } from "../../../context/LangContext";
+import LegalPageShell from "../components/LegalPageShell";
 
 export default function PrivacyPageClient() {
   const { t } = useLang();
   const updated = "May 5, 2026";
 
   return (
-    <main className="privacy-page legal-page article-page">
-      <div className="privacy-page-inner section-inner">
-        <p className="privacy-kicker">{t("कानूनी दस्तावेज", "Legal documentation")}</p>
-        <h1 className="privacy-title">{t("गोपनीयता नीति", "Privacy policy")}</h1>
-        <p className="privacy-updated">
-          {t("अंतिम अपडेट", "Last updated")}: {updated}
-        </p>
+    <LegalPageShell
+      kicker={t("कानूनी दस्तावेज", "Legal documentation")}
+      title={t("गोपनीयता नीति", "Privacy policy")}
+      updatedLabel={t("अंतिम अपडेट", "Last updated")}
+      updatedDate={updated}
+      lead={
         <p className="legal-lead">
           {t(
             "यह नीति बताती है कि News Kothari आपके व्यक्तिगत डेटा को कैसे एकत्र, उपयोग, सुरक्षित और साझा करता है। हम न्यूनतम डेटा सिद्धांत का पालन करते हैं और डेटा को केवल स्पष्ट, वैध और आवश्यक उद्देश्यों के लिए संसाधित करते हैं।",
             "This policy explains how News Kothari collects, uses, secures, and shares your personal data. We follow a data-minimization approach and process information only for clear, lawful, and necessary purposes."
           )}
         </p>
-        <div className="legal-chip-row" aria-label={t("मुख्य बिंदु", "Key highlights")}>
-          <span className="legal-chip">{t("डेटा न्यूनतमकरण", "Data minimization")}</span>
-          <span className="legal-chip">{t("उपयोगकर्ता अधिकार", "User rights")}</span>
-          <span className="legal-chip">{t("सुरक्षा नियंत्रण", "Security controls")}</span>
-        </div>
-
+      }
+      chipsAriaLabel={t("मुख्य बिंदु", "Key highlights")}
+      chips={[
+        t("डेटा न्यूनतमकरण", "Data minimization"),
+        t("उपयोगकर्ता अधिकार", "User rights"),
+        t("सुरक्षा नियंत्रण", "Security controls"),
+      ]}
+    >
         <section className="privacy-section">
           <h2 className="privacy-h2">{t("दायरा और लागू क्षेत्र", "Scope and applicability")}</h2>
           <p>
@@ -188,7 +190,6 @@ export default function PrivacyPageClient() {
             {t("होम पर वापस", "Back to home")}
           </Link>
         </p>
-      </div>
-    </main>
+    </LegalPageShell>
   );
 }

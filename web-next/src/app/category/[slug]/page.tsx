@@ -3,11 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { categories } from "../../../data/publicCategories";
 import { buildCategoryMetadata } from "../../../features/category/seo/metadata";
+import { buildCategoryCollectionJsonLd } from "../../../features/category/seo/schema";
 import { categoryDek, categoryHeadline } from "../../../features/category/server/categoryFeed";
 import { adaptArticles } from "../../../services/articleAdapter";
 import { fetchPublicArticles } from "../../../lib/serverPublicApi";
 import { getServerUiLang } from "../../../lib/serverLocale";
-import { toAbsoluteUrl } from "../../../lib/seo/metadataHelpers";
 import styles from "../../newsroom.module.css";
 
 export async function generateMetadata(
@@ -30,22 +30,7 @@ export default async function CategoryPage(
         : { category: slug, limit: 24, locale }
     )
   );
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "CollectionPage",
-    name:
-      slug === "latest"
-        ? locale === "hi"
-          ? "ताज़ा खबरें"
-          : "Latest news"
-        : `${locale === "hi" ? category?.name ?? slug : category?.nameEn ?? slug} News`,
-    url: toAbsoluteUrl(`/category/${slug}`),
-    hasPart: list.slice(0, 20).map((item) => ({
-      "@type": "NewsArticle",
-      headline: categoryHeadline(item, locale),
-      url: toAbsoluteUrl(`/article/${item.id}`),
-    })),
-  };
+  const jsonLd = buildCategoryCollectionJsonLd(slug, list, locale);
 
   return (
     <main className="cat-page">

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { defaultDescription, siteName, toAbsoluteUrl } from "../../../lib/seo/metadataHelpers";
-import { fetchPublicArticleById } from "../../../lib/serverPublicApi";
+import { getArticle } from "../server/getArticle";
 
 export async function buildArticleMetadata(id: string): Promise<Metadata> {
   const canonicalPath = `/article/${id}`;
-  const article = await fetchPublicArticleById(id);
+  const article = await getArticle(id);
 
   if (!article) {
     return {

@@ -2,31 +2,33 @@
 
 import { Link } from "react-router-dom";
 import { useLang } from "../../../context/LangContext";
+import LegalPageShell from "../components/LegalPageShell";
 
 export default function TermsPageClient() {
   const { t } = useLang();
   const updated = "May 5, 2026";
 
   return (
-    <main className="privacy-page legal-page article-page">
-      <div className="privacy-page-inner section-inner">
-        <p className="privacy-kicker">{t("कानूनी दस्तावेज", "Legal documentation")}</p>
-        <h1 className="privacy-title">{t("नियम एवं शर्तें", "Terms & conditions")}</h1>
-        <p className="privacy-updated">
-          {t("अंतिम अपडेट", "Last updated")}: {updated}
-        </p>
+    <LegalPageShell
+      kicker={t("कानूनी दस्तावेज", "Legal documentation")}
+      title={t("नियम एवं शर्तें", "Terms & conditions")}
+      updatedLabel={t("अंतिम अपडेट", "Last updated")}
+      updatedDate={updated}
+      lead={
         <p className="legal-lead">
           {t(
             "ये नियम News Kothari वेबसाइट और उससे जुड़ी सेवाओं (रीडर अकाउंट, बुकमार्क, लाइक, न्यूज़लेटर, और अन्य फीचर्स) के उपयोग को नियंत्रित करते हैं।",
             "These terms govern your use of News Kothari website and related services (reader accounts, bookmarks, likes, newsletter, and other features)."
           )}
         </p>
-        <div className="legal-chip-row" aria-label={t("मुख्य बिंदु", "Key highlights")}>
-          <span className="legal-chip">{t("उपयोग नियम", "Usage rules")}</span>
-          <span className="legal-chip">{t("सामग्री अधिकार", "Content rights")}</span>
-          <span className="legal-chip">{t("जिम्मेदारी सीमा", "Liability limits")}</span>
-        </div>
-
+      }
+      chipsAriaLabel={t("मुख्य बिंदु", "Key highlights")}
+      chips={[
+        t("उपयोग नियम", "Usage rules"),
+        t("सामग्री अधिकार", "Content rights"),
+        t("जिम्मेदारी सीमा", "Liability limits"),
+      ]}
+    >
         <section className="privacy-section">
           <h2 className="privacy-h2">{t("स्वीकार्यता", "Acceptance")}</h2>
           <p>
@@ -203,7 +205,6 @@ export default function TermsPageClient() {
             {t("होम पर वापस", "Back to home")}
           </Link>
         </p>
-      </div>
-    </main>
+    </LegalPageShell>
   );
 }

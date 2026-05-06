@@ -68,6 +68,72 @@ src/
   services/
 ```
 
+### Article feature layout (reference pattern)
+
+The article route composes `app/article/[id]/page.tsx` (metadata + optional JSON-LD) with a thin client entry under `features/article/client/`. Feature code is split so SEO, server fetch, and UI can evolve independently:
+
+| Path under `features/article/` | Role |
+|--------------------------------|------|
+| `types/` | Feature-local types and re-exports consumed by components/hooks. |
+| `utils/` | Pure helpers (formatting, category colors, share URL builders). |
+| `services/articleApi.ts` | Thin wrappers around shared `services/newsApi` for article-only calls. |
+| `server/getArticle.ts` | Server-only article fetch for metadata / JSON-LD (uses `lib/serverPublicApi`). |
+| `seo/metadata.ts` | `generateMetadata` helpers; uses `getArticle` from `server/`. |
+| `seo/schema.ts` | `buildNewsArticleJsonLd` for `<script type="application/ld+json">` on the article route. |
+| `hooks/` | `useArticle` (data + scroll), `useArticleClipboard`, `useBookmarks` (reader actions). |
+| `components/` | `ArticleHero`, `ArticleContent`, `ArticleAuthor`, `ArticleSidebar`, related cards/strip, `CommentSection` placeholder. |
+
+### Home (`features/home/`)
+
+| Path | Role |
+|------|------|
+| `config/sections.ts` | Ordered category slugs and titles for homepage rails. |
+| `server/homeFeed.ts` | Pure helpers: `pickCategory`, `headline`, `dek`. |
+| `seo/schema.ts` | `buildHomeWebSiteJsonLd` — injected on `app/page.tsx`. |
+| `components/HomeCategorySection.tsx` | Server component for one category rail (lead + grid card markup). |
+
+The home route (`app/page.tsx`) keeps one server fetch; it maps sections via `pickCategory` and composes `HomeCategorySection`.
+
+### Category (`features/category/`)
+
+| Path | Role |
+|------|------|
+| `server/categoryFeed.ts` | `categoryHeadline`, `categoryDek` for server-rendered category grids. |
+| `seo/metadata.ts` | `buildCategoryMetadata(slug)`. |
+| `seo/schema.ts` | `buildCategoryCollectionJsonLd(slug, list, locale)` — used by `app/category/[slug]/page.tsx`. |
+
+### Shows (`features/shows/`)
+
+| Path | Role |
+|------|------|
+| `services/showsApi.ts` | Thin wrapper around `fetchPublishedVideos`. |
+| `hooks/useShowsVideos.ts` | Loads and adapts videos when UI language changes. |
+| `utils/categoryColors.ts` | `SHOWS_CATEGORY_COLORS` map by Hindi/English labels. |
+| `components/` | `ShowsPageHeader`, `ShowsStatsRow`, `ShowsCategoryGroup`, `ShowsVideoCard`, `ShowsYtIcon`. |
+| `seo/metadata.ts` | Static shows listing metadata. |
+
+`ShowsPageClient` only wires `useShowsVideos` and these components.
+
+### Profile (`features/profile/`)
+
+| Path | Role |
+|------|------|
+| `types/profile.ts` | `ProfileTabKey`, `ProfileNavigate`. |
+| `utils/parseJwtPayload.ts` | Google credential JWT decode (browser). |
+| `hooks/` | `useProfileReaderLists`, `useProfilePrefsSync`, `useProfileGoogleSignIn`. |
+| `components/` | `ProfileHeader`, `ProfileSignInSection`, `ProfileNav`, settings / bookmarks / liked / privacy panels. |
+
+`ProfilePageClient` composes reader auth, lists, and tab panels; global styles stay in `views/profile-page.css`.
+
+### Legal + auth (lightweight)
+
+| Path | Role |
+|------|------|
+| `legal/components/LegalPageShell.tsx` | Shared kicker, title, updated line, lead, chip row; body is `children`. |
+| `auth/types/auth.ts` | Placeholder for future shared auth types (redirect-only clients today). |
+
+**Principle for all indexable features:** **route = metadata + JSON-LD + composition**, **client = hooks + presentational components**, **server + `seo/`** = one place for crawlable data.
+
 ## SEO Checklist for News Pages
 
 - Home (`/`): metadata + organization/news JSON-LD

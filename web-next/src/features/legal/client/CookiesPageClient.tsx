@@ -2,31 +2,33 @@
 
 import { Link } from "react-router-dom";
 import { useLang } from "../../../context/LangContext";
+import LegalPageShell from "../components/LegalPageShell";
 
 export default function CookiesPageClient() {
   const { t } = useLang();
   const updated = "May 5, 2026";
 
   return (
-    <main className="privacy-page legal-page article-page">
-      <div className="privacy-page-inner section-inner">
-        <p className="privacy-kicker">{t("कानूनी दस्तावेज", "Legal documentation")}</p>
-        <h1 className="privacy-title">{t("कुकी नीति", "Cookies policy")}</h1>
-        <p className="privacy-updated">
-          {t("अंतिम अपडेट", "Last updated")}: {updated}
-        </p>
+    <LegalPageShell
+      kicker={t("कानूनी दस्तावेज", "Legal documentation")}
+      title={t("कुकी नीति", "Cookies policy")}
+      updatedLabel={t("अंतिम अपडेट", "Last updated")}
+      updatedDate={updated}
+      lead={
         <p className="legal-lead">
           {t(
             "यह कुकी नीति बताती है कि हम वेबसाइट पर कुकीज़, लोकल स्टोरेज और समान तकनीकों का उपयोग कैसे करते हैं, ताकि सेवा सुरक्षित, उपयोगी और व्यक्तिगत प्राथमिकताओं के अनुरूप रहे।",
             "This Cookies Policy explains how we use cookies, local storage, and similar technologies to keep the service secure, useful, and aligned with your preferences."
           )}
         </p>
-        <div className="legal-chip-row" aria-label={t("मुख्य बिंदु", "Key highlights")}>
-          <span className="legal-chip">{t("आवश्यक कुकीज़", "Essential cookies")}</span>
-          <span className="legal-chip">{t("उपयोग नियंत्रण", "User controls")}</span>
-          <span className="legal-chip">{t("तृतीय-पक्ष संकेत", "Third-party signals")}</span>
-        </div>
-
+      }
+      chipsAriaLabel={t("मुख्य बिंदु", "Key highlights")}
+      chips={[
+        t("आवश्यक कुकीज़", "Essential cookies"),
+        t("उपयोग नियंत्रण", "User controls"),
+        t("तृतीय-पक्ष संकेत", "Third-party signals"),
+      ]}
+    >
         <section className="privacy-section">
           <h2 className="privacy-h2">{t("कुकी क्या हैं", "What cookies are")}</h2>
           <p>
@@ -169,7 +171,6 @@ export default function CookiesPageClient() {
             {t("होम पर वापस", "Back to home")}
           </Link>
         </p>
-      </div>
-    </main>
+    </LegalPageShell>
   );
 }
