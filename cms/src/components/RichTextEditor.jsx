@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
-import Placeholder from "@tiptap/extension-placeholder";
-import Underline from "@tiptap/extension-underline";
+import StarterKitExt from "@tiptap/starter-kit";
+import LinkExt from "@tiptap/extension-link";
+import PlaceholderExt from "@tiptap/extension-placeholder";
+import UnderlineExt from "@tiptap/extension-underline";
 
 /**
  * WYSIWYG body editor — Hindi / English newsroom style (TipTap).
@@ -17,15 +17,15 @@ export default function RichTextEditor({
 }) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
+      StarterKitExt.configure({
         heading: { levels: [2, 3] },
       }),
-      Underline,
-      Link.configure({
+      UnderlineExt,
+      LinkExt.configure({
         openOnClick: false,
         HTMLAttributes: { rel: "noopener noreferrer" },
       }),
-      Placeholder.configure({
+      PlaceholderExt.configure({
         placeholder: placeholder || "",
       }),
     ],

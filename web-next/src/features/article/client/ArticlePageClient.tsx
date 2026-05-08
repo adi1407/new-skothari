@@ -10,6 +10,7 @@ import {
   Share2,
   ThumbsUp,
 } from "lucide-react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { IconWhatsApp, IconXLogo } from "../../../components/icons/ShareBrandIcons";
 import { useLang } from "../../../context/LangContext";
@@ -48,6 +49,14 @@ export default function ArticlePageClient({ articleId }: { articleId: string }) 
     handleBookmarkToggle,
     handleUpvoteToggle,
   } = useBookmarks(articleId, token, article, navigate);
+
+  useEffect(() => {
+    if (!article) return;
+    const canonicalId = String(article.id || "").trim();
+    if (!canonicalId) return;
+    if (canonicalId === String(articleId)) return;
+    navigate(`/article/${canonicalId}`, { replace: true });
+  }, [article, articleId, navigate]);
 
   if (loading) {
     return (
