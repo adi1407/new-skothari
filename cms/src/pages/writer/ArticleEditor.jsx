@@ -11,6 +11,45 @@ import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { useAuth } from "../../context/AuthContext";
 
 const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
+const RELATED_LINK_RE = /<a\s+[^>]*href=["']\/article\/(\d{9})["'][^>]*>([\s\S]*?)<\/a>/gi;
+
+function stripHtml(s) {
+  return String(s || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+}
+
+function collectRelatedLinksFromHtml(...htmlParts) {
+  const out = [];
+  const seen = new Set();
+  htmlParts.forEach((html) => {
+    const src = String(html || "");
+    let m;
+    RELATED_LINK_RE.lastIndex = 0;
+    while ((m = RELATED_LINK_RE.exec(src))) {
+      const articleNumber = m[1];
+      if (seen.has(articleNumber)) continue;
+      seen.add(articleNumber);
+      out.push({
+        articleNumber,
+        href: `/article/${articleNumber}`,
+        title: stripHtml(m[2]) || "Related",
+      });
+    }
+  });
+  return out;
+}
+
+function removeRelatedLinkFromHtml(html, articleNumber) {
+  const escaped = String(articleNumber).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const readAlsoBlock = new RegExp(
+    `<p[^>]*class=["'][^"']*read-also[^"']*["'][^>]*>[\\s\\S]*?<a\\s+[^>]*href=["']\\/article\\/${escaped}["'][^>]*>[\\s\\S]*?<\\/a>[\\s\\S]*?<\\/p>`,
+    "gi"
+  );
+  const plainLink = new RegExp(
+    `<a\\s+[^>]*href=["']\\/article\\/${escaped}["'][^>]*>[\\s\\S]*?<\\/a>`,
+    "gi"
+  );
+  return String(html || "").replace(readAlsoBlock, "").replace(plainLink, "");
+}
 
 function Field({ label, required, children }) {
   return (
@@ -69,6 +108,7 @@ export default function ArticleEditor() {
   const [success, setSuccess]       = useState("");
   const [loading, setLoading]       = useState(isEdit);
   const [articleNumber, setArticleNumber] = useState(null);
+  const [relatedLinks, setRelatedLinks] = useState([]);
 
   useEffect(() => {
     if (!isEdit && user?.role === "writer_en") {
@@ -111,11 +151,19 @@ export default function ArticleEditor() {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  useEffect(() => {
+    setRelatedLinks(collectRelatedLinksFromHtml(form.body, form.bodyHi));
+  }, [form.body, form.bodyHi]);
+
   const handleSave = async () => {
     if (form.primaryLocale === "hi") {
-      if (!form.titleHi.trim()) return setError("Hindi title is required for Hindi articles");
+      if (!form.titleHi.trim()) {
+        setError("Hindi title is required for Hindi articles");
+        return null;
+      }
     } else if (!form.title.trim()) {
-      return setError("Title is required for English articles");
+      setError("Title is required for English articles");
+      return null;
     }
     setError(""); setSaving(true);
     try {
@@ -123,18 +171,23 @@ export default function ArticleEditor() {
         ...form,
         tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       };
+      let result;
       if (isEdit) {
         const { data } = await updateArticle(id, payload);
         if (data?.article?.articleNumber != null) setArticleNumber(data.article.articleNumber);
+        result = { articleId: data?.article?._id || id, articleNumber: data?.article?.articleNumber ?? null };
       } else {
         const { data } = await createArticle(payload);
         if (data?.article?.articleNumber != null) setArticleNumber(data.article.articleNumber);
         navigate(`/writer/edit/${data.article._id}`, { replace: true });
+        result = { articleId: data.article._id, articleNumber: data.article.articleNumber ?? null };
       }
       setSuccess("Saved successfully");
       setTimeout(() => setSuccess(""), 3000);
+      return result;
     } catch (err) {
       setError(err.response?.data?.message || "Save failed");
+      return null;
     } finally {
       setSaving(false);
     }
@@ -148,8 +201,13 @@ export default function ArticleEditor() {
     }
     setError(""); setSubmitting(true);
     try {
-      await handleSave();
-      await submitArticle(id || "");
+      const saved = await handleSave();
+      const submitId = saved?.articleId || id;
+      if (!submitId) {
+        setError("Save failed before submit. Please save draft and try again.");
+        return;
+      }
+      await submitArticle(submitId);
       navigate("/writer");
     } catch (err) {
       setError(err.response?.data?.message || "Submit failed");
@@ -186,11 +244,19 @@ export default function ArticleEditor() {
   };
 
   const handleInsertRelatedArticle = async () => {
+    if (relatedLinks.length >= 2) {
+      setError("Maximum two related article links are allowed per article.");
+      return;
+    }
     const raw = window.prompt("Enter the 9-digit article ID to link:");
     if (raw == null) return;
     const num = String(raw).trim();
     if (!/^\d{9}$/.test(num)) {
       setError("Enter exactly 9 digits");
+      return;
+    }
+    if (relatedLinks.some((r) => r.articleNumber === num)) {
+      setError("This related article is already linked.");
       return;
     }
     setError("");
@@ -207,11 +273,29 @@ export default function ArticleEditor() {
       const block = `<p class="read-also"><strong>${prefix}:</strong> <a href="${href}">${titlePick || "Related"}</a></p>`;
       if (form.primaryLocale === "hi") set("bodyHi", (form.bodyHi || "") + block);
       else set("body", (form.body || "") + block);
+      setRelatedLinks((prev) => [
+        ...prev,
+        {
+          articleNumber: String(data.articleNumber || num),
+          href,
+          title: titlePick || "Related",
+        },
+      ]);
       setSuccess("Related article link inserted — scroll to the body editor to adjust placement.");
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
       setError(err.response?.data?.message || "Could not find that article");
     }
+  };
+
+  const removeRelatedLink = (articleId) => {
+    setForm((prev) => ({
+      ...prev,
+      body: removeRelatedLinkFromHtml(prev.body, articleId),
+      bodyHi: removeRelatedLinkFromHtml(prev.bodyHi, articleId),
+    }));
+    setSuccess("Related article link removed.");
+    setTimeout(() => setSuccess(""), 2500);
   };
 
   const saveImageMeta = async (index, meta) => {
@@ -709,6 +793,46 @@ export default function ArticleEditor() {
                 placeholder="optional — shown as author on site"
               />
             </Field>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">
+                Linked articles ({relatedLinks.length}/2)
+              </h2>
+            </div>
+            {relatedLinks.length === 0 ? (
+              <p className="text-xs text-slate-500">
+                No related article links yet. Add by entering a 9-digit article ID in the editor section.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {relatedLinks.map((rel) => (
+                  <div key={rel.articleNumber} className="rounded-lg border border-slate-200 px-3 py-2">
+                    <a
+                      href={rel.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-semibold text-brand hover:underline"
+                    >
+                      {rel.title}
+                    </a>
+                    <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+                      <span>ID: {rel.articleNumber}</span>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => removeRelatedLink(rel.articleNumber)}
+                          className="text-red-600 hover:underline"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tips */}
