@@ -91,20 +91,7 @@ export default function ArticlePageClient({ articleId }: { articleId: string }) 
   const category = lang === "hi" ? article.category : article.categoryEn;
   const tags = lang === "hi" ? (article.tags ?? []) : (article.tagsEn ?? []);
   const rawContent = lang === "hi" ? article.content : article.contentEn;
-  const paragraphs =
-    rawContent && rawContent.length > 0
-      ? rawContent
-      : lang === "hi"
-        ? [
-            article.summary,
-            "इस विषय पर अधिक जानकारी जल्द उपलब्ध होगी। हमारे संवाददाता इस खबर पर नजर रखे हुए हैं।",
-            "नवीनतम अपडेट के लिए खबर कोठरी के साथ बने रहें।",
-          ]
-        : [
-            article.summaryEn,
-            "More details on this story are being gathered by our correspondents. Stay tuned for live updates.",
-            "Follow Khabar Kothri for the latest breaking news and comprehensive coverage.",
-          ];
+  const paragraphs = rawContent && rawContent.length > 0 ? rawContent : [];
 
   const color = categoryColors[article.categorySlug] || "#BB1919";
   const sideRelated = recommendedArticles.slice(0, 4);

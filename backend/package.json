@@ -13,6 +13,7 @@
     "articles:clear": "node scripts/clear-articles.js",
     "seed:hindi": "node scripts/seed-hindi-from-existing.js",
     "migrate:primary-locale": "node scripts/migrate-primary-locale.js",
+    "migrate:article-numbers": "node scripts/migrate-article-numbers.js",
     "newsletter:digest": "node scripts/send-newsletter-digest.js"
   },
   "dependencies": {

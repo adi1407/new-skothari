@@ -3,20 +3,35 @@ import { apiFetchSignal } from "../lib/apiFetchSignal";
 
 export interface BackendArticle {
   _id: string;
-  primaryLocale?: "hi" | "en";
+  articleNumber?: number;
   title: string;
   titleHi?: string;
   summary?: string;
   summaryHi?: string;
   body?: string;
   bodyHi?: string;
-  images: Array<{ url: string; caption?: string; isHero?: boolean }>;
+  images: Array<{
+    url: string;
+    caption?: string;
+    isHero?: boolean;
+    alt?: string;
+    imageTitle?: string;
+    imageDescription?: string;
+    source?: string;
+  }>;
   category: string;
   tags: string[];
   isBreaking: boolean;
   readTime: number;
   status: string;
   author?: { name: string };
+  bylineName?: string;
+  metaTitle?: string;
+  metaTitleHi?: string;
+  metaDescription?: string;
+  metaDescriptionHi?: string;
+  metaKeywords?: string;
+  primaryLocale?: "hi" | "en";
   slug?: string;
   publishedAt?: string;
   createdAt: string;
@@ -89,7 +104,6 @@ export async function fetchRecommendedForArticle(
   opts: { limit?: number; locale?: "hi" | "en" } = {}
 ): Promise<BackendArticle[]> {
   try {
-    if (!/^[a-f0-9]{24}$/i.test(articleId)) return [];
     const params = new URLSearchParams();
     if (opts.limit) params.set("limit", String(opts.limit));
     if (opts.locale) params.set("locale", opts.locale);

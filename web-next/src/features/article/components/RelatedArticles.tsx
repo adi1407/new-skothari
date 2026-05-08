@@ -1,7 +1,7 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import type { NewsItem } from "../../../data/mockData";
+import type { NewsItem } from "../types/article";
 import PremiumRecCard from "./PremiumRecCard";
 
 type TFn = (hi: string, en: string) => string;

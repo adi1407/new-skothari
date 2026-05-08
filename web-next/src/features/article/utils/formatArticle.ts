@@ -16,6 +16,11 @@ export function isMongoId(id: string): boolean {
   return /^[a-f0-9]{24}$/.test(id);
 }
 
+/** Article URL segment: Mongo ObjectId or public 9-digit article number. */
+export function isArticleRefId(id: string): boolean {
+  return isMongoId(id) || /^\d{9}$/.test(id);
+}
+
 export function upvoteCountFromApi(res: unknown): number | null {
   if (!res || typeof res !== "object" || !("upvoteCount" in res)) return null;
   const n = Number((res as { upvoteCount: unknown }).upvoteCount);

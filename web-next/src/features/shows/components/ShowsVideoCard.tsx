@@ -2,8 +2,8 @@
 
 import { motion } from "framer-motion";
 import { Play, Clock, Eye, ExternalLink } from "lucide-react";
-import type { VideoItem } from "../../../data/mockData";
 import YoutubeThumbImg from "../../../components/YoutubeThumbImg";
+import type { VideoItem } from "../types/shows";
 
 type TFn = (hi: string, en: string) => string;
 

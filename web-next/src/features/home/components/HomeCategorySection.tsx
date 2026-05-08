@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { NewsItem } from "../../../data/mockData";
+import type { ContentArticle } from "../../../services/contentTypes";
 import { homeSections } from "../config/sections";
 import { dek, headline } from "../server/homeFeed";
 import styles from "../../../app/newsroom.module.css";
@@ -15,8 +15,8 @@ export default function HomeCategorySection({
 }: {
   section: HomeSection;
   locale: "hi" | "en";
-  lead: NewsItem;
-  rest: NewsItem[];
+  lead: ContentArticle;
+  rest: ContentArticle[];
 }) {
   return (
     <section className={styles.sectionBlock}>

@@ -51,6 +51,15 @@ export default async function CategoryPage(
 
       <div className="cat-page-body">
         <section className="cat-page-grid">
+          {list.length === 0 ? (
+            <article className={`card-default ${styles.cardBody}`}>
+              <p className="card-summary">
+                {locale === "hi"
+                  ? "इस श्रेणी के लिए अभी खबरें उपलब्ध नहीं हैं।"
+                  : "No stories are currently available for this category."}
+              </p>
+            </article>
+          ) : null}
           {list.map((item) => (
             <article key={String(item.id)} className={`card-default ${styles.cardBody}`}>
               <Link href={`/article/${item.id}`} className={styles.cardLink}>

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  Save, Send, ArrowLeft, Upload, X, Image as ImgIcon, Loader2, AlertCircle,
+  Save, Send, ArrowLeft, Upload, X, Image as ImgIcon, Loader2, AlertCircle, Link2, Copy,
 } from "lucide-react";
 import {
   getArticle, createArticle, updateArticle, submitArticle, uploadImages, deleteImage, getTasks,
-  mediaUrl,
+  mediaUrl, patchArticleImage, lookupArticleByNumber,
 } from "../../api";
+import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { useAuth } from "../../context/AuthContext";
 
 const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
@@ -55,6 +56,8 @@ export default function ArticleEditor() {
     title: "", titleHi: "", summary: "", summaryHi: "",
     body: "", bodyHi: "", category: "desh",
     tags: "", isBreaking: false, task: "",
+    metaTitle: "", metaTitleHi: "", metaDescription: "", metaDescriptionHi: "",
+    metaKeywords: "", bylineName: "",
   });
   const [images, setImages]         = useState([]);
   const [tasks, setTasks]           = useState([]);
@@ -65,6 +68,7 @@ export default function ArticleEditor() {
   const [error, setError]           = useState("");
   const [success, setSuccess]       = useState("");
   const [loading, setLoading]       = useState(isEdit);
+  const [articleNumber, setArticleNumber] = useState(null);
 
   useEffect(() => {
     if (!isEdit && user?.role === "writer_en") {
@@ -91,9 +95,16 @@ export default function ArticleEditor() {
           tags: (art.tags || []).join(", "),
           isBreaking: art.isBreaking || false,
           task: art.task?._id || "",
+          metaTitle: art.metaTitle || "",
+          metaTitleHi: art.metaTitleHi || "",
+          metaDescription: art.metaDescription || "",
+          metaDescriptionHi: art.metaDescriptionHi || "",
+          metaKeywords: art.metaKeywords || "",
+          bylineName: art.bylineName || "",
         });
         setImages(art.images || []);
         setStatus(art.status);
+        setArticleNumber(art.articleNumber ?? null);
       }
     }).finally(() => setLoading(false));
   }, [id, isEdit]);
@@ -113,9 +124,11 @@ export default function ArticleEditor() {
         tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       };
       if (isEdit) {
-        await updateArticle(id, payload);
+        const { data } = await updateArticle(id, payload);
+        if (data?.article?.articleNumber != null) setArticleNumber(data.article.articleNumber);
       } else {
         const { data } = await createArticle(payload);
+        if (data?.article?.articleNumber != null) setArticleNumber(data.article.articleNumber);
         navigate(`/writer/edit/${data.article._id}`, { replace: true });
       }
       setSuccess("Saved successfully");
@@ -172,6 +185,70 @@ export default function ArticleEditor() {
     }
   };
 
+  const handleInsertRelatedArticle = async () => {
+    const raw = window.prompt("Enter the 9-digit article ID to link:");
+    if (raw == null) return;
+    const num = String(raw).trim();
+    if (!/^\d{9}$/.test(num)) {
+      setError("Enter exactly 9 digits");
+      return;
+    }
+    setError("");
+    try {
+      const { data } = await lookupArticleByNumber(num);
+      const readAlsoHi = "ये भी पढ़ें";
+      const readAlsoEn = "Read also";
+      const titlePick =
+        form.primaryLocale === "hi"
+          ? (data.titleHi || data.title || "").trim()
+          : (data.title || data.titleHi || "").trim();
+      const prefix = form.primaryLocale === "hi" ? readAlsoHi : readAlsoEn;
+      const href = data.urlPath || `/article/${data.articleNumber}`;
+      const block = `<p class="read-also"><strong>${prefix}:</strong> <a href="${href}">${titlePick || "Related"}</a></p>`;
+      if (form.primaryLocale === "hi") set("bodyHi", (form.bodyHi || "") + block);
+      else set("body", (form.body || "") + block);
+      setSuccess("Related article link inserted — scroll to the body editor to adjust placement.");
+      setTimeout(() => setSuccess(""), 4000);
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not find that article");
+    }
+  };
+
+  const saveImageMeta = async (index, meta) => {
+    if (!id) return;
+    try {
+      await patchArticleImage(id, index, meta);
+      setImages((prev) => {
+        if (meta.isHero) {
+          return prev.map((im, j) => ({ ...im, isHero: j === index }));
+        }
+        const next = [...prev];
+        if (next[index]) next[index] = { ...next[index], ...meta };
+        return next;
+      });
+    } catch {
+      setError("Failed to save image details");
+    }
+  };
+
+  const copyPublicArticleUrl = () => {
+    if (articleNumber == null) return;
+    const site = import.meta.env.VITE_SITE_ORIGIN || window.location.origin;
+    const path = `${String(site).replace(/\/$/, "")}/article/${articleNumber}`;
+    navigator.clipboard.writeText(path).catch(() => {});
+    setSuccess("Public URL copied");
+    setTimeout(() => setSuccess(""), 2500);
+  };
+
+  const patchLocalImage = (i, key, v) => {
+    setImages((prev) => {
+      const next = [...prev];
+      if (!next[i]) return prev;
+      next[i] = { ...next[i], [key]: v };
+      return next;
+    });
+  };
+
   const canEdit  = ["draft", "rejected"].includes(status);
   const canSubmit =
     isEdit &&
@@ -201,6 +278,20 @@ export default function ArticleEditor() {
             <h1 className="text-2xl font-bold text-slate-800">
               {isEdit ? "Edit Article" : "New Article"}
             </h1>
+            {isEdit && articleNumber != null && (
+              <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-slate-600">
+                <span className="font-mono font-semibold text-slate-800">
+                  Article ID: {articleNumber}
+                </span>
+                <button
+                  type="button"
+                  onClick={copyPublicArticleUrl}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded border border-slate-200 hover:bg-slate-50"
+                >
+                  <Copy size={12} /> Copy public URL
+                </button>
+              </div>
+            )}
             {isEdit && (
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize mt-0.5 inline-block ${
                 status === "published" ? "bg-green-100 text-green-700" :
@@ -274,13 +365,26 @@ export default function ArticleEditor() {
                   placeholder="Brief summary (shown in cards)"
                 />
               </Field>
-              <Field label="Body" required>
-                <Textarea
-                  rows={14} value={form.body} disabled={!canEdit}
-                  onChange={(e) => set("body", e.target.value)}
-                  placeholder="Full article content…"
-                />
-              </Field>
+              <div className="space-y-2">
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={handleInsertRelatedArticle}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-brand border border-brand/30 rounded-lg px-3 py-2 hover:bg-brand/5"
+                  >
+                    <Link2 size={16} /> Insert related article (9-digit ID)
+                  </button>
+                )}
+                <Field label="Main article content" required>
+                  <RichTextEditor
+                    value={form.body}
+                    onChange={(html) => set("body", html)}
+                    disabled={!canEdit}
+                    placeholder="Full article…"
+                    labelHint="English rich editor — use toolbar for headings, lists, and links."
+                  />
+                </Field>
+              </div>
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
@@ -299,13 +403,26 @@ export default function ArticleEditor() {
                   placeholder="संक्षिप्त विवरण"
                 />
               </Field>
-              <Field label="मुख्य सामग्री (Body)" required>
-                <Textarea
-                  rows={14} value={form.bodyHi} disabled={!canEdit}
-                  onChange={(e) => set("bodyHi", e.target.value)}
-                  placeholder="पूरा लेख यहाँ लिखें…"
-                />
-              </Field>
+              <div className="space-y-2">
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={handleInsertRelatedArticle}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-brand border border-brand/30 rounded-lg px-3 py-2 hover:bg-brand/5"
+                  >
+                    <Link2 size={16} /> संबंधित लेख जोड़ें (9 अंक ID)
+                  </button>
+                )}
+                <Field label="मुख्य सामग्री (Body)" required>
+                  <RichTextEditor
+                    value={form.bodyHi}
+                    onChange={(html) => set("bodyHi", html)}
+                    disabled={!canEdit}
+                    placeholder="पूरा लेख…"
+                    labelHint="हिंदी संपादक — शीर्षक, सूची व लिंक के लिए टूलबार।"
+                  />
+                </Field>
+              </div>
             </div>
           )}
 
@@ -330,9 +447,10 @@ export default function ArticleEditor() {
                   />
                 </Field>
                 <Field label="मुख्य सामग्री (Body)">
-                  <Textarea
-                    rows={8} value={form.bodyHi} disabled={!canEdit}
-                    onChange={(e) => set("bodyHi", e.target.value)}
+                  <RichTextEditor
+                    value={form.bodyHi}
+                    onChange={(html) => set("bodyHi", html)}
+                    disabled={!canEdit}
                     placeholder="पूरा लेख (optional)"
                   />
                 </Field>
@@ -354,9 +472,10 @@ export default function ArticleEditor() {
                   />
                 </Field>
                 <Field label="Body">
-                  <Textarea
-                    rows={8} value={form.body} disabled={!canEdit}
-                    onChange={(e) => set("body", e.target.value)}
+                  <RichTextEditor
+                    value={form.body}
+                    onChange={(html) => set("body", html)}
+                    disabled={!canEdit}
                     placeholder="Full article in English (optional)"
                   />
                 </Field>
@@ -379,7 +498,7 @@ export default function ArticleEditor() {
                   <Upload size={24} className="mx-auto text-slate-400 mb-2" />
                 )}
                 <p className="text-sm text-slate-500">
-                  {uploading ? "Uploading…" : "Click to upload images (JPEG, PNG, WebP · max 8MB each)"}
+                  {uploading ? "Uploading…" : "Hero/images: exactly 2180 × 750 px · JPEG, PNG, WebP · max 8MB each"}
                 </p>
                 {!isEdit && (
                   <p className="text-xs text-slate-400 mt-1">Save the article first to enable uploads</p>
@@ -392,22 +511,73 @@ export default function ArticleEditor() {
             )}
 
             {images.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 {images.map((img, i) => (
-                  <div key={i} className="relative group rounded-lg overflow-hidden aspect-video bg-slate-100">
-                    <img src={mediaUrl(img.url)} alt={img.caption || `img-${i}`} className="w-full h-full object-cover" />
-                    {img.isHero && (
-                      <span className="absolute top-1.5 left-1.5 bg-brand text-white text-xs px-1.5 py-0.5 rounded font-semibold">
-                        Hero
-                      </span>
-                    )}
+                  <div key={`${img.url}-${i}`} className="rounded-lg border border-slate-200 bg-slate-50/50 overflow-hidden">
+                    <div className="relative group aspect-video bg-slate-100">
+                      <img src={mediaUrl(img.url)} alt={img.alt || img.caption || `img-${i}`} className="w-full h-full object-cover" />
+                      {img.isHero && (
+                        <span className="absolute top-1.5 left-1.5 bg-brand text-white text-xs px-1.5 py-0.5 rounded font-semibold">
+                          Hero
+                        </span>
+                      )}
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteImage(img.url.split("/").pop())}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
                     {canEdit && (
-                      <button
-                        onClick={() => handleDeleteImage(img.url.split("/").pop())}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X size={12} />
-                      </button>
+                      <div className="p-3 space-y-2 text-xs">
+                        <Input
+                          placeholder="Alt text"
+                          value={img.alt ?? ""}
+                          onChange={(e) => patchLocalImage(i, "alt", e.target.value)}
+                        />
+                        <Input
+                          placeholder="Image title"
+                          value={img.imageTitle ?? ""}
+                          onChange={(e) => patchLocalImage(i, "imageTitle", e.target.value)}
+                        />
+                        <Textarea
+                          rows={2}
+                          placeholder="Image description"
+                          value={img.imageDescription ?? ""}
+                          onChange={(e) => patchLocalImage(i, "imageDescription", e.target.value)}
+                        />
+                        <Input
+                          placeholder="Source / credit"
+                          value={img.source ?? ""}
+                          onChange={(e) => patchLocalImage(i, "source", e.target.value)}
+                        />
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              saveImageMeta(i, {
+                                alt: img.alt || "",
+                                imageTitle: img.imageTitle || "",
+                                imageDescription: img.imageDescription || "",
+                                source: img.source || "",
+                              })
+                            }
+                            className="px-2 py-1 rounded bg-slate-800 text-white text-xs font-semibold"
+                          >
+                            Save details
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => saveImageMeta(i, { isHero: true })}
+                            className="px-2 py-1 rounded border border-slate-300 text-xs font-semibold text-slate-700"
+                          >
+                            Set as hero
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -493,6 +663,52 @@ export default function ArticleEditor() {
                 </select>
               </Field>
             )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+            <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">SEO &amp; byline</h2>
+            <Field label="Meta title (English)">
+              <Input
+                value={form.metaTitle} disabled={!canEdit}
+                onChange={(e) => set("metaTitle", e.target.value)}
+                placeholder="optional — English meta title"
+              />
+            </Field>
+            <Field label="Meta title (Hindi)">
+              <Input
+                value={form.metaTitleHi} disabled={!canEdit}
+                onChange={(e) => set("metaTitleHi", e.target.value)}
+                placeholder="optional — हिंदी"
+              />
+            </Field>
+            <Field label="Meta description (English)">
+              <Textarea
+                rows={2} value={form.metaDescription} disabled={!canEdit}
+                onChange={(e) => set("metaDescription", e.target.value)}
+                placeholder="optional"
+              />
+            </Field>
+            <Field label="Meta description (Hindi)">
+              <Textarea
+                rows={2} value={form.metaDescriptionHi} disabled={!canEdit}
+                onChange={(e) => set("metaDescriptionHi", e.target.value)}
+                placeholder="optional"
+              />
+            </Field>
+            <Field label="Meta keywords (English only)">
+              <Input
+                value={form.metaKeywords} disabled={!canEdit}
+                onChange={(e) => set("metaKeywords", e.target.value)}
+                placeholder="e.g. election, india, news (English keywords for all desks)"
+              />
+            </Field>
+            <Field label="Byline / writer name (display)">
+              <Input
+                value={form.bylineName} disabled={!canEdit}
+                onChange={(e) => set("bylineName", e.target.value)}
+                placeholder="optional — shown as author on site"
+              />
+            </Field>
           </div>
 
           {/* Tips */}

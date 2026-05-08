@@ -1,5 +1,5 @@
 import type { BackendArticle } from "./newsApi";
-import type { NewsItem } from "../data/mockData";
+import type { ContentArticle } from "./contentTypes";
 import { withPublicOrigin } from "../config/publicApi";
 
 const CAT_HI: Record<string, string> = {
@@ -43,9 +43,10 @@ function getImageUrl(article: BackendArticle): string {
   return withPublicOrigin(hero.url);
 }
 
-export function adaptArticle(a: BackendArticle): NewsItem {
+export function adaptArticle(a: BackendArticle): ContentArticle {
   const time = relativeTime(a.publishedAt ?? a.createdAt);
-  const authorName = a.author?.name ?? "संवाददाता";
+  const authorName =
+    String(a.bylineName || "").trim() || a.author?.name || "संवाददाता";
   const rawTitleHi = String(a.titleHi || "").trim();
   const rawTitleEn = String(a.title || "").trim();
   const rawSummaryHi = String(a.summaryHi || "").trim();
@@ -58,8 +59,14 @@ export function adaptArticle(a: BackendArticle): NewsItem {
   const summary = rawSummaryHi || rawSummaryEn;
   const summaryEnOut = rawSummaryEn || rawSummaryHi;
 
+  const publicId =
+    a.articleNumber != null && Number.isFinite(Number(a.articleNumber))
+      ? String(a.articleNumber)
+      : a._id;
+
   return {
-    id:           a._id,
+    id:           publicId,
+    mongoId:      a._id,
     category:     CAT_HI[a.category] ?? a.category,
     categoryEn:   CAT_EN[a.category] ?? a.category,
     categorySlug: a.category,
@@ -83,6 +90,6 @@ export function adaptArticle(a: BackendArticle): NewsItem {
   };
 }
 
-export function adaptArticles(articles: BackendArticle[]): NewsItem[] {
+export function adaptArticles(articles: BackendArticle[]): ContentArticle[] {
   return articles.map(adaptArticle);
 }

@@ -1,9 +1,9 @@
 /* eslint-disable react-hooks/set-state-in-effect -- article route resets loading/sidebar when id or fetched article changes (same pattern as legacy client) */
 import { useState, useEffect } from "react";
-import type { NewsItem } from "../../../data/mockData";
+import type { NewsItem } from "../types/article";
 import { adaptArticle, adaptArticles } from "../../../services/articleAdapter";
 import { getArticleById, getPublishedArticlesPage, getRecommendedForArticle } from "../services/articleApi";
-import { isMongoId } from "../utils/formatArticle";
+import { isArticleRefId } from "../utils/formatArticle";
 
 export function useArticle(articleId: string, lang: "hi" | "en") {
   const [article, setArticle] = useState<NewsItem | null>(null);
@@ -21,7 +21,7 @@ export function useArticle(articleId: string, lang: "hi" | "en") {
       setLoading(false);
       return;
     }
-    if (!isMongoId(articleId)) {
+    if (!isArticleRefId(articleId)) {
       setArticle(null);
       setLoading(false);
       return;
@@ -39,7 +39,7 @@ export function useArticle(articleId: string, lang: "hi" | "en") {
   }, [articleId]);
 
   useEffect(() => {
-    if (!articleId || !article || String(article.id) !== articleId) {
+    if (!articleId || !article || String(article.id) !== String(articleId)) {
       setRecommendedArticles([]);
       setMostReadSidebar([]);
       return;

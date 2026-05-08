@@ -1,8 +1,8 @@
 "use client";
 
 import { Tv2 } from "lucide-react";
-import type { VideoItem } from "../../../data/mockData";
 import { SHOWS_CATEGORY_COLORS } from "../utils/categoryColors";
+import type { VideoItem } from "../types/shows";
 import ShowsVideoCard from "./ShowsVideoCard";
 
 type TFn = (hi: string, en: string) => string;

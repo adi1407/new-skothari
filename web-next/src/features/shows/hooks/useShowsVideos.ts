@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { VideoItem } from "../../../data/mockData";
 import { adaptVideos } from "../../../services/videoAdapter";
 import { getPublishedVideos } from "../services/showsApi";
+import type { VideoItem } from "../types/shows";
 
 export function useShowsVideos(lang: "hi" | "en") {
   const [videos, setVideos] = useState<VideoItem[]>([]);

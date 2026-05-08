@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Clock, ArrowUpRight, Zap, Bookmark, Share2, Eye } from "lucide-react";
-import type { NewsItem } from "../data/mockData";
+import type { ContentArticle } from "../services/contentTypes";
 import { useLang } from "../context/LangContext";
 import { fetchPublishedArticles } from "../services/newsApi";
 import { adaptArticles } from "../services/articleAdapter";
@@ -12,7 +12,7 @@ import { adaptArticles } from "../services/articleAdapter";
 const ROTATION_INTERVAL = 8000;
 
 export default function HeroSection() {
-  const [stories, setStories] = useState<NewsItem[]>([]);
+  const [stories, setStories] = useState<ContentArticle[]>([]);
   const [heroLoading, setHeroLoading] = useState(true);
   const [activeIdx, setActiveIdx] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -25,7 +25,7 @@ export default function HeroSection() {
   );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const rafRef = useRef<number | null>(null);
-  const startTimeRef = useRef<number>(Date.now());
+  const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 768px)");
@@ -36,25 +36,30 @@ export default function HeroSection() {
   }, [lang]);
 
   useEffect(() => {
-    setHeroLoading(true);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) setHeroLoading(true);
+    });
     fetchPublishedArticles({ limit: 6, locale: lang })
       .then((articles) => {
+        if (cancelled) return;
         setStories(adaptArticles(articles).slice(0, 6));
       })
       .finally(() => {
-        setHeroLoading(false);
+        if (!cancelled) setHeroLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [lang]);
 
   useEffect(() => {
     if (stories.length === 0) return;
     if (reduceMotion) {
-      setProgress(0);
       return;
     }
     /* Auto-rotate distracts on small screens; user picks from the list */
     if (narrowHero) {
-      setProgress(0);
       return;
     }
     startTimeRef.current = Date.now();
@@ -66,7 +71,12 @@ export default function HeroSection() {
     };
     rafRef.current = requestAnimationFrame(tick);
     intervalRef.current = setInterval(() => {
-      setActiveIdx((i) => (i + 1) % stories.length);
+      setActiveIdx((i) => {
+        const len = stories.length;
+        if (len === 0) return 0;
+        const cur = Math.min(i, len - 1);
+        return (cur + 1) % len;
+      });
       setProgress(0);
       startTimeRef.current = Date.now();
     }, ROTATION_INTERVAL);
@@ -76,14 +86,18 @@ export default function HeroSection() {
     };
   }, [activeIdx, stories.length, reduceMotion, narrowHero]);
 
-  useEffect(() => {
-    if (activeIdx >= stories.length) setActiveIdx(0);
-  }, [stories.length, activeIdx]);
+  const displayIdx =
+    stories.length === 0 ? 0 : Math.min(activeIdx, stories.length - 1);
+  const fillProgress = reduceMotion || narrowHero ? 0 : progress;
 
   const goTo = (idx: number) => {
-    setActiveIdx(idx);
+    const len = stories.length;
+    const clamped = len === 0 ? 0 : Math.min(Math.max(0, idx), len - 1);
+    setActiveIdx(clamped);
     setProgress(0);
-    startTimeRef.current = Date.now();
+    queueMicrotask(() => {
+      startTimeRef.current = Date.now();
+    });
   };
 
   if (!heroLoading && stories.length === 0) {
@@ -98,7 +112,7 @@ export default function HeroSection() {
     );
   }
 
-  const story = stories[activeIdx] ?? stories[0];
+  const story = stories[displayIdx] ?? stories[0];
   if (!story) {
     return (
       <section className="hero-section hero-cinematic-wrap">
@@ -223,13 +237,13 @@ export default function HeroSection() {
                     className="hero-cin-progress-fill"
                     style={{
                       width: narrowHero
-                        ? i === activeIdx
+                        ? i === displayIdx
                           ? "100%"
                           : "0%"
-                        : i < activeIdx
+                        : i < displayIdx
                           ? "100%"
-                          : i === activeIdx
-                            ? `${progress}%`
+                          : i === displayIdx
+                            ? `${fillProgress}%`
                             : "0%",
                     }}
                   />
@@ -262,7 +276,7 @@ export default function HeroSection() {
               return (
                 <motion.article
                   key={String(s.id)}
-                  className={`hero-cin-side-item${activeIdx === i ? " active" : ""}`}
+                  className={`hero-cin-side-item${displayIdx === i ? " active" : ""}`}
                   initial={reduceMotion ? false : { opacity: 0, x: 16 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={reduceMotion ? { duration: 0 } : { delay: 0.1 + i * 0.08, duration: 0.4 }}

@@ -18,6 +18,11 @@ export default function ShowsPageClient() {
       <ShowsPageHeader t={t} />
       <div className="shows-page-body">
         <ShowsStatsRow t={t} />
+        {videos.length === 0 ? (
+          <p className="shows-page-sub">
+            {t("वीडियो फ़ीड उपलब्ध नहीं है।", "Video feed is currently unavailable.")}
+          </p>
+        ) : null}
         {cats.filter(Boolean).map((cat) => (
           <ShowsCategoryGroup
             key={cat}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, Eye } from "lucide-react";
-import type { NewsItem } from "../../../data/mockData";
+import type { NewsItem } from "../types/article";
 import { categoryColors, formatViewCount } from "../utils/formatArticle";
 
 export default function PremiumRecCard({ item, lang }: { item: NewsItem; lang: string }) {

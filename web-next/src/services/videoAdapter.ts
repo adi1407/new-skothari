@@ -1,5 +1,5 @@
 import type { BackendVideo } from "./newsApi";
-import type { VideoItem } from "../data/mockData";
+import type { ContentVideo } from "./contentTypes";
 import { withPublicOrigin } from "../config/publicApi";
 
 const CAT_HI: Record<string, string> = {
@@ -40,7 +40,7 @@ function relativePublished(dateStr?: string): { hi: string; en: string } {
   };
 }
 
-export function adaptVideo(v: BackendVideo): VideoItem {
+export function adaptVideo(v: BackendVideo): ContentVideo {
   const slug = v.category || "desh";
   const rel = relativePublished(v.publishedAt ?? v.createdAt);
   const thumbRaw = (v.thumbnailOverride || "").trim();
@@ -70,6 +70,6 @@ export function adaptVideo(v: BackendVideo): VideoItem {
   };
 }
 
-export function adaptVideos(videos: BackendVideo[]): VideoItem[] {
+export function adaptVideos(videos: BackendVideo[]): ContentVideo[] {
   return videos.map(adaptVideo);
 }

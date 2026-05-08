@@ -9,6 +9,7 @@ const ReaderArticleView = require("../models/ReaderArticleView");
 const ReaderSession = require("../models/ReaderSession");
 const RecommendationSignal = require("../models/RecommendationSignal");
 const Article = require("../models/Article");
+const { resolvePublishedArticleMongoId } = require("../utils/resolveArticleRef");
 const { authenticateReader, signReaderToken, readerPublic } = require("../middleware/readerAuth");
 const { setNewsletterSubscription } = require("../services/newsletterSubscription");
 const { sendLatestStoriesNewsletter } = require("../services/newsletterDigest");
@@ -28,6 +29,14 @@ async function ensureProfile(readerId) {
     profile = await ReaderProfile.create({ reader: readerId });
   }
   return profile;
+}
+
+/** Normalize Mongo ObjectId or public 9-digit article number to published article `_id`. */
+async function normalizePublishedArticleId(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+  if (mongoose.Types.ObjectId.isValid(s) && String(new mongoose.Types.ObjectId(s)) === s) return s;
+  return resolvePublishedArticleMongoId(Article, s);
 }
 
 function sessionPayload(req) {
@@ -204,7 +213,7 @@ router.get("/bookmarks", authenticateReader, async (req, res) => {
       .populate({
         path: "article",
         match: { status: "published" },
-        select: "primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views author body bodyHi",
+        select: "articleNumber primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views author body bodyHi",
       })
       .sort({ createdAt: -1 })
       .lean();
@@ -216,13 +225,14 @@ router.get("/bookmarks", authenticateReader, async (req, res) => {
 
 router.get("/bookmarks/:articleId", authenticateReader, async (req, res) => {
   try {
-    if (!mongoose.isValidObjectId(req.params.articleId)) {
+    const articleMongoId = await normalizePublishedArticleId(req.params.articleId);
+    if (!articleMongoId) {
       return res.json({ bookmarked: false });
     }
     const bookmarked = Boolean(
       await Bookmark.findOne({
         reader: req.reader._id,
-        article: req.params.articleId,
+        article: articleMongoId,
       }).select("_id")
     );
     res.json({ bookmarked });
@@ -234,20 +244,22 @@ router.get("/bookmarks/:articleId", authenticateReader, async (req, res) => {
 router.post(
   "/bookmarks",
   authenticateReader,
-  [body("articleId").isMongoId()],
+  [body("articleId").notEmpty()],
   async (req, res) => {
     if (err400(req, res)) return;
     try {
-      const exists = await Article.findOne({ _id: req.body.articleId, status: "published" }).select("_id");
+      const articleMongoId = await normalizePublishedArticleId(req.body.articleId);
+      if (!articleMongoId) return res.status(400).json({ message: "Invalid article id" });
+      const exists = await Article.findOne({ _id: articleMongoId, status: "published" }).select("_id");
       if (!exists) return res.status(404).json({ message: "Article not found" });
       const bookmark = await Bookmark.findOneAndUpdate(
-        { reader: req.reader._id, article: req.body.articleId },
-        { $setOnInsert: { reader: req.reader._id, article: req.body.articleId } },
+        { reader: req.reader._id, article: articleMongoId },
+        { $setOnInsert: { reader: req.reader._id, article: articleMongoId } },
         { upsert: true, new: true }
       );
       await RecommendationSignal.create({
         reader: req.reader._id,
-        article: req.body.articleId,
+        article: articleMongoId,
         category: "",
         eventType: "bookmark",
         weight: 3,
@@ -261,7 +273,9 @@ router.post(
 
 router.delete("/bookmarks/:articleId", authenticateReader, async (req, res) => {
   try {
-    await Bookmark.deleteOne({ reader: req.reader._id, article: req.params.articleId });
+    const articleMongoId = await normalizePublishedArticleId(req.params.articleId);
+    if (!articleMongoId) return res.status(400).json({ message: "Invalid article id" });
+    await Bookmark.deleteOne({ reader: req.reader._id, article: articleMongoId });
     res.json({ message: "Bookmark removed" });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -270,10 +284,12 @@ router.delete("/bookmarks/:articleId", authenticateReader, async (req, res) => {
 
 router.get("/upvotes/:articleId", authenticateReader, async (req, res) => {
   try {
+    const articleMongoId = await normalizePublishedArticleId(req.params.articleId);
+    if (!articleMongoId) return res.json({ hasUpvoted: false });
     const hasUpvoted = Boolean(
       await RecommendationSignal.findOne({
         reader: req.reader._id,
-        article: req.params.articleId,
+        article: articleMongoId,
         eventType: "upvote",
       }).select("_id")
     );
@@ -289,7 +305,7 @@ router.get("/upvotes", authenticateReader, async (req, res) => {
       .populate({
         path: "article",
         match: { status: "published" },
-        select: "primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views upvotes author body bodyHi",
+        select: "articleNumber primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views upvotes author body bodyHi",
       })
       .sort({ createdAt: -1 })
       .lean();
@@ -312,34 +328,36 @@ router.get("/upvotes", authenticateReader, async (req, res) => {
 router.post(
   "/upvotes",
   authenticateReader,
-  [body("articleId").isMongoId()],
+  [body("articleId").notEmpty()],
   async (req, res) => {
     if (err400(req, res)) return;
     try {
-      const exists = await Article.findOne({ _id: req.body.articleId, status: "published" }).select("category");
+      const articleMongoId = await normalizePublishedArticleId(req.body.articleId);
+      if (!articleMongoId) return res.status(400).json({ message: "Invalid article id" });
+      const exists = await Article.findOne({ _id: articleMongoId, status: "published" }).select("category");
       if (!exists) return res.status(404).json({ message: "Article not found" });
       const existingUpvote = await RecommendationSignal.findOne({
         reader: req.reader._id,
-        article: req.body.articleId,
+        article: articleMongoId,
         eventType: "upvote",
       }).select("_id");
       if (!existingUpvote) {
         await RecommendationSignal.create({
           reader: req.reader._id,
-          article: req.body.articleId,
+          article: articleMongoId,
           eventType: "upvote",
           category: exists.category || "",
           weight: 4,
           meta: {},
         });
-        await Article.updateOne({ _id: req.body.articleId }, { $inc: { upvotes: 1 } });
+        await Article.updateOne({ _id: articleMongoId }, { $inc: { upvotes: 1 } });
       }
       const signal = await RecommendationSignal.findOne({
         reader: req.reader._id,
-        article: req.body.articleId,
+        article: articleMongoId,
         eventType: "upvote",
       }).lean();
-      const article = await Article.findById(req.body.articleId).select("upvotes").lean();
+      const article = await Article.findById(articleMongoId).select("upvotes").lean();
       res.status(201).json({ signal, upvoteCount: Number(article?.upvotes || 0) });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -349,19 +367,21 @@ router.post(
 
 router.delete("/upvotes/:articleId", authenticateReader, async (req, res) => {
   try {
+    const articleMongoId = await normalizePublishedArticleId(req.params.articleId);
+    if (!articleMongoId) return res.status(400).json({ message: "Invalid article id" });
     const result = await RecommendationSignal.deleteMany({
       reader: req.reader._id,
-      article: req.params.articleId,
+      article: articleMongoId,
       eventType: "upvote",
     });
     if (result.deletedCount > 0) {
-      await Article.updateOne({ _id: req.params.articleId }, { $inc: { upvotes: -1 } });
+      await Article.updateOne({ _id: articleMongoId }, { $inc: { upvotes: -1 } });
       await Article.updateOne(
-        { _id: req.params.articleId, upvotes: { $lt: 0 } },
+        { _id: articleMongoId, upvotes: { $lt: 0 } },
         { $set: { upvotes: 0 } }
       );
     }
-    const article = await Article.findById(req.params.articleId).select("upvotes").lean();
+    const article = await Article.findById(articleMongoId).select("upvotes").lean();
     res.json({ message: "Upvote removed", upvoteCount: Number(article?.upvotes || 0) });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -374,7 +394,7 @@ router.get("/history", authenticateReader, async (req, res) => {
       .populate({
         path: "article",
         match: { status: "published" },
-        select: "primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views author body bodyHi",
+        select: "articleNumber primaryLocale title titleHi summary summaryHi category images publishedAt createdAt readTime isBreaking views author body bodyHi",
       })
       .sort({ lastViewedAt: -1 })
       .lean();
@@ -388,30 +408,32 @@ router.post(
   "/history",
   authenticateReader,
   [
-    body("articleId").isMongoId(),
+    body("articleId").notEmpty(),
     body("progressPct").optional().isFloat({ min: 0, max: 100 }),
     body("readSeconds").optional().isInt({ min: 0 }),
   ],
   async (req, res) => {
     if (err400(req, res)) return;
     try {
-      const exists = await Article.findOne({ _id: req.body.articleId, status: "published" }).select("category");
+      const articleMongoId = await normalizePublishedArticleId(req.body.articleId);
+      if (!articleMongoId) return res.status(400).json({ message: "Invalid article id" });
+      const exists = await Article.findOne({ _id: articleMongoId, status: "published" }).select("category");
       if (!exists) return res.status(404).json({ message: "Article not found" });
       const view = await ReaderArticleView.findOneAndUpdate(
-        { reader: req.reader._id, article: req.body.articleId },
+        { reader: req.reader._id, article: articleMongoId },
         {
           $set: {
             progressPct: req.body.progressPct || 0,
             readSeconds: req.body.readSeconds || 0,
             lastViewedAt: new Date(),
           },
-          $setOnInsert: { reader: req.reader._id, article: req.body.articleId },
+          $setOnInsert: { reader: req.reader._id, article: articleMongoId },
         },
         { upsert: true, new: true }
       );
       await RecommendationSignal.create({
         reader: req.reader._id,
-        article: req.body.articleId,
+        article: articleMongoId,
         category: exists.category || "",
         eventType: req.body.progressPct >= 90 ? "complete" : "view",
         weight: req.body.progressPct >= 90 ? 2 : 1,
@@ -426,7 +448,9 @@ router.post(
 
 router.delete("/history/:articleId", authenticateReader, async (req, res) => {
   try {
-    await ReaderArticleView.deleteOne({ reader: req.reader._id, article: req.params.articleId });
+    const articleMongoId = await normalizePublishedArticleId(req.params.articleId);
+    if (!articleMongoId) return res.status(400).json({ message: "Invalid article id" });
+    await ReaderArticleView.deleteOne({ reader: req.reader._id, article: articleMongoId });
     res.json({ message: "History item removed" });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -525,16 +549,24 @@ router.post(
   authenticateReader,
   [
     body("eventType").isIn(["view", "bookmark", "share", "complete", "category_click"]),
-    body("articleId").optional().isMongoId(),
+    body("articleId").optional(),
     body("category").optional().isString(),
     body("weight").optional().isNumeric(),
   ],
   async (req, res) => {
     if (err400(req, res)) return;
     try {
+      let aid = req.body.articleId || null;
+      if (aid) {
+        const resolved = await normalizePublishedArticleId(aid);
+        if (!resolved) {
+          return res.status(400).json({ message: "Invalid article id" });
+        }
+        aid = resolved;
+      }
       const signal = await RecommendationSignal.create({
         reader: req.reader._id,
-        article: req.body.articleId || null,
+        article: aid || null,
         category: req.body.category || "",
         eventType: req.body.eventType,
         weight: Number(req.body.weight || 1),

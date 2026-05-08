@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect -- reader sync when token/article id changes matches legacy client */
 import { useCallback, useEffect, useState } from "react";
-import type { NewsItem } from "../../../data/mockData";
+import type { NewsItem } from "../types/article";
 import {
   addBookmark,
   addUpvote,

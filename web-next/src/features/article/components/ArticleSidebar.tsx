@@ -3,7 +3,7 @@
 import { useNavigate } from "react-router-dom";
 import { Clock, Link2 } from "lucide-react";
 import { IconFacebook, IconWhatsApp, IconXLogo } from "../../../components/icons/ShareBrandIcons";
-import type { NewsItem } from "../../../data/mockData";
+import type { NewsItem } from "../types/article";
 import RelatedCard from "./RelatedCard";
 import { categoryColors } from "../utils/formatArticle";
 import { shareToFacebook, shareToTwitter, shareToWhatsApp } from "../utils/share";

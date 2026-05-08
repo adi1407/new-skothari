@@ -41,6 +41,15 @@ export default async function Home() {
       <div className={`section-inner ${styles.sectionStack}`}>
         <HeroSection />
         <NewsTicker />
+        {feed.length === 0 ? (
+          <section className={styles.sectionBlock}>
+            <p className="card-summary">
+              {locale === "hi"
+                ? "इस समय होम फ़ीड उपलब्ध नहीं है। कृपया कुछ देर बाद पुनः प्रयास करें।"
+                : "Home feed is currently unavailable. Please try again shortly."}
+            </p>
+          </section>
+        ) : null}
         {homeSections.map((section) => {
           const list = pickCategory(feed, section.slug, 6);
           if (!list.length) return null;

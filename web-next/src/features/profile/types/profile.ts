@@ -6,5 +6,5 @@ export type ProfileNavigate = (to: string | number, options?: { replace?: boolea
 /** Reader API bookmark / upvote list rows (minimal shape for UI). */
 export type ProfileReaderListRow = {
   _id: string;
-  article?: { _id?: string; titleHi?: string; title?: string };
+  article?: { _id?: string; articleNumber?: number; titleHi?: string; title?: string };
 };

@@ -1,11 +1,11 @@
 const router = require("express").Router();
-const mongoose = require("mongoose");
 const { body, validationResult } = require("express-validator");
 const Article = require("../models/Article");
 const Video = require("../models/Video");
 const NewsletterSubscriber = require("../models/NewsletterSubscriber");
 const { setNewsletterSubscription } = require("../services/newsletterSubscription");
 const { sendLatestStoriesNewsletter } = require("../services/newsletterDigest");
+const { articleRefFilter } = require("../utils/resolveArticleRef");
 
 function localeMatchQuery(req) {
   const loc = String(req.query.locale || "").toLowerCase();
@@ -133,13 +133,14 @@ router.get("/articles", async (req, res) => {
 router.get("/articles/:id/recommendations", async (req, res) => {
   try {
     const rawId = req.params.id;
-    if (!mongoose.Types.ObjectId.isValid(rawId)) {
+    const ref = articleRefFilter(rawId);
+    if (!ref) {
       return res.json({ articles: [] });
     }
     const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 24);
     const localeQ = localeMatchQuery(req);
 
-    const base = await Article.findOne({ _id: rawId, status: "published" }).select("category tags").lean();
+    const base = await Article.findOne({ ...ref, status: "published" }).select("category tags").lean();
     if (!base) {
       return res.json({ articles: [] });
     }
@@ -209,11 +210,11 @@ router.get("/articles/:id/recommendations", async (req, res) => {
 // GET /api/public/articles/:id — no auth required, published only
 router.get("/articles/:id", async (req, res) => {
   try {
+    const ref = articleRefFilter(req.params.id);
+    if (!ref) return res.status(404).json({ message: "Article not found" });
+
     const article = await Article.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        status: "published",
-      },
+      { ...ref, status: "published" },
       { $inc: { views: 1 } },
       { new: true }
     )

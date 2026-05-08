@@ -1,5 +1,5 @@
 import { categories } from "../../../data/publicCategories";
-import type { NewsItem } from "../../../data/mockData";
+import type { ContentArticle } from "../../../services/contentTypes";
 import { toAbsoluteUrl } from "../../../lib/seo/metadataHelpers";
 import { categoryHeadline } from "../server/categoryFeed";
 
@@ -8,7 +8,7 @@ import { categoryHeadline } from "../server/categoryFeed";
  */
 export function buildCategoryCollectionJsonLd(
   slug: string,
-  list: NewsItem[],
+  list: ContentArticle[],
   locale: "hi" | "en"
 ): Record<string, unknown> {
   const category = categories.find((c) => c.slug === slug);

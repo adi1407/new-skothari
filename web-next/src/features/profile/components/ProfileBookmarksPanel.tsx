@@ -31,7 +31,14 @@ export default function ProfileBookmarksPanel({
             key={b._id}
             type="button"
             className="profile-row profile-row-dense"
-            onClick={() => navigate(`/article/${b.article?._id}`)}
+            onClick={() => {
+              const a = b.article;
+              const slug =
+                a?.articleNumber != null && Number.isFinite(Number(a.articleNumber))
+                  ? String(a.articleNumber)
+                  : a?._id;
+              if (slug) navigate(`/article/${slug}`);
+            }}
           >
             <span className="profile-row-title">{b.article?.titleHi || b.article?.title || "Untitled"}</span>
           </button>

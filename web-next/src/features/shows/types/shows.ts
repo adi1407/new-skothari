@@ -1,1 +1,3 @@
-export type { VideoItem } from "../../../data/mockData";
+import type { ContentVideo } from "../../../services/contentTypes";
+
+export type VideoItem = ContentVideo;

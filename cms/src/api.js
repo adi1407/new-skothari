@@ -78,6 +78,12 @@ export const uploadImages = (id, formData) =>
   });
 export const deleteImage = (id, filename) =>
   http.delete(`/articles/${id}/images/${filename}`);
+export const patchArticleImage = (id, index, data) =>
+  http.patch(`/articles/${id}/images/${index}`, data);
+
+/** Resolve another article by public 9-digit number (internal linking). */
+export const lookupArticleByNumber = (articleNumber) =>
+  http.get(`/articles/lookup-by-number/${articleNumber}`);
 
 // ── Videos (YouTube) — editor + admin ─────────────────
 export const getVideos = (params) => http.get("/videos", { params });

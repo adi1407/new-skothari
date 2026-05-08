@@ -6,6 +6,7 @@ import { getSiteUrl } from "../lib/seo/metadataHelpers";
 
 type PublicArticle = {
   _id: string;
+  articleNumber?: number;
   publishedAt?: string;
   createdAt?: string;
 };
@@ -72,7 +73,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const articles = await fetchPublishedArticles();
   const articleRoutes: MetadataRoute.Sitemap = articles.map((a) => ({
-    url: absolute(`/article/${a._id}`),
+    url: absolute(
+      `/article/${a.articleNumber != null && Number.isFinite(Number(a.articleNumber)) ? a.articleNumber : a._id}`
+    ),
     lastModified: a.publishedAt ? new Date(a.publishedAt) : a.createdAt ? new Date(a.createdAt) : now,
     changeFrequency: "daily",
     priority: 0.9,

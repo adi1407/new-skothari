@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock } from "lucide-react";
-import type { NewsItem } from "../../../data/mockData";
+import type { NewsItem } from "../types/article";
 import { categoryColors } from "../utils/formatArticle";
 
 export default function RelatedCard({ item, lang }: { item: NewsItem; lang: string }) {

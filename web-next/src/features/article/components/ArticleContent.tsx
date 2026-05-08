@@ -1,5 +1,6 @@
 "use client";
 
+import DOMPurify from "isomorphic-dompurify";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -7,12 +8,22 @@ import {
 } from "lucide-react";
 import { IconFacebook, IconWhatsApp, IconXLogo } from "../../../components/icons/ShareBrandIcons";
 import { categories } from "../../../data/publicCategories";
-import type { NewsItem } from "../../../data/mockData";
+import type { NewsItem } from "../types/article";
 import ArticleAuthor from "./ArticleAuthor";
 import CommentSection from "./CommentSection";
 import { ArticleRecommendationStrip } from "./RelatedArticles";
 import { formatViewCount, isHtmlParagraph } from "../utils/formatArticle";
 import { nativeShare, shareToFacebook, shareToTwitter, shareToWhatsApp } from "../utils/share";
+
+function sanitizeArticleHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "b", "em", "i", "u", "a", "ul", "ol", "li",
+      "h2", "h3", "blockquote", "span", "div",
+    ],
+    ALLOWED_ATTR: ["href", "rel", "target", "class"],
+  });
+}
 
 type TFn = (hi: string, en: string) => string;
 
@@ -128,16 +139,22 @@ export default function ArticleContent({
         </div>
       </div>
       <motion.div className="article-body" initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, duration: 0.45 }}>
-        {paragraphs.map((para, i) =>
-          isHtmlParagraph(para) ? (
-            <div key={i} dangerouslySetInnerHTML={{ __html: para }} />
-          ) : (
-            <p key={i}>{para}</p>
-          )
+        {paragraphs.length > 0 ? (
+          <>
+            {paragraphs.map((para, i) =>
+              isHtmlParagraph(para) ? (
+                <div key={i} dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(para) }} />
+              ) : (
+                <p key={i}>{para}</p>
+              )
+            )}
+            <blockquote className="article-pull-quote" style={{ borderLeftColor: color }}>
+              {`"${paragraphs[Math.min(1, paragraphs.length - 1)].replace(/<[^>]+>/g, "").slice(0, 140)}…"`}
+            </blockquote>
+          </>
+        ) : (
+          <p className="article-subtle">{t("विस्तृत सामग्री उपलब्ध नहीं है।", "Detailed content is unavailable.")}</p>
         )}
-        <blockquote className="article-pull-quote" style={{ borderLeftColor: color }}>
-          {`"${paragraphs[Math.min(1, paragraphs.length - 1)].replace(/<[^>]+>/g, "").slice(0, 140)}…"`}
-        </blockquote>
       </motion.div>
       {tags.length > 0 && (
         <div className="article-tags-section">

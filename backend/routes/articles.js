@@ -10,6 +10,12 @@ const {
   writerPrimaryLocaleConstraint,
 } = require("../utils/roles");
 const upload = require("../middleware/upload");
+const sharp = require("sharp");
+const {
+  articleRefFilter,
+  HERO_IMAGE_WIDTH,
+  HERO_IMAGE_HEIGHT,
+} = require("../utils/resolveArticleRef");
 
 // ── Helpers ──────────────────────────────────────────
 
@@ -110,10 +116,48 @@ router.get("/", authenticate, async (req, res) => {
   }
 });
 
+// ── GET /api/articles/lookup-by-number/:articleNumber — insert related link in CMS
+router.get(
+  "/lookup-by-number/:articleNumber",
+  authenticate,
+  authorize("writer", "editor", "admin"),
+  async (req, res) => {
+    try {
+      const n = Number(req.params.articleNumber);
+      if (!Number.isFinite(n) || n < 100000000 || n > 999999999) {
+        return res.status(400).json({ message: "Invalid article number" });
+      }
+      const article = await Article.findOne({ articleNumber: n })
+        .select("title titleHi articleNumber status author primaryLocale")
+        .lean();
+      if (!article) return res.status(404).json({ message: "Article not found" });
+
+      const isOwner = String(article.author) === String(req.user._id);
+      const staff = req.user.role === "editor" || req.user.role === "admin";
+      const canSee =
+        article.status === "published" || isOwner || staff;
+      if (!canSee) return res.status(404).json({ message: "Article not found" });
+
+      res.json({
+        articleNumber: article.articleNumber,
+        title: article.title || "",
+        titleHi: article.titleHi || "",
+        primaryLocale: article.primaryLocale || "en",
+        urlPath: `/article/${article.articleNumber}`,
+      });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
 // ── GET /api/articles/:id ────────────────────────────
 router.get("/:id", authenticate, async (req, res) => {
   try {
-    let article = await Article.findById(req.params.id)
+    const ref = articleRefFilter(req.params.id);
+    if (!ref) return res.status(404).json({ message: "Article not found" });
+
+    let article = await Article.findOne(ref)
       .populate("author", "name email role avatar bio")
       .populate("lastEditedBy", "name role")
       .populate("task", "title deadline priority");
@@ -127,7 +171,7 @@ router.get("/:id", authenticate, async (req, res) => {
 
     if (article.status === "published") {
       article = await Article.findOneAndUpdate(
-        { _id: req.params.id, status: "published" },
+        { ...ref, status: "published" },
         { $inc: { views: 1 } },
         { new: true }
       )
@@ -165,7 +209,9 @@ router.post(
       if (localeErr) return res.status(400).json({ message: localeErr });
 
       const { title, titleHi, summary, summaryHi, body: bodyText, bodyHi,
-              category, tags, isBreaking, task: taskId } = req.body;
+              category, tags, isBreaking, task: taskId,
+              metaTitle, metaTitleHi, metaDescription, metaDescriptionHi,
+              metaKeywords, bylineName } = req.body;
 
       if (primaryLocale === "hi") {
         if (!String(titleHi || "").trim()) {
@@ -180,6 +226,12 @@ router.post(
         title, titleHi, summary, summaryHi,
         body: bodyText, bodyHi,
         category, tags, isBreaking,
+        metaTitle: metaTitle ?? "",
+        metaTitleHi: metaTitleHi ?? "",
+        metaDescription: metaDescription ?? "",
+        metaDescriptionHi: metaDescriptionHi ?? "",
+        metaKeywords: metaKeywords ?? "",
+        bylineName: bylineName ?? "",
         author: req.user._id,
         task: taskId || null,
         status: "draft",
@@ -220,10 +272,17 @@ router.put("/:id", authenticate, async (req, res) => {
       "primaryLocale",
       "title","titleHi","summary","summaryHi",
       "body","bodyHi","category","tags","isBreaking",
+      "metaTitle","metaTitleHi","metaDescription","metaDescriptionHi",
+      "metaKeywords","bylineName","task",
     ];
     allowed.forEach((f) => {
       if (req.body[f] !== undefined) {
-        article[f] = f === "primaryLocale" ? normalizePrimaryLocale(req.body[f]) : req.body[f];
+        if (f === "task") {
+          const t = req.body.task;
+          article.task = t && String(t).trim() ? t : null;
+        } else {
+          article[f] = f === "primaryLocale" ? normalizePrimaryLocale(req.body[f]) : req.body[f];
+        }
       }
     });
 
@@ -405,11 +464,35 @@ router.post(
         return res.status(400).json({ message: "No files uploaded" });
 
       const baseUrl = `${req.protocol}://${req.get("host")}`;
-      const newImages = req.files.map((file, idx) => ({
-        url: `${baseUrl}/uploads/${file.filename}`,
-        caption: req.body[`caption_${idx}`] || "",
-        isHero: idx === 0 && article.images.length === 0,
-      }));
+      const newImages = [];
+      for (let idx = 0; idx < req.files.length; idx += 1) {
+        const file = req.files[idx];
+        const diskPath = path.join(__dirname, "../uploads", file.filename);
+        let meta;
+        try {
+          meta = await sharp(diskPath).metadata();
+        } catch (e) {
+          if (fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
+          return res.status(400).json({ message: `Invalid image file (upload ${idx + 1})` });
+        }
+        if (meta.width !== HERO_IMAGE_WIDTH || meta.height !== HERO_IMAGE_HEIGHT) {
+          if (fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
+          return res.status(400).json({
+            message: `Image ${idx + 1} must be exactly ${HERO_IMAGE_WIDTH}×${HERO_IMAGE_HEIGHT}px (received ${meta.width ?? "?"}×${meta.height ?? "?"})`,
+          });
+        }
+        newImages.push({
+          url: `${baseUrl}/uploads/${file.filename}`,
+          caption: req.body[`caption_${idx}`] || "",
+          alt: req.body[`alt_${idx}`] || "",
+          imageTitle: req.body[`imageTitle_${idx}`] || "",
+          imageDescription: req.body[`imageDescription_${idx}`] || "",
+          source: req.body[`source_${idx}`] || "",
+          width: meta.width,
+          height: meta.height,
+          isHero: idx === 0 && article.images.length === 0,
+        });
+      }
 
       article.images.push(...newImages);
       await article.save();
@@ -420,6 +503,44 @@ router.post(
     }
   }
 );
+
+// ── PATCH /api/articles/:id/images/:index — edit metadata (no re-upload)
+router.patch("/:id/images/:index", authenticate, async (req, res) => {
+  try {
+    const idx = Number(req.params.index);
+    if (!Number.isInteger(idx) || idx < 0) {
+      return res.status(400).json({ message: "Invalid image index" });
+    }
+    const article = await Article.findById(req.params.id);
+    if (!article) return res.status(404).json({ message: "Article not found" });
+
+    if (isWriterRole(req.user.role)) {
+      if (article.author.toString() !== req.user._id.toString())
+        return res.status(403).json({ message: "Not your article" });
+      if (!["draft", "rejected"].includes(article.status))
+        return res.status(400).json({ message: "Cannot edit images on submitted/published articles" });
+    }
+    /* editor/admin may adjust hero/captions on live stories */
+
+    if (!article.images[idx]) return res.status(404).json({ message: "Image not found" });
+
+    const img = article.images[idx];
+    const patch = ["caption", "alt", "imageTitle", "imageDescription", "source"];
+    patch.forEach((k) => {
+      if (req.body[k] !== undefined) img[k] = String(req.body[k] ?? "");
+    });
+    if (req.body.isHero === true) {
+      article.images.forEach((im, i) => {
+        im.isHero = i === idx;
+      });
+    }
+
+    await article.save();
+    res.json({ image: article.images[idx], article });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // ── DELETE /api/articles/:id/images/:filename ─────────
 router.delete("/:id/images/:filename", authenticate, async (req, res) => {
