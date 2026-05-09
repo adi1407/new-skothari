@@ -1,12 +1,17 @@
+/* global __dirname */
 const router = require("express").Router();
 const path = require("path");
 const fs = require("fs");
-const { body, query, validationResult } = require("express-validator");
+const { body, validationResult } = require("express-validator");
 const Article = require("../models/Article");
+const User = require("../models/User");
 const Task = require("../models/Task");
 const { authenticate, authorize } = require("../middleware/auth");
 const {
+  WRITER_ROLES,
+  EDITOR_ROLES,
   isWriterRole,
+  isEditorRole,
   writerPrimaryLocaleConstraint,
 } = require("../utils/roles");
 const upload = require("../middleware/upload");
@@ -31,6 +36,35 @@ function hasPrimaryContent(article) {
   return !!(String(article.title || "").trim() && String(article.body || "").trim());
 }
 
+function hasBilingualContent(article) {
+  return Boolean(
+    String(article.title || "").trim() &&
+    String(article.titleHi || "").trim() &&
+    String(article.summary || "").trim() &&
+    String(article.summaryHi || "").trim() &&
+    String(article.body || "").trim() &&
+    String(article.bodyHi || "").trim()
+  );
+}
+
+function imageHasRequiredMeta(img) {
+  return Boolean(
+    String(img?.source || "").trim() &&
+    String(img?.imageDescription || "").trim() &&
+    String(img?.alt || "").trim() &&
+    String(img?.imageTitle || "").trim()
+  );
+}
+
+function hasImageMetadata(article) {
+  if (!Array.isArray(article.images) || article.images.length === 0) return false;
+  return article.images.every((img) => imageHasRequiredMeta(img));
+}
+
+function hasLanguageAssignments(article) {
+  return Boolean(article.writerEn && article.writerHi && article.editorEn && article.editorHi);
+}
+
 function buildQuery(role, userId, filters = {}) {
   const q = {};
 
@@ -41,7 +75,7 @@ function buildQuery(role, userId, filters = {}) {
   if (filters.status) q.status = filters.status;
   else if (isWriterRole(role)) {
     // writers see all their own statuses (default: no filter beyond author)
-  } else if (role === "editor") {
+  } else if (isEditorRole(role)) {
     // editors see submitted + published articles by default
     if (!filters.status) q.status = { $in: ["submitted", "published", "rejected"] };
   }
@@ -77,6 +111,31 @@ async function enforceBreakingCap(maxBreaking = 6, keepArticleId = null) {
   await Article.updateMany({ _id: { $in: demoteIds } }, { $set: { isBreaking: false } });
 }
 
+// ── GET /api/articles/assignment-users ─────────────────
+// Available writer/editor users for bilingual assignment in CMS editor form.
+router.get(
+  "/assignment-users",
+  authenticate,
+  authorize("admin", "editor", "editor_en", "editor_hi", "writer", "writer_en", "writer_hi"),
+  async (_req, res) => {
+    try {
+      const [writers, editors] = await Promise.all([
+        User.find({ role: { $in: WRITER_ROLES }, isActive: true })
+          .select("name email role")
+          .sort({ name: 1 })
+          .lean(),
+        User.find({ role: { $in: EDITOR_ROLES }, isActive: true })
+          .select("name email role")
+          .sort({ name: 1 })
+          .lean(),
+      ]);
+      res.json({ writers, editors });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
 // ── GET /api/articles ────────────────────────────────
 // Writer: own articles | Editor: submitted+published | Admin: all
 router.get("/", authenticate, async (req, res) => {
@@ -100,6 +159,7 @@ router.get("/", authenticate, async (req, res) => {
       Article.find(finalQuery)
         .populate("author", "name email role")
         .populate("lastEditedBy", "name role")
+        .populate("writerEn writerHi editorEn editorHi", "name email role")
         .sort({ updatedAt: -1 })
         .skip(skip)
         .limit(Number(limit))
@@ -120,7 +180,7 @@ router.get("/", authenticate, async (req, res) => {
 router.get(
   "/lookup-by-number/:articleNumber",
   authenticate,
-  authorize("writer", "editor", "admin"),
+  authorize("writer", "writer_en", "writer_hi", "editor", "editor_en", "editor_hi", "admin"),
   async (req, res) => {
     try {
       const n = Number(req.params.articleNumber);
@@ -133,7 +193,7 @@ router.get(
       if (!article) return res.status(404).json({ message: "Article not found" });
 
       const isOwner = String(article.author) === String(req.user._id);
-      const staff = req.user.role === "editor" || req.user.role === "admin";
+      const staff = isEditorRole(req.user.role) || req.user.role === "admin";
       const canSee =
         article.status === "published" || isOwner || staff;
       if (!canSee) return res.status(404).json({ message: "Article not found" });
@@ -160,6 +220,7 @@ router.get("/:id", authenticate, async (req, res) => {
     let article = await Article.findOne(ref)
       .populate("author", "name email role avatar bio")
       .populate("lastEditedBy", "name role")
+      .populate("writerEn writerHi editorEn editorHi", "name email role")
       .populate("task", "title deadline priority");
 
     if (!article) return res.status(404).json({ message: "Article not found" });
@@ -177,6 +238,7 @@ router.get("/:id", authenticate, async (req, res) => {
       )
         .populate("author", "name email role avatar bio")
         .populate("lastEditedBy", "name role")
+        .populate("writerEn writerHi editorEn editorHi", "name email role")
         .populate("task", "title deadline priority");
       if (!article) {
         return res.status(404).json({ message: "Article not found" });
@@ -193,7 +255,7 @@ router.get("/:id", authenticate, async (req, res) => {
 router.post(
   "/",
   authenticate,
-  authorize("writer", "admin"),
+  authorize("writer", "writer_en", "writer_hi", "admin"),
   [
     body("category")
       .isIn(["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"])
@@ -211,7 +273,8 @@ router.post(
       const { title, titleHi, summary, summaryHi, body: bodyText, bodyHi,
               category, tags, isBreaking, task: taskId,
               metaTitle, metaTitleHi, metaDescription, metaDescriptionHi,
-              metaKeywords, bylineName } = req.body;
+              metaKeywords, bylineName,
+              writerEn, writerHi, editorEn, editorHi } = req.body;
 
       if (primaryLocale === "hi") {
         if (!String(titleHi || "").trim()) {
@@ -233,6 +296,10 @@ router.post(
         metaKeywords: metaKeywords ?? "",
         bylineName: bylineName ?? "",
         author: req.user._id,
+        writerEn: writerEn || (req.user.role === "writer_en" ? req.user._id : null),
+        writerHi: writerHi || (req.user.role === "writer_hi" ? req.user._id : null),
+        editorEn: editorEn || null,
+        editorHi: editorHi || null,
         task: taskId || null,
         status: "draft",
       });
@@ -245,7 +312,10 @@ router.post(
         });
       }
 
-      const populated = await article.populate("author", "name email role");
+      const populated = await article.populate([
+        { path: "author", select: "name email role" },
+        { path: "writerEn writerHi editorEn editorHi", select: "name email role" },
+      ]);
       res.status(201).json({ article: populated });
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -274,6 +344,7 @@ router.put("/:id", authenticate, async (req, res) => {
       "body","bodyHi","category","tags","isBreaking",
       "metaTitle","metaTitleHi","metaDescription","metaDescriptionHi",
       "metaKeywords","bylineName","task",
+      "writerEn","writerHi","editorEn","editorHi",
     ];
     allowed.forEach((f) => {
       if (req.body[f] !== undefined) {
@@ -300,6 +371,7 @@ router.put("/:id", authenticate, async (req, res) => {
     const populated = await article.populate([
       { path: "author", select: "name email role" },
       { path: "lastEditedBy", select: "name role" },
+      { path: "writerEn writerHi editorEn editorHi", select: "name email role" },
     ]);
     res.json({ article: populated });
   } catch (err) {
@@ -326,7 +398,7 @@ router.delete("/:id", authenticate, authorize("admin"), async (req, res) => {
 });
 
 // ── PATCH /api/articles/:id/submit  (writer submits) ─
-router.patch("/:id/submit", authenticate, authorize("writer", "admin"), async (req, res) => {
+router.patch("/:id/submit", authenticate, authorize("writer", "writer_en", "writer_hi", "admin"), async (req, res) => {
   try {
     const article = await Article.findById(req.params.id);
     if (!article) return res.status(404).json({ message: "Article not found" });
@@ -344,6 +416,24 @@ router.patch("/:id/submit", authenticate, authorize("writer", "admin"), async (r
           : "Title and body are required before submitting",
       });
 
+    if (!hasBilingualContent(article)) {
+      return res.status(400).json({
+        message: "Both Hindi and English title, summary, and body are required before submitting",
+      });
+    }
+
+    if (!hasLanguageAssignments(article)) {
+      return res.status(400).json({
+        message: "Hindi/English writer and editor assignments are required before submitting",
+      });
+    }
+
+    if (!hasImageMetadata(article)) {
+      return res.status(400).json({
+        message: "Each image must include source, description, alt text, and image title before submitting",
+      });
+    }
+
     article.status = "submitted";
     article.rejectionReason = "";
     await article.save();
@@ -355,7 +445,7 @@ router.patch("/:id/submit", authenticate, authorize("writer", "admin"), async (r
 });
 
 // ── PATCH /api/articles/:id/publish  (editor/admin) ──
-router.patch("/:id/publish", authenticate, authorize("editor", "admin"), async (req, res) => {
+router.patch("/:id/publish", authenticate, authorize("editor", "editor_en", "editor_hi", "admin"), async (req, res) => {
   try {
     const article = await Article.findById(req.params.id);
     if (!article) return res.status(404).json({ message: "Article not found" });
@@ -369,6 +459,24 @@ router.patch("/:id/publish", authenticate, authorize("editor", "admin"), async (
           ? "Cannot publish: Hindi title and body are required"
           : "Cannot publish: English title and body are required",
       });
+
+    if (!hasBilingualContent(article)) {
+      return res.status(400).json({
+        message: "Cannot publish: both Hindi and English title, summary, and body are required",
+      });
+    }
+
+    if (!hasLanguageAssignments(article)) {
+      return res.status(400).json({
+        message: "Cannot publish: Hindi/English writer and editor assignments are required",
+      });
+    }
+
+    if (!hasImageMetadata(article)) {
+      return res.status(400).json({
+        message: "Cannot publish: each image must include source, description, alt text, and image title",
+      });
+    }
 
     article.status = "published";
     article.publishedAt = new Date();
@@ -393,7 +501,7 @@ router.patch("/:id/publish", authenticate, authorize("editor", "admin"), async (
 });
 
 // ── PATCH /api/articles/:id/unpublish  (editor/admin) ─
-router.patch("/:id/unpublish", authenticate, authorize("editor", "admin"), async (req, res) => {
+router.patch("/:id/unpublish", authenticate, authorize("editor", "editor_en", "editor_hi", "admin"), async (req, res) => {
   try {
     const article = await Article.findById(req.params.id);
     if (!article) return res.status(404).json({ message: "Article not found" });
@@ -416,7 +524,7 @@ router.patch("/:id/unpublish", authenticate, authorize("editor", "admin"), async
 router.patch(
   "/:id/reject",
   authenticate,
-  authorize("editor", "admin"),
+  authorize("editor", "editor_en", "editor_hi", "admin"),
   [body("reason").trim().notEmpty().withMessage("Rejection reason is required")],
   async (req, res) => {
     const errors = validationResult(req);
@@ -471,7 +579,7 @@ router.post(
         let meta;
         try {
           meta = await sharp(diskPath).metadata();
-        } catch (e) {
+        } catch (_e) {
           if (fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
           return res.status(400).json({ message: `Invalid image file (upload ${idx + 1})` });
         }
@@ -481,13 +589,23 @@ router.post(
             message: `Image ${idx + 1} must be exactly ${HERO_IMAGE_WIDTH}×${HERO_IMAGE_HEIGHT}px (received ${meta.width ?? "?"}×${meta.height ?? "?"})`,
           });
         }
+        const source = String(req.body[`source_${idx}`] || "").trim();
+        const imageDescription = String(req.body[`imageDescription_${idx}`] || "").trim();
+        const alt = String(req.body[`alt_${idx}`] || "").trim();
+        const imageTitle = String(req.body[`imageTitle_${idx}`] || "").trim();
+        if (!source || !imageDescription || !alt || !imageTitle) {
+          if (fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
+          return res.status(400).json({
+            message: `Image ${idx + 1}: source, description, alt text, and image title are required`,
+          });
+        }
         newImages.push({
           url: `${baseUrl}/uploads/${file.filename}`,
           caption: req.body[`caption_${idx}`] || "",
-          alt: req.body[`alt_${idx}`] || "",
-          imageTitle: req.body[`imageTitle_${idx}`] || "",
-          imageDescription: req.body[`imageDescription_${idx}`] || "",
-          source: req.body[`source_${idx}`] || "",
+          alt,
+          imageTitle,
+          imageDescription,
+          source,
           width: meta.width,
           height: meta.height,
           isHero: idx === 0 && article.images.length === 0,
@@ -529,6 +647,16 @@ router.patch("/:id/images/:index", authenticate, async (req, res) => {
     patch.forEach((k) => {
       if (req.body[k] !== undefined) img[k] = String(req.body[k] ?? "");
     });
+    if (
+      !String(img.source || "").trim() ||
+      !String(img.imageDescription || "").trim() ||
+      !String(img.alt || "").trim() ||
+      !String(img.imageTitle || "").trim()
+    ) {
+      return res.status(400).json({
+        message: "Image source, description, alt text, and image title are required",
+      });
+    }
     if (req.body.isHero === true) {
       article.images.forEach((im, i) => {
         im.isHero = i === idx;

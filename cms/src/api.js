@@ -116,6 +116,7 @@ export const getEditorWriterStats  = (id)   => http.get(`/editor/writers/${id}/s
 export const getEditorWriterArticles = (id, params) => http.get(`/editor/writers/${id}/articles`, { params });
 export const getEditorWriterTasks  = (id)   => http.get(`/editor/writers/${id}/tasks`);
 export const getEditorArticles     = (params) => http.get("/editor/articles", { params });
+export const getEditorAssignmentUsers = () => http.get("/articles/assignment-users");
 
 export const getUsers   = (params)   => http.get("/admin/users", { params });
 export const createUser = (data)     => http.post("/admin/users", data);

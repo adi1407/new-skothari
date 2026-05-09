@@ -5,7 +5,7 @@ const User = require("../models/User");
 const Article = require("../models/Article");
 const Task = require("../models/Task");
 const { authenticate, authorize } = require("../middleware/auth");
-const { WRITER_ROLES, isWriterRole } = require("../utils/roles");
+const { WRITER_ROLES, EDITOR_ROLES, isWriterRole } = require("../utils/roles");
 
 // All admin routes require authentication + admin role
 router.use(authenticate, authorize("admin"));
@@ -34,7 +34,7 @@ router.get("/stats", async (_req, res) => {
     ] = await Promise.all([
       User.countDocuments({ isActive: true }),
       User.countDocuments({ role: { $in: WRITER_ROLES }, isActive: true }),
-      User.countDocuments({ role: "editor", isActive: true }),
+      User.countDocuments({ role: { $in: EDITOR_ROLES }, isActive: true }),
       Article.countDocuments(),
       Article.countDocuments({ status: "draft" }),
       Article.countDocuments({ status: "submitted" }),
@@ -219,6 +219,7 @@ router.get("/writers/:id/articles", async (req, res) => {
     const [articles, total] = await Promise.all([
       Article.find(q)
         .populate("lastEditedBy", "name role")
+        .populate("writerEn writerHi editorEn editorHi", "name email role")
         .sort({ updatedAt: -1 })
         .skip(skip)
         .limit(Number(limit))
@@ -284,7 +285,7 @@ router.post(
     body("name").trim().notEmpty(),
     body("email").isEmail().normalizeEmail(),
     body("password").isLength({ min: 8 }),
-    body("role").isIn(["admin", "editor", "writer", "writer_en", "writer_hi"]),
+    body("role").isIn(["admin", "editor", "editor_en", "editor_hi", "writer", "writer_en", "writer_hi"]),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -368,6 +369,7 @@ router.get("/articles", async (req, res) => {
       Article.find(q)
         .populate("author", "name email role")
         .populate("lastEditedBy", "name role")
+        .populate("writerEn writerHi editorEn editorHi", "name email role")
         .sort({ updatedAt: -1 })
         .skip(skip)
         .limit(Number(limit))

@@ -103,6 +103,31 @@ const articleSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    /** Dedicated language desk ownership (new bilingual workflow). */
+    writerEn: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    writerHi: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    editorEn: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    editorHi: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
 
     lastEditedBy: {
       type: mongoose.Schema.Types.ObjectId,

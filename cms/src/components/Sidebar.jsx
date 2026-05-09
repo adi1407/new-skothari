@@ -13,7 +13,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { isWriterRole, writerDeskLabel } from "../constants/roles";
+import { isWriterRole, writerDeskLabel, EDITOR_ROLES } from "../constants/roles";
 import CmsBrandLogo from "./CmsBrandLogo";
 
 const WRITER_NAV = [
@@ -43,7 +43,7 @@ const ADMIN_NAV = [
 
 function navForUser(role) {
   if (role === "admin") return ADMIN_NAV;
-  if (role === "editor") return EDITOR_NAV;
+  if (EDITOR_ROLES.includes(role)) return EDITOR_NAV;
   if (isWriterRole(role)) return WRITER_NAV;
   return WRITER_NAV;
 }
@@ -51,6 +51,8 @@ function navForUser(role) {
 const ROLE_BADGE = {
   admin: "bg-violet-500/20 text-violet-100 ring-1 ring-violet-400/30",
   editor: "bg-sky-500/20 text-sky-100 ring-1 ring-sky-400/30",
+  editor_en: "bg-sky-500/20 text-sky-100 ring-1 ring-sky-400/30",
+  editor_hi: "bg-sky-500/20 text-sky-100 ring-1 ring-sky-400/30",
   writer: "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25",
   writer_en: "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25",
   writer_hi: "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25",

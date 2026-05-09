@@ -240,8 +240,8 @@ router.post(
       .isLength({ min: 8 })
       .withMessage("Password must be at least 8 characters"),
     body("role")
-      .isIn(["admin", "editor", "writer", "writer_en", "writer_hi"])
-      .withMessage("Role must be admin, editor, writer, writer_en, or writer_hi"),
+      .isIn(["admin", "editor", "editor_en", "editor_hi", "writer", "writer_en", "writer_hi"])
+      .withMessage("Role must be admin/editor/editor_en/editor_hi/writer/writer_en/writer_hi"),
   ],
   async (req, res) => {
     const errors = validationResult(req);

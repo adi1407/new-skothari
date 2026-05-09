@@ -6,6 +6,8 @@ import { ALL_USER_ROLES, writerDeskLabel } from "../../constants/roles";
 const ROLE_BADGE = {
   admin:  "bg-purple-100 text-purple-700",
   editor: "bg-blue-100 text-blue-700",
+  editor_en: "bg-blue-100 text-blue-700",
+  editor_hi: "bg-blue-100 text-blue-700",
   writer: "bg-green-100 text-green-700",
   writer_en: "bg-green-100 text-green-700",
   writer_hi: "bg-green-100 text-green-700",

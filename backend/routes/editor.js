@@ -5,7 +5,27 @@ const Task = require("../models/Task");
 const { authenticate, authorize } = require("../middleware/auth");
 const { WRITER_ROLES, isWriterRole } = require("../utils/roles");
 
-router.use(authenticate, authorize("editor", "admin"));
+router.use(authenticate, authorize("editor", "editor_en", "editor_hi", "admin"));
+
+// ── GET /api/editor/assignment-users ───────────────────
+// Writers/editors list for bilingual story ownership assignment.
+router.get("/assignment-users", async (_req, res) => {
+  try {
+    const [writers, editors] = await Promise.all([
+      User.find({ role: { $in: WRITER_ROLES }, isActive: true })
+        .select("name email role")
+        .sort({ name: 1 })
+        .lean(),
+      User.find({ role: { $in: ["editor", "editor_en", "editor_hi"] }, isActive: true })
+        .select("name email role")
+        .sort({ name: 1 })
+        .lean(),
+    ]);
+    res.json({ writers, editors });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // ── GET /api/editor/stats — editorial metrics (no full user directory) ──
 router.get("/stats", async (_req, res) => {
@@ -219,6 +239,7 @@ router.get("/writers/:id/articles", async (req, res) => {
     const [articles, total] = await Promise.all([
       Article.find(q)
         .populate("lastEditedBy", "name role")
+        .populate("writerEn writerHi editorEn editorHi", "name email role")
         .sort({ updatedAt: -1 })
         .skip(skip)
         .limit(Number(limit))
@@ -273,6 +294,7 @@ router.get("/articles", async (req, res) => {
       Article.find(q)
         .populate("author", "name email role")
         .populate("lastEditedBy", "name role")
+        .populate("writerEn writerHi editorEn editorHi", "name email role")
         .sort({ updatedAt: -1 })
         .skip(skip)
         .limit(Number(limit))

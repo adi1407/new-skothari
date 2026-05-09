@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import {
   getArticle, createArticle, updateArticle, submitArticle, uploadImages, deleteImage, getTasks,
-  mediaUrl, patchArticleImage, lookupArticleByNumber,
+  mediaUrl, patchArticleImage, lookupArticleByNumber, getEditorAssignmentUsers,
 } from "../../api";
 import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { useAuth } from "../../context/AuthContext";
@@ -94,12 +94,14 @@ export default function ArticleEditor() {
     primaryLocale: "en",
     title: "", titleHi: "", summary: "", summaryHi: "",
     body: "", bodyHi: "", category: "desh",
+    writerEn: "", writerHi: "", editorEn: "", editorHi: "",
     tags: "", isBreaking: false, task: "",
     metaTitle: "", metaTitleHi: "", metaDescription: "", metaDescriptionHi: "",
     metaKeywords: "", bylineName: "",
   });
   const [images, setImages]         = useState([]);
   const [tasks, setTasks]           = useState([]);
+  const [assignmentUsers, setAssignmentUsers] = useState({ writers: [], editors: [] });
   const [status, setStatus]         = useState("draft");
   const [saving, setSaving]         = useState(false);
   const [uploading, setUploading]   = useState(false);
@@ -112,18 +114,31 @@ export default function ArticleEditor() {
 
   useEffect(() => {
     if (!isEdit && user?.role === "writer_en") {
-      setForm((f) => ({ ...f, primaryLocale: "en" }));
+      setForm((f) => ({ ...f, primaryLocale: "en", writerEn: user._id || f.writerEn }));
     }
     if (!isEdit && user?.role === "writer_hi") {
-      setForm((f) => ({ ...f, primaryLocale: "hi" }));
+      setForm((f) => ({ ...f, primaryLocale: "hi", writerHi: user._id || f.writerHi }));
     }
-  }, [isEdit, user?.role]);
+  }, [isEdit, user?._id, user?.role]);
 
   useEffect(() => {
-    const loads = [getTasks()];
+    if (!user?._id) return;
+    if (user.role === "writer_en") {
+      setForm((f) => ({ ...f, writerEn: f.writerEn || user._id }));
+    } else if (user.role === "writer_hi") {
+      setForm((f) => ({ ...f, writerHi: f.writerHi || user._id }));
+    }
+  }, [user?._id, user?.role]);
+
+  useEffect(() => {
+    const loads = [getTasks(), getEditorAssignmentUsers().catch(() => ({ data: { writers: [], editors: [] } }))];
     if (isEdit) loads.push(getArticle(id));
-    Promise.all(loads).then(([t, a]) => {
+    Promise.all(loads).then(([t, assign, a]) => {
       setTasks(t.data.tasks.filter((tk) => tk.status !== "completed"));
+      setAssignmentUsers({
+        writers: assign?.data?.writers || [],
+        editors: assign?.data?.editors || [],
+      });
       if (a) {
         const art = a.data.article;
         setForm({
@@ -131,6 +146,10 @@ export default function ArticleEditor() {
           title: art.title || "", titleHi: art.titleHi || "",
           summary: art.summary || "", summaryHi: art.summaryHi || "",
           body: art.body || "", bodyHi: art.bodyHi || "",
+          writerEn: art.writerEn?._id || art.writerEn || "",
+          writerHi: art.writerHi?._id || art.writerHi || "",
+          editorEn: art.editorEn?._id || art.editorEn || "",
+          editorHi: art.editorHi?._id || art.editorHi || "",
           category: art.category || "desh",
           tags: (art.tags || []).join(", "),
           isBreaking: art.isBreaking || false,
@@ -156,13 +175,16 @@ export default function ArticleEditor() {
   }, [form.body, form.bodyHi]);
 
   const handleSave = async () => {
-    if (form.primaryLocale === "hi") {
-      if (!form.titleHi.trim()) {
-        setError("Hindi title is required for Hindi articles");
-        return null;
-      }
-    } else if (!form.title.trim()) {
-      setError("Title is required for English articles");
+    if (!form.title.trim() || !form.titleHi.trim()) {
+      setError("Both English and Hindi titles are required");
+      return null;
+    }
+    if (!form.summary.trim() || !form.summaryHi.trim()) {
+      setError("Both English and Hindi summaries are required");
+      return null;
+    }
+    if (!form.body.trim() || !form.bodyHi.trim()) {
+      setError("Both English and Hindi article bodies are required");
       return null;
     }
     setError(""); setSaving(true);
@@ -194,10 +216,18 @@ export default function ArticleEditor() {
   };
 
   const handleSubmit = async () => {
-    if (form.primaryLocale === "hi") {
-      if (!form.bodyHi.trim()) return setError("Hindi article body is required before submitting");
-    } else if (!form.body.trim()) {
-      return setError("Article body is required before submitting");
+    if (!images.length) {
+      return setError("At least one image is required before submitting");
+    }
+    const missingImageMeta = images.findIndex(
+      (img) =>
+        !String(img.source || "").trim() ||
+        !String(img.imageDescription || "").trim() ||
+        !String(img.alt || "").trim() ||
+        !String(img.imageTitle || "").trim()
+    );
+    if (missingImageMeta >= 0) {
+      return setError(`Image ${missingImageMeta + 1}: source, description, alt text, and image title are required`);
     }
     setError(""); setSubmitting(true);
     try {
@@ -300,6 +330,15 @@ export default function ArticleEditor() {
 
   const saveImageMeta = async (index, meta) => {
     if (!id) return;
+    if (
+      !String(meta.alt ?? "").trim() ||
+      !String(meta.imageTitle ?? "").trim() ||
+      !String(meta.imageDescription ?? "").trim() ||
+      !String(meta.source ?? "").trim()
+    ) {
+      setError("Image source, description, alt text, and image title are all required");
+      return;
+    }
     try {
       await patchArticleImage(id, index, meta);
       setImages((prev) => {
@@ -337,9 +376,18 @@ export default function ArticleEditor() {
   const canSubmit =
     isEdit &&
     canEdit &&
-    (form.primaryLocale === "hi"
-      ? Boolean(form.titleHi?.trim() && form.bodyHi?.trim())
-      : Boolean(form.title?.trim() && form.body?.trim()));
+    Boolean(
+      form.title?.trim() &&
+      form.titleHi?.trim() &&
+      form.summary?.trim() &&
+      form.summaryHi?.trim() &&
+      form.body?.trim() &&
+      form.bodyHi?.trim() &&
+      form.writerEn &&
+      form.writerHi &&
+      form.editorEn &&
+      form.editorHi
+    );
 
   if (loading) return (
     <div className="cms-page-center">
@@ -512,7 +560,7 @@ export default function ArticleEditor() {
 
           <div className="bg-slate-50 rounded-xl border border-slate-200 border-dashed p-6 space-y-5">
             <h2 className="font-semibold text-slate-500 text-sm uppercase tracking-wide">
-              {form.primaryLocale === "en" ? "Optional Hindi" : "Optional English"}
+              {form.primaryLocale === "en" ? "Hindi (required)" : "English (required)"}
             </h2>
             {form.primaryLocale === "en" ? (
               <>
@@ -520,7 +568,7 @@ export default function ArticleEditor() {
                   <Input
                     value={form.titleHi} disabled={!canEdit}
                     onChange={(e) => set("titleHi", e.target.value)}
-                    placeholder="हिंदी में शीर्षक (optional)"
+                    placeholder="हिंदी में शीर्षक"
                   />
                 </Field>
                 <Field label="सारांश (Summary)">
@@ -535,7 +583,7 @@ export default function ArticleEditor() {
                     value={form.bodyHi}
                     onChange={(html) => set("bodyHi", html)}
                     disabled={!canEdit}
-                    placeholder="पूरा लेख (optional)"
+                    placeholder="पूरा लेख"
                   />
                 </Field>
               </>
@@ -545,14 +593,14 @@ export default function ArticleEditor() {
                   <Input
                     value={form.title} disabled={!canEdit}
                     onChange={(e) => set("title", e.target.value)}
-                    placeholder="English headline (optional)"
+                    placeholder="English headline"
                   />
                 </Field>
                 <Field label="Summary">
                   <Textarea
                     rows={2} value={form.summary} disabled={!canEdit}
                     onChange={(e) => set("summary", e.target.value)}
-                    placeholder="Brief summary in English (optional)"
+                    placeholder="Brief summary in English"
                   />
                 </Field>
                 <Field label="Body">
@@ -560,7 +608,7 @@ export default function ArticleEditor() {
                     value={form.body}
                     onChange={(html) => set("body", html)}
                     disabled={!canEdit}
-                    placeholder="Full article in English (optional)"
+                    placeholder="Full article in English"
                   />
                 </Field>
               </>
@@ -699,6 +747,70 @@ export default function ArticleEditor() {
                     : "Hindi desk: articles must use Hindi as the primary language."}
                 </p>
               )}
+            </Field>
+
+            <Field label="English writer" required>
+              <select
+                value={form.writerEn}
+                disabled={!canEdit || user?.role === "writer_en"}
+                onChange={(e) => set("writerEn", e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
+              >
+                <option value="">Select English writer</option>
+                {assignmentUsers.writers
+                  .filter((u) => ["writer", "writer_en"].includes(u.role))
+                  .map((u) => (
+                    <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                  ))}
+              </select>
+            </Field>
+
+            <Field label="Hindi writer" required>
+              <select
+                value={form.writerHi}
+                disabled={!canEdit || user?.role === "writer_hi"}
+                onChange={(e) => set("writerHi", e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
+              >
+                <option value="">Select Hindi writer</option>
+                {assignmentUsers.writers
+                  .filter((u) => ["writer", "writer_hi"].includes(u.role))
+                  .map((u) => (
+                    <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                  ))}
+              </select>
+            </Field>
+
+            <Field label="English editor" required>
+              <select
+                value={form.editorEn}
+                disabled={!canEdit}
+                onChange={(e) => set("editorEn", e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
+              >
+                <option value="">Select English editor</option>
+                {assignmentUsers.editors
+                  .filter((u) => ["editor", "editor_en"].includes(u.role))
+                  .map((u) => (
+                    <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                  ))}
+              </select>
+            </Field>
+
+            <Field label="Hindi editor" required>
+              <select
+                value={form.editorHi}
+                disabled={!canEdit}
+                onChange={(e) => set("editorHi", e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
+              >
+                <option value="">Select Hindi editor</option>
+                {assignmentUsers.editors
+                  .filter((u) => ["editor", "editor_hi"].includes(u.role))
+                  .map((u) => (
+                    <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                  ))}
+              </select>
             </Field>
 
             <Field label="Category" required>
@@ -842,7 +954,7 @@ export default function ArticleEditor() {
               <li>Save draft anytime with the Save button</li>
               <li>Submit only when article is complete</li>
               <li>Upload the hero image first</li>
-              <li>Pick primary language first; optional other-language fields below</li>
+              <li>Both Hindi and English sections are mandatory before submit/publish</li>
             </ul>
           </div>
         </div>

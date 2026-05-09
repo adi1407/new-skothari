@@ -122,7 +122,7 @@ export default function ArticleReview() {
     }
   };
 
-  const canEdit    = user?.role === "editor" || user?.role === "admin";
+  const canEdit = ["editor", "editor_en", "editor_hi", "admin"].includes(user?.role);
   const isSubmitted = article?.status === "submitted";
   const isPublished = article?.status === "published";
 

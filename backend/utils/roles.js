@@ -1,8 +1,14 @@
 /** CMS desk roles that can draft/submit articles */
 const WRITER_ROLES = ["writer", "writer_en", "writer_hi"];
+/** Language-aware editorial desk roles. */
+const EDITOR_ROLES = ["editor", "editor_en", "editor_hi"];
 
 function isWriterRole(role) {
   return WRITER_ROLES.includes(role);
+}
+
+function isEditorRole(role) {
+  return EDITOR_ROLES.includes(role);
 }
 
 /** Enforce primaryLocale by desk: EN writers only English-primary, HI writers only Hindi-primary */
@@ -19,6 +25,8 @@ function writerPrimaryLocaleConstraint(role, primaryLocale) {
 
 module.exports = {
   WRITER_ROLES,
+  EDITOR_ROLES,
   isWriterRole,
+  isEditorRole,
   writerPrimaryLocaleConstraint,
 };
