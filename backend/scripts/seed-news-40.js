@@ -1,10 +1,10 @@
 /**
- * Seed 20 English + 20 Hindi published articles in current CMS format.
+ * Replace ALL articles with 20 English + 20 Hindi published stories (CMS format).
  *
- * Categories used: desh, videsh, rajneeti, khel, health, krishi, business, manoranjan
- * - Skips if NEW_TAG already present (idempotent).
- * - Author = first admin user.
- * - All articles published with hero image + inline image.
+ * - Deletes every article, then clears Task.article links.
+ * - Each story gets a unique URL slug and a fixed 9-digit articleNumber for /article/{slug}-{id}.
+ * - Categories: desh, videsh, rajneeti, khel, health, krishi, business, manoranjan
+ * - Author = first admin; desk writers/editors filled from roster when present.
  *
  * Run from repo root:
  *   npm run seed:news-40 --prefix backend
@@ -14,8 +14,9 @@ const mongoose = require("mongoose");
 const connectDB = require("../config/db");
 const User = require("../models/User");
 const Article = require("../models/Article");
+const Task = require("../models/Task");
 
-const NEW_TAG = "khabar-news-40-v2";
+const NEW_TAG = "khabar-news-40-v3";
 
 const CATEGORIES = [
   "desh",
@@ -30,6 +31,22 @@ const CATEGORIES = [
 
 function img(seed) {
   return `https://picsum.photos/seed/${seed}/1200/675`;
+}
+
+/** Hero + inline images with metadata editors expect on submit/publish flows. */
+function imageWithMeta({ seed, caption, isHero, titleForAlt }) {
+  const alt = isHero ? `Hero: ${titleForAlt}`.slice(0, 200) : `Inline: ${titleForAlt}`.slice(0, 200);
+  return {
+    url: img(seed),
+    caption: caption || "",
+    isHero: !!isHero,
+    alt,
+    imageTitle: String(titleForAlt || "News image").slice(0, 120),
+    imageDescription: isHero
+      ? "Lead photograph for this article (seed/demo)."
+      : "Supporting photograph for this article (seed/demo).",
+    source: "Picsum / seed demo",
+  };
 }
 
 function enBody(lead, ...extra) {
@@ -464,31 +481,63 @@ for (const a of [...EN_ARTICLES, ...HI_ARTICLES]) {
   }
 }
 
-function buildPayloads(authorId) {
+function buildPayloads(ctx) {
+  const {
+    authorId,
+    writerEn,
+    writerHi,
+    editorEn,
+    editorHi,
+  } = ctx;
+
   const docs = [];
   const baseTime = Date.now();
   let seq = 0;
   const ts = () => new Date(baseTime - seq++ * 7 * 60 * 1000);
 
+  const deskEn = { writerEn, writerHi, editorEn, editorHi };
+
   EN_ARTICLES.forEach((a, idx) => {
     const seedTag = `en-${a.category}-${idx + 1}`;
+    const n = 710000001 + idx;
+    const slug = `kothari-en-${String(idx + 1).padStart(2, "0")}`;
     docs.push({
       primaryLocale: "en",
+      articleNumber: n,
+      slug,
       title: a.title,
       titleHi: "",
       summary: a.summary,
       summaryHi: "",
       body: enBody(a.lead, ...(a.extras || [])),
       bodyHi: "",
+      metaTitle: a.title,
+      metaDescription: a.summary,
+      metaTitleHi: "",
+      metaDescriptionHi: "",
+      metaKeywords: `${a.category}, india, news`,
       images: [
-        { url: img(`v4-en-${a.category}-${idx + 1}-hero`), caption: a.title, isHero: true },
-        { url: img(`v4-en-${a.category}-${idx + 1}-inline`), caption: "File image", isHero: false },
+        imageWithMeta({
+          seed: `v5-en-${a.category}-${idx + 1}-hero`,
+          caption: a.title,
+          isHero: true,
+          titleForAlt: a.title,
+        }),
+        imageWithMeta({
+          seed: `v5-en-${a.category}-${idx + 1}-inline`,
+          caption: "File image",
+          isHero: false,
+          titleForAlt: a.title,
+        }),
       ],
       category: a.category,
       tags: [a.category, "khabar-kothri", NEW_TAG, seedTag],
       isBreaking: !!a.isBreaking,
       status: "published",
+      enDeskComplete: true,
+      hiDeskComplete: false,
       author: authorId,
+      ...deskEn,
       publishedAt: ts(),
       views: 800 + idx * 13,
     });
@@ -496,23 +545,45 @@ function buildPayloads(authorId) {
 
   HI_ARTICLES.forEach((a, idx) => {
     const seedTag = `hi-${a.category}-${idx + 1}`;
+    const n = 720000001 + idx;
+    const slug = `kothari-hi-${String(idx + 1).padStart(2, "0")}`;
     docs.push({
       primaryLocale: "hi",
+      articleNumber: n,
+      slug,
       title: "",
       titleHi: a.title,
       summary: "",
       summaryHi: a.summary,
       body: "",
       bodyHi: hiBody(a.lead, ...(a.extras || [])),
+      metaTitle: "",
+      metaDescription: "",
+      metaTitleHi: a.title,
+      metaDescriptionHi: a.summary,
+      metaKeywords: `${a.category}, samachar, hindi`,
       images: [
-        { url: img(`v4-hi-${a.category}-${idx + 1}-hero`), caption: a.title, isHero: true },
-        { url: img(`v4-hi-${a.category}-${idx + 1}-inline`), caption: "फ़ाइल चित्र", isHero: false },
+        imageWithMeta({
+          seed: `v5-hi-${a.category}-${idx + 1}-hero`,
+          caption: a.title,
+          isHero: true,
+          titleForAlt: a.title,
+        }),
+        imageWithMeta({
+          seed: `v5-hi-${a.category}-${idx + 1}-inline`,
+          caption: "फ़ाइल चित्र",
+          isHero: false,
+          titleForAlt: a.title,
+        }),
       ],
       category: a.category,
       tags: [a.category, "khabar-kothri", NEW_TAG, seedTag],
       isBreaking: !!a.isBreaking,
       status: "published",
+      enDeskComplete: false,
+      hiDeskComplete: true,
       author: authorId,
+      ...deskEn,
       publishedAt: ts(),
       views: 800 + idx * 11,
     });
@@ -529,13 +600,31 @@ async function run() {
     throw new Error("No admin user found. Please run admin seed first.");
   }
 
-  const existing = await Article.countDocuments({ tags: NEW_TAG });
-  if (existing > 0) {
-    console.log(`Articles with tag '${NEW_TAG}' already present (${existing}). Skipping insert.`);
-    return;
-  }
+  const [wEn, wHi, eEn, eHi] = await Promise.all([
+    User.findOne({ role: "writer_en", isActive: true }).select("_id").lean(),
+    User.findOne({ role: "writer_hi", isActive: true }).select("_id").lean(),
+    User.findOne({ role: "editor_en", isActive: true }).select("_id").lean(),
+    User.findOne({ role: "editor_hi", isActive: true }).select("_id").lean(),
+  ]);
+  const chief = await User.findOne({ role: "editor", isActive: true }).select("_id").lean();
 
-  const payloads = buildPayloads(admin._id);
+  const authorId = admin._id;
+  const writerEn = wEn?._id || authorId;
+  const writerHi = wHi?._id || authorId;
+  const editorEn = eEn?._id || chief?._id || authorId;
+  const editorHi = eHi?._id || chief?._id || authorId;
+
+  const beforeArticles = await Article.countDocuments();
+  const taskUnlink = await Task.updateMany({ article: { $ne: null } }, { $set: { article: null } });
+  const del = await Article.deleteMany({});
+
+  const payloads = buildPayloads({
+    authorId,
+    writerEn,
+    writerHi,
+    editorEn,
+    editorHi,
+  });
 
   let okCount = 0;
   for (const doc of payloads) {
@@ -550,6 +639,12 @@ async function run() {
   const totalEn = await Article.countDocuments({ tags: NEW_TAG, primaryLocale: "en" });
   const totalHi = await Article.countDocuments({ tags: NEW_TAG, primaryLocale: "hi" });
 
+  const sample = await Article.find({ tags: NEW_TAG })
+    .select("primaryLocale articleNumber slug title titleHi")
+    .sort({ articleNumber: 1 })
+    .limit(4)
+    .lean();
+
   const byCategory = await Article.aggregate([
     { $match: { tags: NEW_TAG } },
     { $group: { _id: "$category", count: { $sum: 1 } } },
@@ -557,9 +652,13 @@ async function run() {
   ]);
 
   console.log("seed-news-40 complete:", {
+    deletedArticles: del.deletedCount,
+    articlesBefore: beforeArticles,
+    tasksArticleCleared: taskUnlink.modifiedCount,
     inserted: okCount,
     english: totalEn,
     hindi: totalHi,
+    sampleSlugsAndNumbers: sample,
     byCategory: byCategory.reduce((m, r) => ({ ...m, [r._id]: r.count }), {}),
   });
 }

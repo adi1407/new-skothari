@@ -4,6 +4,9 @@ export const WRITER_ROLES = ["writer_en", "writer_hi"];
 
 export const EDITOR_ROLES = ["editor", "editor_en", "editor_hi"];
 
+/** English editor field in article assignments: desk editors + admins who can review EN queue. */
+export const ENGLISH_EDITOR_ASSIGNMENT_ROLES = ["editor", "editor_en", "super_admin", "admin"];
+
 export const VIDEO_STAFF_ROLES = ["video_editor", "editor", "super_admin", "admin"];
 
 export const ADMIN_LIKE_ROLES = ["super_admin", "admin"];

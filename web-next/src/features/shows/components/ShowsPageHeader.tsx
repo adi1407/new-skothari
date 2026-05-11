@@ -1,6 +1,7 @@
 "use client";
 
 import BrandLogo from "../../../components/BrandLogo";
+import { SITE_SOCIAL } from "../../../config/siteSocial";
 import ShowsYtIcon from "./ShowsYtIcon";
 
 type TFn = (hi: string, en: string) => string;
@@ -17,7 +18,7 @@ export default function ShowsPageHeader({ t }: { t: TFn }) {
           </div>
         </div>
         <a
-          href="https://youtube.com/@kotharinews"
+          href={SITE_SOCIAL.youtube}
           target="_blank"
           rel="noopener noreferrer"
           className="shows-subscribe-btn"

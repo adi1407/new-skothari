@@ -10,7 +10,7 @@ import {
 } from "../../api";
 import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { useAuth } from "../../context/AuthContext";
-import { isAdminLike } from "../../constants/roles";
+import { isAdminLike, ENGLISH_EDITOR_ASSIGNMENT_ROLES, writerDeskLabel } from "../../constants/roles";
 
 /** Bilingual UI for admins; single-language form for desk writers. Legacy `writer` → English desk. */
 function articleEditorDeskMode(user) {
@@ -225,7 +225,10 @@ export default function ArticleEditor() {
           }
         }
         if (!f.editorEn) {
-          const e = editors.find((u) => u.role === "editor_en") || editors.find((u) => u.role === "editor");
+          const e =
+            editors.find((u) => u.role === "editor_en") ||
+            editors.find((u) => u.role === "editor") ||
+            editors.find((u) => isAdminLike(u.role));
           if (e) {
             next.editorEn = e._id;
             changed = true;
@@ -239,6 +242,55 @@ export default function ArticleEditor() {
       });
     }
   }, [assignmentUsers, user]);
+
+  /** Admin (both columns): opposite-language assignments hidden in UI but still sent to API. */
+  useEffect(() => {
+    if (!user?._id || articleEditorDeskMode(user) !== "both") return;
+    const writers = assignmentUsers.writers || [];
+    const editors = assignmentUsers.editors || [];
+    if (!writers.length && !editors.length) return;
+
+    setForm((f) => {
+      let changed = false;
+      const next = { ...f };
+      const primaryEn = f.primaryLocale !== "hi";
+      if (primaryEn) {
+        if (!f.writerHi) {
+          const w = writers.find((u) => u.role === "writer_hi");
+          if (w) {
+            next.writerHi = w._id;
+            changed = true;
+          }
+        }
+        if (!f.editorHi) {
+          const e = editors.find((u) => u.role === "editor_hi") || editors.find((u) => u.role === "editor");
+          if (e) {
+            next.editorHi = e._id;
+            changed = true;
+          }
+        }
+      } else {
+        if (!f.writerEn) {
+          const w = writers.find((u) => u.role === "writer_en");
+          if (w) {
+            next.writerEn = w._id;
+            changed = true;
+          }
+        }
+        if (!f.editorEn) {
+          const e =
+            editors.find((u) => u.role === "editor_en") ||
+            editors.find((u) => u.role === "editor") ||
+            editors.find((u) => isAdminLike(u.role));
+          if (e) {
+            next.editorEn = e._id;
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : f;
+    });
+  }, [assignmentUsers, user, form.primaryLocale]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -323,13 +375,35 @@ export default function ArticleEditor() {
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-    if (!id) return setError("Save the article first before uploading images");
+    if (!id) {
+      setError("Save the article first before uploading images");
+      e.target.value = "";
+      return;
+    }
     setUploading(true);
+    setError("");
     const fd = new FormData();
-    files.forEach((f) => fd.append("images", f));
+    const headline =
+      (deskMode === "hi" ? form.titleHi : form.title).trim() || "Article";
+    files.forEach((f, i) => {
+      /* API requires these multipart fields per file index (writers refine in “Save details”). */
+      fd.append(`source_${i}`, "News desk");
+      fd.append(
+        `imageDescription_${i}`,
+        "Attached to this story — edit description and credit after upload if needed."
+      );
+      fd.append(
+        `alt_${i}`,
+        i === 0 ? headline.slice(0, 200) : `${headline.slice(0, 160)} — image ${i + 1}`
+      );
+      fd.append(`imageTitle_${i}`, i === 0 ? "Hero image" : `Image ${i + 1}`);
+      fd.append("images", f);
+    });
     try {
       const { data } = await uploadImages(id, fd);
       setImages((prev) => [...prev, ...data.images]);
+      setSuccess(`${data.images?.length || files.length} image(s) uploaded — use Save details to set credits.`);
+      setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
       setError(err.response?.data?.message || "Upload failed");
     } finally {
@@ -755,10 +829,12 @@ export default function ArticleEditor() {
                   <Upload size={24} className="mx-auto text-slate-400 mb-2" />
                 )}
                 <p className="text-sm text-slate-500">
-                  {uploading ? "Uploading…" : "Hero/images: exactly 2180 × 750 px · JPEG, PNG, WebP · max 8MB each"}
+                  {uploading
+                    ? "Uploading…"
+                    : "JPEG, PNG, or WebP · up to 12MB each · cropped to hero 2180×750 on the server"}
                 </p>
                 {!isEdit && (
-                  <p className="text-xs text-slate-400 mt-1">Save the article first to enable uploads</p>
+                  <p className="text-xs text-slate-400 mt-1">Save the article draft first, then upload images here</p>
                 )}
                 <input
                   ref={fileRef} type="file" accept="image/*" multiple hidden
@@ -877,7 +953,7 @@ export default function ArticleEditor() {
               </p>
             )}
 
-            {deskMode === "both" && (
+            {deskMode === "both" && form.primaryLocale !== "hi" && (
               <>
             <Field label="English writer" required>
               <select
@@ -890,23 +966,7 @@ export default function ArticleEditor() {
                 {assignmentUsers.writers
                   .filter((u) => u.role === "writer_en")
                   .map((u) => (
-                    <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
-                  ))}
-              </select>
-            </Field>
-
-            <Field label="Hindi writer" required>
-              <select
-                value={form.writerHi}
-                disabled={!canEdit || user?.role === "writer_hi"}
-                onChange={(e) => set("writerHi", e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
-              >
-                <option value="">Select Hindi writer</option>
-                {assignmentUsers.writers
-                  .filter((u) => u.role === "writer_hi")
-                  .map((u) => (
-                    <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                    <option key={u._id} value={u._id}>{u.name} ({writerDeskLabel(u.role)})</option>
                   ))}
               </select>
             </Field>
@@ -920,9 +980,29 @@ export default function ArticleEditor() {
               >
                 <option value="">Select English editor</option>
                 {assignmentUsers.editors
-                  .filter((u) => ["editor", "editor_en"].includes(u.role))
+                  .filter((u) => ENGLISH_EDITOR_ASSIGNMENT_ROLES.includes(u.role))
                   .map((u) => (
-                    <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                    <option key={u._id} value={u._id}>{u.name} ({writerDeskLabel(u.role)})</option>
+                  ))}
+              </select>
+            </Field>
+              </>
+            )}
+
+            {deskMode === "both" && form.primaryLocale === "hi" && (
+              <>
+            <Field label="Hindi writer" required>
+              <select
+                value={form.writerHi}
+                disabled={!canEdit || user?.role === "writer_hi"}
+                onChange={(e) => set("writerHi", e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
+              >
+                <option value="">Select Hindi writer</option>
+                {assignmentUsers.writers
+                  .filter((u) => u.role === "writer_hi")
+                  .map((u) => (
+                    <option key={u._id} value={u._id}>{u.name} ({writerDeskLabel(u.role)})</option>
                   ))}
               </select>
             </Field>
@@ -938,7 +1018,7 @@ export default function ArticleEditor() {
                 {assignmentUsers.editors
                   .filter((u) => ["editor", "editor_hi"].includes(u.role))
                   .map((u) => (
-                    <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                    <option key={u._id} value={u._id}>{u.name} ({writerDeskLabel(u.role)})</option>
                   ))}
               </select>
             </Field>
@@ -956,9 +1036,9 @@ export default function ArticleEditor() {
                   >
                     <option value="">Select English editor</option>
                     {assignmentUsers.editors
-                      .filter((u) => ["editor", "editor_en"].includes(u.role))
+                      .filter((u) => ENGLISH_EDITOR_ASSIGNMENT_ROLES.includes(u.role))
                       .map((u) => (
-                        <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                        <option key={u._id} value={u._id}>{u.name} ({writerDeskLabel(u.role)})</option>
                       ))}
                   </select>
                 </Field>
@@ -981,7 +1061,7 @@ export default function ArticleEditor() {
                     {assignmentUsers.editors
                       .filter((u) => ["editor", "editor_hi"].includes(u.role))
                       .map((u) => (
-                        <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                        <option key={u._id} value={u._id}>{u.name} ({writerDeskLabel(u.role)})</option>
                       ))}
                   </select>
                 </Field>

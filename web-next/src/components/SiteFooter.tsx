@@ -8,12 +8,13 @@ import { useLang } from "../context/LangContext";
 import { categories } from "../data/publicCategories";
 import BrandLogo from "./BrandLogo";
 import { withPublicOrigin } from "../config/publicApi";
+import { SITE_SOCIAL } from "../config/siteSocial";
 
 const SOCIAL = [
-  { key: "yt", name: "YouTube", nameHi: "यूट्यूब", url: "https://youtube.com/@kotharinews", icon: CirclePlay, color: "#FF0000" },
-  { key: "ig", name: "Instagram", nameHi: "इंस्टाग्राम", url: "https://instagram.com/kotharinews", icon: Camera, color: "#E1306C" },
-  { key: "tw", name: "X", nameHi: "एक्स", url: "https://twitter.com/kotharinews", icon: AtSign, color: "#e7e9ea" },
-  { key: "fb", name: "Facebook", nameHi: "फेसबुक", url: "https://facebook.com/kotharinews", icon: Globe, color: "#1877F2" },
+  { key: "yt", name: "YouTube", nameHi: "यूट्यूब", url: SITE_SOCIAL.youtube, icon: CirclePlay, color: "#FF0000" },
+  { key: "ig", name: "Instagram", nameHi: "इंस्टाग्राम", url: SITE_SOCIAL.instagram, icon: Camera, color: "#E1306C" },
+  { key: "tw", name: "X", nameHi: "एक्स", url: SITE_SOCIAL.x, icon: AtSign, color: "#e7e9ea" },
+  { key: "fb", name: "Facebook", nameHi: "फेसबुक", url: SITE_SOCIAL.facebook, icon: Globe, color: "#1877F2" },
   { key: "tg", name: "Telegram", nameHi: "टेलीग्राम", url: "https://t.me/kotharinews", icon: Send, color: "#2AABEE" },
 ] as const;
 

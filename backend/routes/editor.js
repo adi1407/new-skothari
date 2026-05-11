@@ -3,7 +3,14 @@ const User = require("../models/User");
 const Article = require("../models/Article");
 const Task = require("../models/Task");
 const { authenticate, authorize } = require("../middleware/auth");
-const { WRITER_ROLES, EDITOR_ROLES, isWriterRole } = require("../utils/roles");
+const {
+  WRITER_ROLES,
+  EDITOR_ROLES,
+  ADMIN_LIKE_ROLES,
+  isWriterRole,
+} = require("../utils/roles");
+
+const ASSIGNMENT_EDITOR_ROLES = [...new Set([...EDITOR_ROLES, ...ADMIN_LIKE_ROLES])];
 
 router.use(authenticate, authorize("__textEditors__", "__adminLike__"));
 
@@ -16,7 +23,7 @@ router.get("/assignment-users", async (_req, res) => {
         .select("name email role")
         .sort({ name: 1 })
         .lean(),
-      User.find({ role: { $in: EDITOR_ROLES }, isActive: true })
+      User.find({ role: { $in: ASSIGNMENT_EDITOR_ROLES }, isActive: true })
         .select("name email role")
         .sort({ name: 1 })
         .lean(),

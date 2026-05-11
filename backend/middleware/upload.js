@@ -24,7 +24,7 @@ const fileFilter = (_req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 8 * 1024 * 1024 }, // 8 MB per file
+  limits: { fileSize: 12 * 1024 * 1024 }, // 12 MB per file (hero is re-encoded after crop)
 });
 
 module.exports = upload;

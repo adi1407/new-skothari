@@ -20,6 +20,7 @@ import { useReaderAuth } from "../context/ReaderAuthContext";
 import { fetchPublicSearch } from "../services/newsApi";
 import { adaptArticles } from "../services/articleAdapter";
 import BrandLogo from "./BrandLogo";
+import { SITE_SOCIAL } from "../config/siteSocial";
 
 interface NavbarProps {
   darkMode: boolean;
@@ -27,10 +28,10 @@ interface NavbarProps {
 }
 
 const SOCIAL_LINKS = [
-  { name: "YouTube",   icon: <YtIcon />,              url: "https://youtube.com/@kotharinews",  color: "#FF0000" },
-  { name: "Instagram", icon: <IgIcon />,              url: "https://instagram.com/kotharinews", color: "#E1306C" },
-  { name: "Twitter",   icon: <TwIcon />,              url: "https://twitter.com/kotharinews",   color: "#1DA1F2" },
-  { name: "Facebook",  icon: <FbIcon />,              url: "https://facebook.com/kotharinews",  color: "#1877F2" },
+  { name: "YouTube",   icon: <YtIcon />,              url: SITE_SOCIAL.youtube,   color: "#FF0000" },
+  { name: "Instagram", icon: <IgIcon />,              url: SITE_SOCIAL.instagram, color: "#E1306C" },
+  { name: "X",         icon: <TwIcon />,              url: SITE_SOCIAL.x,          color: "#1DA1F2" },
+  { name: "Facebook",  icon: <FbIcon />,              url: SITE_SOCIAL.facebook,  color: "#1877F2" },
   { name: "Telegram",  icon: <Send size={16} />,      url: "https://t.me/kotharinews",          color: "#2AABEE" },
 ];
 

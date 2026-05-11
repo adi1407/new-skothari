@@ -10,12 +10,15 @@ const { authenticate, authorize } = require("../middleware/auth");
 const {
   WRITER_ROLES,
   EDITOR_ROLES,
+  ADMIN_LIKE_ROLES,
   isWriterRole,
   isEditorRole,
   writerPrimaryLocaleConstraint,
   isAssignedWriter,
   isAdminLike,
 } = require("../utils/roles");
+
+const ASSIGNMENT_EDITOR_ROLES = [...new Set([...EDITOR_ROLES, ...ADMIN_LIKE_ROLES])];
 const upload = require("../middleware/upload");
 const sharp = require("sharp");
 const {
@@ -23,6 +26,25 @@ const {
   HERO_IMAGE_WIDTH,
   HERO_IMAGE_HEIGHT,
 } = require("../utils/resolveArticleRef");
+
+/** Crop/scale in-place to hero spec when writers upload common camera sizes. */
+async function normalizeHeroImageToSpec(diskPath) {
+  let meta = await sharp(diskPath).metadata();
+  if (meta.width === HERO_IMAGE_WIDTH && meta.height === HERO_IMAGE_HEIGHT) return meta;
+  const ext = path.extname(diskPath).toLowerCase();
+  const tmp = `${diskPath}.norm`;
+  const base = sharp(diskPath).rotate().resize(HERO_IMAGE_WIDTH, HERO_IMAGE_HEIGHT, {
+    fit: "cover",
+    position: "attention",
+  });
+  if (ext === ".png") await base.png({ compressionLevel: 8 }).toFile(tmp);
+  else if (ext === ".webp") await base.webp({ quality: 85 }).toFile(tmp);
+  else await base.jpeg({ quality: 88, mozjpeg: true }).toFile(tmp);
+  fs.unlinkSync(diskPath);
+  fs.renameSync(tmp, diskPath);
+  meta = await sharp(diskPath).metadata();
+  return meta;
+}
 
 // ── Helpers ──────────────────────────────────────────
 
@@ -206,7 +228,7 @@ router.get(
           .select("name email role")
           .sort({ name: 1 })
           .lean(),
-        User.find({ role: { $in: EDITOR_ROLES }, isActive: true })
+        User.find({ role: { $in: ASSIGNMENT_EDITOR_ROLES }, isActive: true })
           .select("name email role")
           .sort({ name: 1 })
           .lean(),
@@ -856,27 +878,23 @@ router.post(
         const diskPath = path.join(__dirname, "../uploads", file.filename);
         let meta;
         try {
-          meta = await sharp(diskPath).metadata();
+          meta = await normalizeHeroImageToSpec(diskPath);
         } catch (_e) {
           if (fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
-          return res.status(400).json({ message: `Invalid image file (upload ${idx + 1})` });
-        }
-        if (meta.width !== HERO_IMAGE_WIDTH || meta.height !== HERO_IMAGE_HEIGHT) {
-          if (fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
           return res.status(400).json({
-            message: `Image ${idx + 1} must be exactly ${HERO_IMAGE_WIDTH}×${HERO_IMAGE_HEIGHT}px (received ${meta.width ?? "?"}×${meta.height ?? "?"})`,
+            message: `Invalid or unsupported image (upload ${idx + 1}). Use JPEG, PNG, or WebP under 8MB.`,
           });
         }
-        const source = String(req.body[`source_${idx}`] || "").trim();
-        const imageDescription = String(req.body[`imageDescription_${idx}`] || "").trim();
-        const alt = String(req.body[`alt_${idx}`] || "").trim();
-        const imageTitle = String(req.body[`imageTitle_${idx}`] || "").trim();
-        if (!source || !imageDescription || !alt || !imageTitle) {
-          if (fs.existsSync(diskPath)) fs.unlinkSync(diskPath);
-          return res.status(400).json({
-            message: `Image ${idx + 1}: source, description, alt text, and image title are required`,
-          });
-        }
+        const source = String(req.body[`source_${idx}`] || "").trim() || "News desk";
+        const imageDescription =
+          String(req.body[`imageDescription_${idx}`] || "").trim() ||
+          "Attached to this story — update description after upload if needed.";
+        const alt =
+          String(req.body[`alt_${idx}`] || "").trim() ||
+          (idx === 0 ? "Article hero image" : `Article image ${idx + 1}`);
+        const imageTitle =
+          String(req.body[`imageTitle_${idx}`] || "").trim() ||
+          (idx === 0 ? "Hero image" : `Image ${idx + 1}`);
         newImages.push({
           url: `${baseUrl}/uploads/${file.filename}`,
           caption: req.body[`caption_${idx}`] || "",
