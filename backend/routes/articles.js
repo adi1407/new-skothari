@@ -38,17 +38,6 @@ function hasPrimaryContent(article) {
   return !!(String(article.title || "").trim() && String(article.body || "").trim());
 }
 
-function hasBilingualContent(article) {
-  return Boolean(
-    String(article.title || "").trim() &&
-    String(article.titleHi || "").trim() &&
-    String(article.summary || "").trim() &&
-    String(article.summaryHi || "").trim() &&
-    String(article.body || "").trim() &&
-    String(article.bodyHi || "").trim()
-  );
-}
-
 function imageHasRequiredMeta(img) {
   return Boolean(
     String(img?.source || "").trim() &&
@@ -125,8 +114,23 @@ function canActHindiDesk(user, article) {
   return String(article.author) === String(user._id);
 }
 
-function hasLanguageAssignments(article) {
-  return Boolean(article.writerEn && article.writerHi && article.editorEn && article.editorHi);
+function isEnglishPrimaryArticle(article) {
+  return normalizePrimaryLocale(article.primaryLocale) === "en";
+}
+
+/** Writer + editor for the article's primary language (English and Hindi workflows are independent). */
+function hasAssignmentsForPrimaryLocale(article) {
+  if (isEnglishPrimaryArticle(article)) {
+    return Boolean(article.writerEn && article.editorEn);
+  }
+  return Boolean(article.writerHi && article.editorHi);
+}
+
+/** Full title, summary, body for whichever locale is primary. */
+function hasContentForPrimaryLocale(article) {
+  return isEnglishPrimaryArticle(article)
+    ? hasEnglishDeskContent(article)
+    : hasHindiDeskContent(article);
 }
 
 function buildQuery(role, userId, filters = {}) {
@@ -631,29 +635,27 @@ router.patch(
         return res.status(400).json({ message: `Cannot submit from status: ${article.status}` });
       }
 
-      if (!article.enDeskComplete || !article.hiDeskComplete) {
+      if (!hasContentForPrimaryLocale(article)) {
         return res.status(400).json({
-          message: "Both English and Hindi desks must be marked complete (use submit-en and submit-hi) before submitting to editors",
+          message: isEnglishPrimaryArticle(article)
+            ? "English title, summary, and body are required before submitting"
+            : "Hindi title, summary, and body are required before submitting",
         });
       }
 
       if (!hasPrimaryContent(article)) {
         return res.status(400).json({
-          message: article.primaryLocale === "hi"
-            ? "Hindi title and body are required before submitting"
-            : "Title and body are required before submitting",
+          message: isEnglishPrimaryArticle(article)
+            ? "English title and body are required before submitting"
+            : "Hindi title and body are required before submitting",
         });
       }
 
-      if (!hasBilingualContent(article)) {
+      if (!hasAssignmentsForPrimaryLocale(article)) {
         return res.status(400).json({
-          message: "Both Hindi and English title, summary, and body are required before submitting",
-        });
-      }
-
-      if (!hasLanguageAssignments(article)) {
-        return res.status(400).json({
-          message: "Hindi/English writer and editor assignments are required before submitting",
+          message: isEnglishPrimaryArticle(article)
+            ? "English writer and editor assignments are required before submitting"
+            : "Hindi writer and editor assignments are required before submitting",
         });
       }
 
@@ -661,6 +663,12 @@ router.patch(
         return res.status(400).json({
           message: "Each image must include source, description, alt text, and image title before submitting",
         });
+      }
+
+      if (isEnglishPrimaryArticle(article)) {
+        article.enDeskComplete = true;
+      } else {
+        article.hiDeskComplete = true;
       }
 
       article.status = "submitted";
@@ -692,23 +700,27 @@ router.patch(
         return res.status(400).json({ message: `Cannot publish from status: ${article.status}` });
       }
 
+      if (!hasContentForPrimaryLocale(article)) {
+        return res.status(400).json({
+          message: isEnglishPrimaryArticle(article)
+            ? "Cannot publish: English title, summary, and body are required"
+            : "Cannot publish: Hindi title, summary, and body are required",
+        });
+      }
+
       if (!hasPrimaryContent(article)) {
         return res.status(400).json({
-          message: article.primaryLocale === "hi"
-            ? "Cannot publish: Hindi title and body are required"
-            : "Cannot publish: English title and body are required",
+          message: isEnglishPrimaryArticle(article)
+            ? "Cannot publish: English title and body are required"
+            : "Cannot publish: Hindi title and body are required",
         });
       }
 
-      if (!hasBilingualContent(article)) {
+      if (!hasAssignmentsForPrimaryLocale(article)) {
         return res.status(400).json({
-          message: "Cannot publish: both Hindi and English title, summary, and body are required",
-        });
-      }
-
-      if (!hasLanguageAssignments(article)) {
-        return res.status(400).json({
-          message: "Cannot publish: Hindi/English writer and editor assignments are required",
+          message: isEnglishPrimaryArticle(article)
+            ? "Cannot publish: English writer and editor assignments are required"
+            : "Cannot publish: Hindi writer and editor assignments are required",
         });
       }
 

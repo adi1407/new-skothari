@@ -4,13 +4,23 @@ import {
   Save, Send, ArrowLeft, Upload, X, Image as ImgIcon, Loader2, AlertCircle, Link2, Copy,
 } from "lucide-react";
 import {
-  getArticle, createArticle, updateArticle, submitArticle, submitArticleDeskEn, submitArticleDeskHi,
+  getArticle, createArticle, updateArticle, submitArticle,
   uploadImages, deleteImage, getTasks,
   mediaUrl, patchArticleImage, lookupArticleByNumber, getEditorAssignmentUsers,
 } from "../../api";
 import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { isAdminLike } from "../../constants/roles";
+
+/** Bilingual UI for admins; single-language form for desk writers. Legacy `writer` → English desk. */
+function articleEditorDeskMode(user) {
+  if (!user?.role) return "both";
+  if (isAdminLike(user.role)) return "both";
+  const r = String(user.role).trim();
+  if (r === "writer_en" || r === "writer") return "en";
+  if (r === "writer_hi") return "hi";
+  return "both";
+}
 
 const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
 const RELATED_LINK_RE = /<a\s+[^>]*href=["']\/article\/(?:[a-z0-9-]+-)?(\d{9})["'][^>]*>([\s\S]*?)<\/a>/gi;
@@ -90,7 +100,7 @@ export default function ArticleEditor() {
   const fileRef  = useRef(null);
   const isEdit   = Boolean(id);
   /** English desk: only English body fields in UI. Hindi desk: only Hindi. Admin: both. */
-  const deskMode = isAdminLike(user?.role) ? "both" : user?.role === "writer_en" ? "en" : user?.role === "writer_hi" ? "hi" : "both";
+  const deskMode = articleEditorDeskMode(user);
 
   const [form, setForm] = useState({
     primaryLocale: "en",
@@ -112,14 +122,10 @@ export default function ArticleEditor() {
   const [success, setSuccess]       = useState("");
   const [loading, setLoading]       = useState(isEdit);
   const [articleNumber, setArticleNumber] = useState(null);
-  const [enDeskComplete, setEnDeskComplete] = useState(false);
-  const [hiDeskComplete, setHiDeskComplete] = useState(false);
-  const [deskSubmitting, setDeskSubmitting] = useState(null);
   const [relatedLinks, setRelatedLinks] = useState([]);
-  const [authorId, setAuthorId] = useState("");
 
   useEffect(() => {
-    if (!isEdit && user?.role === "writer_en") {
+    if (!isEdit && (user?.role === "writer_en" || user?.role === "writer")) {
       setForm((f) => ({ ...f, primaryLocale: "en", writerEn: user._id || f.writerEn }));
     }
     if (!isEdit && user?.role === "writer_hi") {
@@ -129,7 +135,7 @@ export default function ArticleEditor() {
 
   useEffect(() => {
     if (!user?._id) return;
-    if (user.role === "writer_en") {
+    if (user.role === "writer_en" || user.role === "writer") {
       setForm((f) => ({ ...f, writerEn: f.writerEn || user._id }));
     } else if (user.role === "writer_hi") {
       setForm((f) => ({ ...f, writerHi: f.writerHi || user._id }));
@@ -171,12 +177,68 @@ export default function ArticleEditor() {
         setImages(art.images || []);
         setStatus(art.status);
         setArticleNumber(art.articleNumber ?? null);
-        setEnDeskComplete(Boolean(art.enDeskComplete));
-        setHiDeskComplete(Boolean(art.hiDeskComplete));
-        setAuthorId(String(art.author?._id || art.author || ""));
       }
     }).finally(() => setLoading(false));
   }, [id, isEdit]);
+
+  /** Hidden partner desk IDs for single-desk writers (not shown in UI; required by API). */
+  useEffect(() => {
+    if (!user?._id) return;
+    const mode = articleEditorDeskMode(user);
+    const writers = assignmentUsers.writers || [];
+    const editors = assignmentUsers.editors || [];
+    if (!writers.length && !editors.length) return;
+
+    if (mode === "en") {
+      setForm((f) => {
+        let changed = false;
+        const next = { ...f };
+        if (!f.writerHi) {
+          const w = writers.find((u) => u.role === "writer_hi");
+          if (w) {
+            next.writerHi = w._id;
+            changed = true;
+          }
+        }
+        if (!f.editorHi) {
+          const e = editors.find((u) => u.role === "editor_hi") || editors.find((u) => u.role === "editor");
+          if (e) {
+            next.editorHi = e._id;
+            changed = true;
+          }
+        }
+        if (!f.writerEn) {
+          next.writerEn = user._id;
+          changed = true;
+        }
+        return changed ? next : f;
+      });
+    } else if (mode === "hi") {
+      setForm((f) => {
+        let changed = false;
+        const next = { ...f };
+        if (!f.writerEn) {
+          const w = writers.find((u) => u.role === "writer_en");
+          if (w) {
+            next.writerEn = w._id;
+            changed = true;
+          }
+        }
+        if (!f.editorEn) {
+          const e = editors.find((u) => u.role === "editor_en") || editors.find((u) => u.role === "editor");
+          if (e) {
+            next.editorEn = e._id;
+            changed = true;
+          }
+        }
+        if (!f.writerHi) {
+          next.writerHi = user._id;
+          changed = true;
+        }
+        return changed ? next : f;
+      });
+    }
+  }, [assignmentUsers, user]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -228,9 +290,6 @@ export default function ArticleEditor() {
   };
 
   const handleSubmit = async () => {
-    if (!enDeskComplete || !hiDeskComplete) {
-      return setError("Mark both English and Hindi desks complete before submitting to editors.");
-    }
     if (!images.length) {
       return setError("At least one image is required before submitting");
     }
@@ -258,52 +317,6 @@ export default function ArticleEditor() {
       setError(err.response?.data?.message || "Submit failed");
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const canMarkEnglishDesk =
-    isAdminLike(user?.role) ||
-    (user?.role === "writer_en" &&
-      (String(form.writerEn) === String(user?._id) || (!form.writerEn && String(authorId) === String(user?._id))));
-
-  const canMarkHindiDesk =
-    isAdminLike(user?.role) ||
-    (user?.role === "writer_hi" &&
-      (String(form.writerHi) === String(user?._id) || (!form.writerHi && String(authorId) === String(user?._id))));
-
-  const handleSubmitDeskEn = async () => {
-    if (!isEdit || !id) return setError("Save the article first.");
-    setError("");
-    setDeskSubmitting("en");
-    try {
-      const saved = await handleSave();
-      if (!saved) return;
-      const { data } = await submitArticleDeskEn(id);
-      setEnDeskComplete(Boolean(data.article?.enDeskComplete));
-      setSuccess(data.message || "English desk marked complete");
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      setError(err.response?.data?.message || "Could not mark English desk complete");
-    } finally {
-      setDeskSubmitting(null);
-    }
-  };
-
-  const handleSubmitDeskHi = async () => {
-    if (!isEdit || !id) return setError("Save the article first.");
-    setError("");
-    setDeskSubmitting("hi");
-    try {
-      const saved = await handleSave();
-      if (!saved) return;
-      const { data } = await submitArticleDeskHi(id);
-      setHiDeskComplete(Boolean(data.article?.hiDeskComplete));
-      setSuccess(data.message || "Hindi desk marked complete");
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      setError(err.response?.data?.message || "Could not mark Hindi desk complete");
-    } finally {
-      setDeskSubmitting(null);
     }
   };
 
@@ -450,17 +463,18 @@ export default function ArticleEditor() {
   const hiContentReady = Boolean(
     form.titleHi?.trim() && form.summaryHi?.trim() && form.bodyHi?.trim()
   );
-  const assignReady = Boolean(form.writerEn && form.writerHi && form.editorEn && form.editorHi);
-  const contentReady =
-    deskMode === "en" ? enContentReady : deskMode === "hi" ? hiContentReady : enContentReady && hiContentReady;
+  const primaryIsEn = form.primaryLocale !== "hi";
+  const assignReadyPrimary = primaryIsEn
+    ? Boolean(form.writerEn && form.editorEn)
+    : Boolean(form.writerHi && form.editorHi);
+  const contentReadyPrimary = primaryIsEn ? enContentReady : hiContentReady;
 
   const canSubmit =
     isEdit &&
     canEdit &&
-    contentReady &&
-    assignReady &&
-    enDeskComplete &&
-    hiDeskComplete;
+    contentReadyPrimary &&
+    assignReadyPrimary &&
+    images.length > 0;
 
   if (loading) return (
     <div className="cms-page-center">
@@ -510,49 +524,7 @@ export default function ArticleEditor() {
 
         {canEdit && (
           <div className="flex flex-col items-end gap-2 max-w-full">
-            <div className="flex flex-wrap items-center justify-end gap-2 text-[11px]">
-              {deskMode !== "hi" && (
-              <span
-                className={`rounded-full px-2.5 py-0.5 font-semibold ${
-                  enDeskComplete ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                English desk{enDeskComplete ? " · complete" : ""}
-              </span>
-              )}
-              {deskMode !== "en" && (
-              <span
-                className={`rounded-full px-2.5 py-0.5 font-semibold ${
-                  hiDeskComplete ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                Hindi desk{hiDeskComplete ? " · complete" : ""}
-              </span>
-              )}
-            </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
-              {canMarkEnglishDesk && !enDeskComplete && deskMode !== "hi" && (
-                <button
-                  type="button"
-                  onClick={handleSubmitDeskEn}
-                  disabled={saving || deskSubmitting === "en"}
-                  className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 text-emerald-900 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-100 disabled:opacity-50"
-                >
-                  {deskSubmitting === "en" ? <Loader2 size={14} className="animate-spin" /> : null}
-                  Mark English desk complete
-                </button>
-              )}
-              {canMarkHindiDesk && !hiDeskComplete && deskMode !== "en" && (
-                <button
-                  type="button"
-                  onClick={handleSubmitDeskHi}
-                  disabled={saving || deskSubmitting === "hi"}
-                  className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 text-emerald-900 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-100 disabled:opacity-50"
-                >
-                  {deskSubmitting === "hi" ? <Loader2 size={14} className="animate-spin" /> : null}
-                  Mark Hindi desk complete
-                </button>
-              )}
             <button
               onClick={handleSave} disabled={saving}
               className="flex items-center gap-2 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
@@ -897,18 +869,20 @@ export default function ArticleEditor() {
             </Field>
             ) : deskMode === "en" ? (
               <p className="text-sm text-slate-600 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
-                <span className="font-semibold text-slate-800">Your desk:</span> English — you edit the English story; the Hindi desk fills the Hindi side.
+                <span className="font-semibold text-slate-800">Your desk:</span> English — headline, summary, and body on this page are all in English.
               </p>
             ) : (
               <p className="text-sm text-slate-600 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
-                <span className="font-semibold text-slate-800">Your desk:</span> Hindi — you edit the Hindi story; the English desk fills the English side.
+                <span className="font-semibold text-slate-800">Your desk:</span> Hindi — headline, summary, and body on this page are all in Hindi.
               </p>
             )}
 
+            {deskMode === "both" && (
+              <>
             <Field label="English writer" required>
               <select
                 value={form.writerEn}
-                disabled={!canEdit || user?.role === "writer_en"}
+                disabled={!canEdit || user?.role === "writer_en" || user?.role === "writer"}
                 onChange={(e) => set("writerEn", e.target.value)}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
               >
@@ -968,6 +942,54 @@ export default function ArticleEditor() {
                   ))}
               </select>
             </Field>
+              </>
+            )}
+
+            {deskMode === "en" && (
+              <>
+                <Field label="English editor" required>
+                  <select
+                    value={form.editorEn}
+                    disabled={!canEdit}
+                    onChange={(e) => set("editorEn", e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
+                  >
+                    <option value="">Select English editor</option>
+                    {assignmentUsers.editors
+                      .filter((u) => ["editor", "editor_en"].includes(u.role))
+                      .map((u) => (
+                        <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                      ))}
+                  </select>
+                </Field>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Other workflow fields are filled from your roster automatically. Ask an admin in Users if assignments need to change.
+                </p>
+              </>
+            )}
+
+            {deskMode === "hi" && (
+              <>
+                <Field label="Hindi editor" required>
+                  <select
+                    value={form.editorHi}
+                    disabled={!canEdit}
+                    onChange={(e) => set("editorHi", e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
+                  >
+                    <option value="">Select Hindi editor</option>
+                    {assignmentUsers.editors
+                      .filter((u) => ["editor", "editor_hi"].includes(u.role))
+                      .map((u) => (
+                        <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
+                      ))}
+                  </select>
+                </Field>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Other workflow fields are filled from your roster automatically. Ask an admin in Users if assignments need to change.
+                </p>
+              </>
+            )}
 
             <Field label="Category" required>
               <select
@@ -1131,18 +1153,18 @@ export default function ArticleEditor() {
               <li>Upload the hero image after the article is saved</li>
               {deskMode === "both" ? (
                 <>
-                  <li>Fill both English and Hindi columns, then mark each desk complete and submit</li>
-                  <li>Choose primary language for which version leads on listing cards</li>
+                  <li>Set primary language in Settings (that version leads on the site)</li>
+                  <li>Finish the column for that language, meta, assignments, and images — the other language is optional</li>
                 </>
               ) : deskMode === "en" ? (
                 <>
-                  <li>You only edit English; assign a Hindi writer for the other desk</li>
-                  <li>When the Hindi desk marks complete, you can submit for editors (with images and assignments)</li>
+                  <li>Fill headline, summary, body, and SEO in English</li>
+                  <li>Choose your English editor, add credited images after save, then submit — your editor reviews or publishes</li>
                 </>
               ) : (
                 <>
-                  <li>You only edit Hindi; assign an English writer for the other desk</li>
-                  <li>When the English desk marks complete, you can submit for editors (with images and assignments)</li>
+                  <li>Fill headline, summary, body, and SEO in Hindi</li>
+                  <li>Choose your Hindi editor, add credited images after save, then submit — your editor reviews or publishes</li>
                 </>
               )}
             </ul>
