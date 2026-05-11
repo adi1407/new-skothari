@@ -14,12 +14,30 @@ function isObjectIdString(str) {
 }
 
 /**
+ * Match `/article/{slug}-{9digits}` segment: slug is non-empty, last segment after final hyphen is 9 digits.
+ * Returns { slug, articleNumber } or null.
+ */
+function parseSlugArticleNumber(raw) {
+  const s = String(raw || "").trim();
+  const m = /^(.+)-(\d{9})$/.exec(s);
+  if (!m) return null;
+  const slug = m[1].replace(/^-+|-+$/g, "");
+  if (!slug || !/^[a-z0-9-]+$/.test(slug)) return null;
+  return { slug, articleNumber: Number(m[2]) };
+}
+
+/**
  * Build a query filter for a single article by URL/API segment:
- * Mongo `_id` OR unique 9-digit `articleNumber`.
+ * Mongo `_id` OR unique 9-digit `articleNumber` OR `{slug, articleNumber}` composite.
  */
 function articleRefFilter(rawId, extra = {}) {
-  if (isObjectIdString(rawId)) return { ...extra, _id: rawId };
-  if (isNineDigitArticleNumber(rawId)) return { ...extra, articleNumber: Number(rawId) };
+  const s = String(rawId || "").trim();
+  if (isObjectIdString(s)) return { ...extra, _id: s };
+  if (isNineDigitArticleNumber(s)) return { ...extra, articleNumber: Number(s) };
+  const parsed = parseSlugArticleNumber(s);
+  if (parsed) {
+    return { ...extra, articleNumber: parsed.articleNumber, slug: parsed.slug };
+  }
   return null;
 }
 
@@ -38,6 +56,7 @@ module.exports = {
   HERO_IMAGE_HEIGHT,
   isNineDigitArticleNumber,
   isObjectIdString,
+  parseSlugArticleNumber,
   articleRefFilter,
   resolvePublishedArticleMongoId,
 };

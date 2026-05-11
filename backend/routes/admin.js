@@ -5,10 +5,10 @@ const User = require("../models/User");
 const Article = require("../models/Article");
 const Task = require("../models/Task");
 const { authenticate, authorize } = require("../middleware/auth");
-const { WRITER_ROLES, EDITOR_ROLES, isWriterRole } = require("../utils/roles");
+const { WRITER_ROLES, EDITOR_ROLES, isWriterRole, ALL_STAFF_ROLES } = require("../utils/roles");
 
-// All admin routes require authentication + admin role
-router.use(authenticate, authorize("admin"));
+// All admin routes require authentication + admin or super_admin
+router.use(authenticate, authorize("__adminLike__"));
 
 // ════════════════════════════════════════════════════
 //  DASHBOARD STATS
@@ -285,7 +285,7 @@ router.post(
     body("name").trim().notEmpty(),
     body("email").isEmail().normalizeEmail(),
     body("password").isLength({ min: 8 }),
-    body("role").isIn(["admin", "editor", "editor_en", "editor_hi", "writer", "writer_en", "writer_hi"]),
+    body("role").isIn(ALL_STAFF_ROLES),
   ],
   async (req, res) => {
     const errors = validationResult(req);

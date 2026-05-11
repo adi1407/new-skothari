@@ -25,16 +25,21 @@ import Tasks          from "./pages/admin/Tasks"; // also used read-only on /edi
 import Users          from "./pages/admin/Users";
 import Videos         from "./pages/admin/Videos";
 import VideoEditor    from "./pages/admin/VideoEditor";
-import { isWriterRole, EDITOR_ROLES } from "./constants/roles";
+import { isWriterRole, isEditorRole, isAdminLike, isVideoStaff } from "./constants/roles";
 
-const WRITER_ROUTE_ROLES = ["writer", "writer_en", "writer_hi", "admin"];
+const WRITER_ROUTE_ROLES = ["__writers__", "__adminLike__"];
+const EDITOR_ROUTE_ROLES = ["__textEditors__", "__adminLike__"];
+const ADMIN_ROUTE_ROLES = ["__adminLike__"];
+const VIDEO_ROUTE_ROLES = ["__videoStaff__"];
 
 function RoleHome() {
   const { user } = useAuth();
-  if (user?.role === "admin")  return <Navigate to="/admin" replace />;
-  if (EDITOR_ROLES.includes(user?.role)) return <Navigate to="/editor" replace />; // overview
-  if (isWriterRole(user?.role)) return <Navigate to="/writer" replace />;
-  return <Navigate to="/writer" replace />;
+  const r = user?.role;
+  if (isAdminLike(r)) return <Navigate to="/admin" replace />;
+  if (isWriterRole(r)) return <Navigate to="/writer" replace />;
+  if (isVideoStaff(r) && !isEditorRole(r)) return <Navigate to="/editor/videos" replace />;
+  if (isEditorRole(r)) return <Navigate to="/editor" replace />;
+  return <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -60,27 +65,27 @@ export default function App() {
         <Route path="writer/new"  element={<ProtectedRoute roles={WRITER_ROUTE_ROLES}><ArticleEditor /></ProtectedRoute>} />
         <Route path="writer/edit/:id" element={<ProtectedRoute roles={WRITER_ROUTE_ROLES}><ArticleEditor /></ProtectedRoute>} />
 
-        {/* Editor desk (editor + admin) */}
-        <Route path="editor" element={<ProtectedRoute roles={[...EDITOR_ROLES,"admin"]}><EditorOverview /></ProtectedRoute>} />
-        <Route path="editor/queue" element={<ProtectedRoute roles={[...EDITOR_ROLES,"admin"]}><EditorDashboard /></ProtectedRoute>} />
-        <Route path="editor/review/:id" element={<ProtectedRoute roles={[...EDITOR_ROLES,"admin"]}><ArticleReview /></ProtectedRoute>} />
-        <Route path="editor/articles" element={<ProtectedRoute roles={[...EDITOR_ROLES,"admin"]}><EditorArticles /></ProtectedRoute>} />
-        <Route path="editor/writers" element={<ProtectedRoute roles={[...EDITOR_ROLES,"admin"]}><EditorWriters /></ProtectedRoute>} />
-        <Route path="editor/writers/:id" element={<ProtectedRoute roles={[...EDITOR_ROLES,"admin"]}><EditorWriterDetail /></ProtectedRoute>} />
-        <Route path="editor/tasks" element={<ProtectedRoute roles={[...EDITOR_ROLES,"admin"]}><Tasks readOnly /></ProtectedRoute>} />
-        <Route path="editor/videos" element={<ProtectedRoute roles={[...EDITOR_ROLES,"admin"]}><Videos /></ProtectedRoute>} />
-        <Route path="editor/videos/new" element={<ProtectedRoute roles={[...EDITOR_ROLES,"admin"]}><VideoEditor /></ProtectedRoute>} />
-        <Route path="editor/videos/:id" element={<ProtectedRoute roles={[...EDITOR_ROLES,"admin"]}><VideoEditor /></ProtectedRoute>} />
+        {/* Editor desk (text editors + admins) */}
+        <Route path="editor" element={<ProtectedRoute roles={EDITOR_ROUTE_ROLES}><EditorOverview /></ProtectedRoute>} />
+        <Route path="editor/queue" element={<ProtectedRoute roles={EDITOR_ROUTE_ROLES}><EditorDashboard /></ProtectedRoute>} />
+        <Route path="editor/review/:id" element={<ProtectedRoute roles={EDITOR_ROUTE_ROLES}><ArticleReview /></ProtectedRoute>} />
+        <Route path="editor/articles" element={<ProtectedRoute roles={EDITOR_ROUTE_ROLES}><EditorArticles /></ProtectedRoute>} />
+        <Route path="editor/writers" element={<ProtectedRoute roles={EDITOR_ROUTE_ROLES}><EditorWriters /></ProtectedRoute>} />
+        <Route path="editor/writers/:id" element={<ProtectedRoute roles={EDITOR_ROUTE_ROLES}><EditorWriterDetail /></ProtectedRoute>} />
+        <Route path="editor/tasks" element={<ProtectedRoute roles={EDITOR_ROUTE_ROLES}><Tasks readOnly /></ProtectedRoute>} />
+        <Route path="editor/videos" element={<ProtectedRoute roles={VIDEO_ROUTE_ROLES}><Videos /></ProtectedRoute>} />
+        <Route path="editor/videos/new" element={<ProtectedRoute roles={VIDEO_ROUTE_ROLES}><VideoEditor /></ProtectedRoute>} />
+        <Route path="editor/videos/:id" element={<ProtectedRoute roles={VIDEO_ROUTE_ROLES}><VideoEditor /></ProtectedRoute>} />
 
         {/* Admin */}
-        <Route path="admin"                element={<ProtectedRoute roles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
-        <Route path="admin/writers"        element={<ProtectedRoute roles={["admin"]}><Writers /></ProtectedRoute>} />
-        <Route path="admin/writers/:id"    element={<ProtectedRoute roles={["admin"]}><WriterDetail /></ProtectedRoute>} />
-        <Route path="admin/tasks"          element={<ProtectedRoute roles={["admin"]}><Tasks /></ProtectedRoute>} />
-        <Route path="admin/users"          element={<ProtectedRoute roles={["admin"]}><Users /></ProtectedRoute>} />
-        <Route path="admin/videos"         element={<ProtectedRoute roles={["admin"]}><Videos /></ProtectedRoute>} />
-        <Route path="admin/videos/new"     element={<ProtectedRoute roles={["admin"]}><VideoEditor /></ProtectedRoute>} />
-        <Route path="admin/videos/:id"     element={<ProtectedRoute roles={["admin"]}><VideoEditor /></ProtectedRoute>} />
+        <Route path="admin"                element={<ProtectedRoute roles={ADMIN_ROUTE_ROLES}><AdminDashboard /></ProtectedRoute>} />
+        <Route path="admin/writers"        element={<ProtectedRoute roles={ADMIN_ROUTE_ROLES}><Writers /></ProtectedRoute>} />
+        <Route path="admin/writers/:id"    element={<ProtectedRoute roles={ADMIN_ROUTE_ROLES}><WriterDetail /></ProtectedRoute>} />
+        <Route path="admin/tasks"          element={<ProtectedRoute roles={ADMIN_ROUTE_ROLES}><Tasks /></ProtectedRoute>} />
+        <Route path="admin/users"          element={<ProtectedRoute roles={ADMIN_ROUTE_ROLES}><Users /></ProtectedRoute>} />
+        <Route path="admin/videos"         element={<ProtectedRoute roles={ADMIN_ROUTE_ROLES}><Videos /></ProtectedRoute>} />
+        <Route path="admin/videos/new"     element={<ProtectedRoute roles={ADMIN_ROUTE_ROLES}><VideoEditor /></ProtectedRoute>} />
+        <Route path="admin/videos/:id"     element={<ProtectedRoute roles={ADMIN_ROUTE_ROLES}><VideoEditor /></ProtectedRoute>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

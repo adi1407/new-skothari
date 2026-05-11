@@ -57,7 +57,14 @@ const articleSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
       lowercase: true,
+      trim: true,
+      maxlength: 100,
+      default: undefined,
     },
+
+    /** Per-desk ready flags before final submitted to editors. */
+    enDeskComplete: { type: Boolean, default: false },
+    hiDeskComplete: { type: Boolean, default: false },
 
     summary: { type: String, trim: true, maxlength: 500, default: "" },
     summaryHi: { type: String, trim: true, maxlength: 500, default: "" },
@@ -179,11 +186,8 @@ articleSchema.pre("save", async function preArticleSave(next) {
       }
     }
 
-    if (!this.slug) {
-      const titleForSlug = this.primaryLocale === "hi" ? this.titleHi : this.title;
-      let base = asciiSlugPart(titleForSlug);
-      if (!base) base = "article";
-      this.slug = `${base}-${Date.now()}`;
+    if (!this.slug || !String(this.slug).trim()) {
+      this.slug = undefined;
     }
 
     const primaryBody = this.primaryLocale === "hi" ? this.bodyHi : this.body;

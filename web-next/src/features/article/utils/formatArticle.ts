@@ -16,9 +16,24 @@ export function isMongoId(id: string): boolean {
   return /^[a-f0-9]{24}$/.test(id);
 }
 
-/** Article URL segment: Mongo ObjectId or public 9-digit article number. */
+/** Article URL segment: Mongo ObjectId, public 9-digit article number, or slug-9digits. */
 export function isArticleRefId(id: string): boolean {
-  return isMongoId(id) || /^\d{9}$/.test(id);
+  const s = String(id || "").trim();
+  if (isMongoId(s)) return true;
+  if (/^\d{9}$/.test(s)) return true;
+  return /^[a-z0-9-]+-\d{9}$/i.test(s);
+}
+
+/** True when the route segment refers to the same article as adapted `article`. */
+export function publicArticleSegmentsMatch(
+  routeSegment: string,
+  article: { id: string; mongoId: string }
+): boolean {
+  const seg = String(routeSegment || "").trim();
+  if (!seg || !article) return false;
+  if (seg === article.mongoId || seg === article.id) return true;
+  const m = /^[a-z0-9-]+-(\d{9})$/i.exec(seg);
+  return Boolean(m && m[1] === article.id);
 }
 
 export function upvoteCountFromApi(res: unknown): number | null {

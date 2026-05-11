@@ -89,7 +89,8 @@ export async function fetchPublishedArticles(opts: {
 
 export async function fetchArticleById(id: string): Promise<BackendArticle | null> {
   try {
-    const res = await fetch(publicUrl(`${BASE}/articles/${id}`), { signal: apiFetchSignal() });
+    const enc = encodeURIComponent(String(id || "").trim());
+    const res = await fetch(publicUrl(`${BASE}/articles/${enc}`), { signal: apiFetchSignal() });
     if (!res.ok) return null;
     const data = await res.json();
     return data.article ?? null;
@@ -107,7 +108,8 @@ export async function fetchRecommendedForArticle(
     const params = new URLSearchParams();
     if (opts.limit) params.set("limit", String(opts.limit));
     if (opts.locale) params.set("locale", opts.locale);
-    const res = await fetch(publicUrl(`${BASE}/articles/${articleId}/recommendations?${params}`), {
+    const enc = encodeURIComponent(String(articleId || "").trim());
+    const res = await fetch(publicUrl(`${BASE}/articles/${enc}/recommendations?${params}`), {
       signal: apiFetchSignal(),
     });
     if (!res.ok) return [];

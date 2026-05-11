@@ -19,7 +19,7 @@ function isLikelyYoutubeUrl(url) {
 router.get(
   "/",
   authenticate,
-  authorize("editor", "admin"),
+  authorize("__videoStaff__"),
   [
     query("status").optional().isIn(["draft", "published"]),
     query("category").optional().isIn([
@@ -62,7 +62,7 @@ router.get(
 );
 
 // ── GET /api/videos/:id ─────────────────────────────────
-router.get("/:id", authenticate, authorize("editor", "admin"), async (req, res) => {
+router.get("/:id", authenticate, authorize("__videoStaff__"), async (req, res) => {
   try {
     const video = await Video.findById(req.params.id).lean();
     if (!video) return res.status(404).json({ message: "Video not found" });
@@ -76,7 +76,7 @@ router.get("/:id", authenticate, authorize("editor", "admin"), async (req, res) 
 router.post(
   "/",
   authenticate,
-  authorize("editor", "admin"),
+  authorize("__videoStaff__"),
   [
     body("title").trim().notEmpty(),
     body("youtubeUrl").trim().notEmpty().custom((v) => {
@@ -108,7 +108,7 @@ router.post(
 router.put(
   "/:id",
   authenticate,
-  authorize("editor", "admin"),
+  authorize("__videoStaff__"),
   [
     body("youtubeUrl")
       .optional()
@@ -152,7 +152,7 @@ router.put(
 );
 
 // ── DELETE /api/videos/:id (admin only) ─────────────────
-router.delete("/:id", authenticate, authorize("admin"), async (req, res) => {
+router.delete("/:id", authenticate, authorize("__adminLike__"), async (req, res) => {
   try {
     const video = await Video.findByIdAndDelete(req.params.id);
     if (!video) return res.status(404).json({ message: "Video not found" });

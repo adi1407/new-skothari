@@ -1,6 +1,11 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { WRITER_ROLES } = require("../utils/roles");
+const {
+  WRITER_ROLES,
+  TEXT_EDITOR_ROLES,
+  VIDEO_STAFF_ROLES,
+  ADMIN_LIKE_ROLES,
+} = require("../utils/roles");
 
 // Verify JWT and attach user to req
 async function authenticate(req, res, next) {
@@ -23,13 +28,22 @@ async function authenticate(req, res, next) {
   }
 }
 
-// Role guard factory — usage: authorize("admin"), authorize("writer","admin")
-// When "writer" is listed, any desk writer role (writer / writer_en / writer_hi) is accepted.
+/**
+ * Role guard. Pass concrete role names and/or magic tokens:
+ * - "__writers__" — writer_en | writer_hi
+ * - "__textEditors__" — editor | editor_en | editor_hi
+ * - "__videoStaff__" — video_editor | editor | super_admin | admin
+ * - "__adminLike__" — super_admin | admin
+ */
 function authorize(...roles) {
   return (req, res, next) => {
+    const r = req.user.role;
     const ok = roles.some((wanted) => {
-      if (wanted === "writer") return WRITER_ROLES.includes(req.user.role);
-      return req.user.role === wanted;
+      if (wanted === "__writers__") return WRITER_ROLES.includes(r);
+      if (wanted === "__textEditors__") return TEXT_EDITOR_ROLES.includes(r);
+      if (wanted === "__videoStaff__") return VIDEO_STAFF_ROLES.includes(r);
+      if (wanted === "__adminLike__") return ADMIN_LIKE_ROLES.includes(r);
+      return r === wanted;
     });
     if (!ok) {
       return res.status(403).json({

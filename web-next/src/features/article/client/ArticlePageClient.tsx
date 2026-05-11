@@ -52,10 +52,16 @@ export default function ArticlePageClient({ articleId }: { articleId: string }) 
 
   useEffect(() => {
     if (!article) return;
-    const canonicalId = String(article.id || "").trim();
-    if (!canonicalId) return;
-    if (canonicalId === String(articleId)) return;
-    navigate(`/article/${canonicalId}`, { replace: true });
+    const slug = String(article.slug || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const canonicalSeg =
+      slug && /^[a-z0-9-]+$/.test(slug) ? `${slug}-${article.id}` : article.id;
+    if (String(canonicalSeg) === String(articleId).trim()) return;
+    navigate(`/article/${canonicalSeg}`, { replace: true });
   }, [article, articleId, navigate]);
 
   if (loading) {

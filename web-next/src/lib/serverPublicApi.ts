@@ -32,7 +32,7 @@ export async function fetchPublicArticles(params: {
 
 export async function fetchPublicArticleById(id: string): Promise<BackendArticle | null> {
   try {
-    const res = await fetch(serverApiUrl(`/api/public/articles/${id}`), {
+    const res = await fetch(serverApiUrl(`/api/public/articles/${encodeURIComponent(String(id || "").trim())}`), {
       cache: "no-store",
       signal: apiFetchSignal(),
     });

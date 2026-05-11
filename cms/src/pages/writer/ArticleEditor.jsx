@@ -4,14 +4,16 @@ import {
   Save, Send, ArrowLeft, Upload, X, Image as ImgIcon, Loader2, AlertCircle, Link2, Copy,
 } from "lucide-react";
 import {
-  getArticle, createArticle, updateArticle, submitArticle, uploadImages, deleteImage, getTasks,
+  getArticle, createArticle, updateArticle, submitArticle, submitArticleDeskEn, submitArticleDeskHi,
+  uploadImages, deleteImage, getTasks,
   mediaUrl, patchArticleImage, lookupArticleByNumber, getEditorAssignmentUsers,
 } from "../../api";
 import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { useAuth } from "../../context/AuthContext";
+import { isAdminLike } from "../../constants/roles";
 
 const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
-const RELATED_LINK_RE = /<a\s+[^>]*href=["']\/article\/(\d{9})["'][^>]*>([\s\S]*?)<\/a>/gi;
+const RELATED_LINK_RE = /<a\s+[^>]*href=["']\/article\/(?:[a-z0-9-]+-)?(\d{9})["'][^>]*>([\s\S]*?)<\/a>/gi;
 
 function stripHtml(s) {
   return String(s || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
@@ -41,11 +43,11 @@ function collectRelatedLinksFromHtml(...htmlParts) {
 function removeRelatedLinkFromHtml(html, articleNumber) {
   const escaped = String(articleNumber).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const readAlsoBlock = new RegExp(
-    `<p[^>]*class=["'][^"']*read-also[^"']*["'][^>]*>[\\s\\S]*?<a\\s+[^>]*href=["']\\/article\\/${escaped}["'][^>]*>[\\s\\S]*?<\\/a>[\\s\\S]*?<\\/p>`,
+    `<p[^>]*class=["'][^"']*read-also[^"']*["'][^>]*>[\\s\\S]*?<a\\s+[^>]*href=["']\\/article\\/(?:[a-z0-9-]+-)?${escaped}["'][^>]*>[\\s\\S]*?<\\/a>[\\s\\S]*?<\\/p>`,
     "gi"
   );
   const plainLink = new RegExp(
-    `<a\\s+[^>]*href=["']\\/article\\/${escaped}["'][^>]*>[\\s\\S]*?<\\/a>`,
+    `<a\\s+[^>]*href=["']\\/article\\/(?:[a-z0-9-]+-)?${escaped}["'][^>]*>[\\s\\S]*?<\\/a>`,
     "gi"
   );
   return String(html || "").replace(readAlsoBlock, "").replace(plainLink, "");
@@ -87,8 +89,8 @@ export default function ArticleEditor() {
   const { user } = useAuth();
   const fileRef  = useRef(null);
   const isEdit   = Boolean(id);
-  const lockPrimaryEn = user?.role === "writer_en";
-  const lockPrimaryHi = user?.role === "writer_hi";
+  /** English desk: only English body fields in UI. Hindi desk: only Hindi. Admin: both. */
+  const deskMode = isAdminLike(user?.role) ? "both" : user?.role === "writer_en" ? "en" : user?.role === "writer_hi" ? "hi" : "both";
 
   const [form, setForm] = useState({
     primaryLocale: "en",
@@ -97,7 +99,7 @@ export default function ArticleEditor() {
     writerEn: "", writerHi: "", editorEn: "", editorHi: "",
     tags: "", isBreaking: false, task: "",
     metaTitle: "", metaTitleHi: "", metaDescription: "", metaDescriptionHi: "",
-    metaKeywords: "", bylineName: "",
+    metaKeywords: "", bylineName: "", slug: "",
   });
   const [images, setImages]         = useState([]);
   const [tasks, setTasks]           = useState([]);
@@ -110,7 +112,11 @@ export default function ArticleEditor() {
   const [success, setSuccess]       = useState("");
   const [loading, setLoading]       = useState(isEdit);
   const [articleNumber, setArticleNumber] = useState(null);
+  const [enDeskComplete, setEnDeskComplete] = useState(false);
+  const [hiDeskComplete, setHiDeskComplete] = useState(false);
+  const [deskSubmitting, setDeskSubmitting] = useState(null);
   const [relatedLinks, setRelatedLinks] = useState([]);
+  const [authorId, setAuthorId] = useState("");
 
   useEffect(() => {
     if (!isEdit && user?.role === "writer_en") {
@@ -160,10 +166,14 @@ export default function ArticleEditor() {
           metaDescriptionHi: art.metaDescriptionHi || "",
           metaKeywords: art.metaKeywords || "",
           bylineName: art.bylineName || "",
+          slug: art.slug || "",
         });
         setImages(art.images || []);
         setStatus(art.status);
         setArticleNumber(art.articleNumber ?? null);
+        setEnDeskComplete(Boolean(art.enDeskComplete));
+        setHiDeskComplete(Boolean(art.hiDeskComplete));
+        setAuthorId(String(art.author?._id || art.author || ""));
       }
     }).finally(() => setLoading(false));
   }, [id, isEdit]);
@@ -171,21 +181,23 @@ export default function ArticleEditor() {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   useEffect(() => {
-    setRelatedLinks(collectRelatedLinksFromHtml(form.body, form.bodyHi));
-  }, [form.body, form.bodyHi]);
+    if (deskMode === "en") setRelatedLinks(collectRelatedLinksFromHtml(form.body));
+    else if (deskMode === "hi") setRelatedLinks(collectRelatedLinksFromHtml(form.bodyHi));
+    else setRelatedLinks(collectRelatedLinksFromHtml(form.body, form.bodyHi));
+  }, [form.body, form.bodyHi, deskMode]);
 
   const handleSave = async () => {
-    if (!form.title.trim() || !form.titleHi.trim()) {
-      setError("Both English and Hindi titles are required");
-      return null;
+    if (deskMode === "en" || deskMode === "both") {
+      if (!form.title.trim() || !form.summary.trim() || !form.body.trim()) {
+        setError("English title, summary, and main content are required");
+        return null;
+      }
     }
-    if (!form.summary.trim() || !form.summaryHi.trim()) {
-      setError("Both English and Hindi summaries are required");
-      return null;
-    }
-    if (!form.body.trim() || !form.bodyHi.trim()) {
-      setError("Both English and Hindi article bodies are required");
-      return null;
+    if (deskMode === "hi" || deskMode === "both") {
+      if (!form.titleHi.trim() || !form.summaryHi.trim() || !form.bodyHi.trim()) {
+        setError("Hindi title, summary, and main content are required");
+        return null;
+      }
     }
     setError(""); setSaving(true);
     try {
@@ -216,6 +228,9 @@ export default function ArticleEditor() {
   };
 
   const handleSubmit = async () => {
+    if (!enDeskComplete || !hiDeskComplete) {
+      return setError("Mark both English and Hindi desks complete before submitting to editors.");
+    }
     if (!images.length) {
       return setError("At least one image is required before submitting");
     }
@@ -246,6 +261,52 @@ export default function ArticleEditor() {
     }
   };
 
+  const canMarkEnglishDesk =
+    isAdminLike(user?.role) ||
+    (user?.role === "writer_en" &&
+      (String(form.writerEn) === String(user?._id) || (!form.writerEn && String(authorId) === String(user?._id))));
+
+  const canMarkHindiDesk =
+    isAdminLike(user?.role) ||
+    (user?.role === "writer_hi" &&
+      (String(form.writerHi) === String(user?._id) || (!form.writerHi && String(authorId) === String(user?._id))));
+
+  const handleSubmitDeskEn = async () => {
+    if (!isEdit || !id) return setError("Save the article first.");
+    setError("");
+    setDeskSubmitting("en");
+    try {
+      const saved = await handleSave();
+      if (!saved) return;
+      const { data } = await submitArticleDeskEn(id);
+      setEnDeskComplete(Boolean(data.article?.enDeskComplete));
+      setSuccess(data.message || "English desk marked complete");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not mark English desk complete");
+    } finally {
+      setDeskSubmitting(null);
+    }
+  };
+
+  const handleSubmitDeskHi = async () => {
+    if (!isEdit || !id) return setError("Save the article first.");
+    setError("");
+    setDeskSubmitting("hi");
+    try {
+      const saved = await handleSave();
+      if (!saved) return;
+      const { data } = await submitArticleDeskHi(id);
+      setHiDeskComplete(Boolean(data.article?.hiDeskComplete));
+      setSuccess(data.message || "Hindi desk marked complete");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not mark Hindi desk complete");
+    } finally {
+      setDeskSubmitting(null);
+    }
+  };
+
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -273,40 +334,48 @@ export default function ArticleEditor() {
     }
   };
 
-  const handleInsertRelatedArticle = async () => {
+  const handleInsertRelatedArticle = async (lang) => {
     if (relatedLinks.length >= 2) {
       setError("Maximum two related article links are allowed per article.");
       return;
     }
-    const raw = window.prompt("Enter the 9-digit article ID to link:");
+    const raw = window.prompt("Enter 9-digit article ID, or slug-id (e.g. my-story-123456789):");
     if (raw == null) return;
-    const num = String(raw).trim();
-    if (!/^\d{9}$/.test(num)) {
-      setError("Enter exactly 9 digits");
-      return;
+    const segment = String(raw).trim();
+    let lookupKey = segment;
+    let nine = "";
+    if (/^\d{9}$/.test(segment)) {
+      nine = segment;
+    } else {
+      const m = /^(.+)-(\d{9})$/.exec(segment);
+      if (!m || !/^[a-z0-9-]+$/i.test(m[1])) {
+        setError("Use 9 digits only, or lowercase slug + hyphen + 9 digits.");
+        return;
+      }
+      nine = m[2];
     }
-    if (relatedLinks.some((r) => r.articleNumber === num)) {
+    if (relatedLinks.some((r) => r.articleNumber === nine)) {
       setError("This related article is already linked.");
       return;
     }
     setError("");
     try {
-      const { data } = await lookupArticleByNumber(num);
+      const { data } = await lookupArticleByNumber(lookupKey);
       const readAlsoHi = "ये भी पढ़ें";
       const readAlsoEn = "Read also";
       const titlePick =
-        form.primaryLocale === "hi"
+        lang === "hi"
           ? (data.titleHi || data.title || "").trim()
           : (data.title || data.titleHi || "").trim();
-      const prefix = form.primaryLocale === "hi" ? readAlsoHi : readAlsoEn;
+      const prefix = lang === "hi" ? readAlsoHi : readAlsoEn;
       const href = data.urlPath || `/article/${data.articleNumber}`;
       const block = `<p class="read-also"><strong>${prefix}:</strong> <a href="${href}">${titlePick || "Related"}</a></p>`;
-      if (form.primaryLocale === "hi") set("bodyHi", (form.bodyHi || "") + block);
+      if (lang === "hi") set("bodyHi", (form.bodyHi || "") + block);
       else set("body", (form.body || "") + block);
       setRelatedLinks((prev) => [
         ...prev,
         {
-          articleNumber: String(data.articleNumber || num),
+          articleNumber: String(data.articleNumber || nine),
           href,
           title: titlePick || "Related",
         },
@@ -321,8 +390,8 @@ export default function ArticleEditor() {
   const removeRelatedLink = (articleId) => {
     setForm((prev) => ({
       ...prev,
-      body: removeRelatedLinkFromHtml(prev.body, articleId),
-      bodyHi: removeRelatedLinkFromHtml(prev.bodyHi, articleId),
+      body: deskMode === "hi" ? prev.body : removeRelatedLinkFromHtml(prev.body, articleId),
+      bodyHi: deskMode === "en" ? prev.bodyHi : removeRelatedLinkFromHtml(prev.bodyHi, articleId),
     }));
     setSuccess("Related article link removed.");
     setTimeout(() => setSuccess(""), 2500);
@@ -357,7 +426,9 @@ export default function ArticleEditor() {
   const copyPublicArticleUrl = () => {
     if (articleNumber == null) return;
     const site = import.meta.env.VITE_SITE_ORIGIN || window.location.origin;
-    const path = `${String(site).replace(/\/$/, "")}/article/${articleNumber}`;
+    const slug = String(form.slug || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+    const pathSeg = slug ? `${slug}-${articleNumber}` : String(articleNumber);
+    const path = `${String(site).replace(/\/$/, "")}/article/${pathSeg}`;
     navigator.clipboard.writeText(path).catch(() => {});
     setSuccess("Public URL copied");
     setTimeout(() => setSuccess(""), 2500);
@@ -373,21 +444,23 @@ export default function ArticleEditor() {
   };
 
   const canEdit  = ["draft", "rejected"].includes(status);
+  const enContentReady = Boolean(
+    form.title?.trim() && form.summary?.trim() && form.body?.trim()
+  );
+  const hiContentReady = Boolean(
+    form.titleHi?.trim() && form.summaryHi?.trim() && form.bodyHi?.trim()
+  );
+  const assignReady = Boolean(form.writerEn && form.writerHi && form.editorEn && form.editorHi);
+  const contentReady =
+    deskMode === "en" ? enContentReady : deskMode === "hi" ? hiContentReady : enContentReady && hiContentReady;
+
   const canSubmit =
     isEdit &&
     canEdit &&
-    Boolean(
-      form.title?.trim() &&
-      form.titleHi?.trim() &&
-      form.summary?.trim() &&
-      form.summaryHi?.trim() &&
-      form.body?.trim() &&
-      form.bodyHi?.trim() &&
-      form.writerEn &&
-      form.writerHi &&
-      form.editorEn &&
-      form.editorHi
-    );
+    contentReady &&
+    assignReady &&
+    enDeskComplete &&
+    hiDeskComplete;
 
   if (loading) return (
     <div className="cms-page-center">
@@ -436,7 +509,50 @@ export default function ArticleEditor() {
         </div>
 
         {canEdit && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-end gap-2 max-w-full">
+            <div className="flex flex-wrap items-center justify-end gap-2 text-[11px]">
+              {deskMode !== "hi" && (
+              <span
+                className={`rounded-full px-2.5 py-0.5 font-semibold ${
+                  enDeskComplete ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                English desk{enDeskComplete ? " · complete" : ""}
+              </span>
+              )}
+              {deskMode !== "en" && (
+              <span
+                className={`rounded-full px-2.5 py-0.5 font-semibold ${
+                  hiDeskComplete ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                Hindi desk{hiDeskComplete ? " · complete" : ""}
+              </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {canMarkEnglishDesk && !enDeskComplete && deskMode !== "hi" && (
+                <button
+                  type="button"
+                  onClick={handleSubmitDeskEn}
+                  disabled={saving || deskSubmitting === "en"}
+                  className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 text-emerald-900 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-100 disabled:opacity-50"
+                >
+                  {deskSubmitting === "en" ? <Loader2 size={14} className="animate-spin" /> : null}
+                  Mark English desk complete
+                </button>
+              )}
+              {canMarkHindiDesk && !hiDeskComplete && deskMode !== "en" && (
+                <button
+                  type="button"
+                  onClick={handleSubmitDeskHi}
+                  disabled={saving || deskSubmitting === "hi"}
+                  className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 text-emerald-900 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-100 disabled:opacity-50"
+                >
+                  {deskSubmitting === "hi" ? <Loader2 size={14} className="animate-spin" /> : null}
+                  Mark Hindi desk complete
+                </button>
+              )}
             <button
               onClick={handleSave} disabled={saving}
               className="flex items-center gap-2 border border-slate-200 text-slate-700 px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors disabled:opacity-50"
@@ -453,6 +569,7 @@ export default function ArticleEditor() {
                 Submit for Review
               </button>
             )}
+            </div>
           </div>
         )}
       </div>
@@ -480,19 +597,109 @@ export default function ArticleEditor() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-5">
-          {form.primaryLocale === "en" ? (
+          {deskMode === "both" ? (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
+                <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide border-b border-slate-100 pb-2">
+                  English
+                </h2>
+                <Field label="Title" required>
+                  <Input
+                    value={form.title}
+                    disabled={!canEdit}
+                    onChange={(e) => set("title", e.target.value)}
+                    placeholder="Article headline in English"
+                  />
+                </Field>
+                <Field label="Summary" required>
+                  <Textarea
+                    rows={2}
+                    value={form.summary}
+                    disabled={!canEdit}
+                    onChange={(e) => set("summary", e.target.value)}
+                    placeholder="Brief summary (shown in cards)"
+                  />
+                </Field>
+                <div className="space-y-2">
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => handleInsertRelatedArticle("en")}
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-brand border border-brand/30 rounded-lg px-3 py-2 hover:bg-brand/5"
+                    >
+                      <Link2 size={16} /> Insert related article link
+                    </button>
+                  )}
+                  <Field label="Main article content" required>
+                    <RichTextEditor
+                      value={form.body}
+                      onChange={(html) => set("body", html)}
+                      disabled={!canEdit}
+                      placeholder="Full article…"
+                      labelHint="English — headings, lists, links from the toolbar."
+                    />
+                  </Field>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
+                <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide border-b border-slate-100 pb-2">
+                  Hindi · हिंदी
+                </h2>
+                <Field label="शीर्षक (Title)" required>
+                  <Input
+                    value={form.titleHi}
+                    disabled={!canEdit}
+                    onChange={(e) => set("titleHi", e.target.value)}
+                    placeholder="हिंदी में शीर्षक"
+                  />
+                </Field>
+                <Field label="सारांश (Summary)" required>
+                  <Textarea
+                    rows={2}
+                    value={form.summaryHi}
+                    disabled={!canEdit}
+                    onChange={(e) => set("summaryHi", e.target.value)}
+                    placeholder="संक्षिप्त विवरण"
+                  />
+                </Field>
+                <div className="space-y-2">
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => handleInsertRelatedArticle("hi")}
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-brand border border-brand/30 rounded-lg px-3 py-2 hover:bg-brand/5"
+                    >
+                      <Link2 size={16} /> संबंधित लेख लिंक जोड़ें
+                    </button>
+                  )}
+                  <Field label="मुख्य सामग्री (Body)" required>
+                    <RichTextEditor
+                      value={form.bodyHi}
+                      onChange={(html) => set("bodyHi", html)}
+                      disabled={!canEdit}
+                      placeholder="पूरा लेख…"
+                      labelHint="हिंदी संपादक — शीर्षक, सूची व लिंक के लिए टूलबार।"
+                    />
+                  </Field>
+                </div>
+              </div>
+            </div>
+          ) : deskMode === "en" ? (
             <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
-              <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">English (primary)</h2>
+              <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">English article</h2>
               <Field label="Title" required>
                 <Input
-                  value={form.title} disabled={!canEdit}
+                  value={form.title}
+                  disabled={!canEdit}
                   onChange={(e) => set("title", e.target.value)}
                   placeholder="Article headline in English"
                 />
               </Field>
-              <Field label="Summary">
+              <Field label="Summary" required>
                 <Textarea
-                  rows={2} value={form.summary} disabled={!canEdit}
+                  rows={2}
+                  value={form.summary}
+                  disabled={!canEdit}
                   onChange={(e) => set("summary", e.target.value)}
                   placeholder="Brief summary (shown in cards)"
                 />
@@ -501,10 +708,10 @@ export default function ArticleEditor() {
                 {canEdit && (
                   <button
                     type="button"
-                    onClick={handleInsertRelatedArticle}
+                    onClick={() => handleInsertRelatedArticle("en")}
                     className="inline-flex items-center gap-2 text-sm font-semibold text-brand border border-brand/30 rounded-lg px-3 py-2 hover:bg-brand/5"
                   >
-                    <Link2 size={16} /> Insert related article (9-digit ID)
+                    <Link2 size={16} /> Insert related article link
                   </button>
                 )}
                 <Field label="Main article content" required>
@@ -520,17 +727,20 @@ export default function ArticleEditor() {
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
-              <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">हिंदी (primary)</h2>
+              <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Hindi article · हिंदी लेख</h2>
               <Field label="शीर्षक (Title)" required>
                 <Input
-                  value={form.titleHi} disabled={!canEdit}
+                  value={form.titleHi}
+                  disabled={!canEdit}
                   onChange={(e) => set("titleHi", e.target.value)}
                   placeholder="हिंदी में शीर्षक"
                 />
               </Field>
-              <Field label="सारांश (Summary)">
+              <Field label="सारांश (Summary)" required>
                 <Textarea
-                  rows={2} value={form.summaryHi} disabled={!canEdit}
+                  rows={2}
+                  value={form.summaryHi}
+                  disabled={!canEdit}
                   onChange={(e) => set("summaryHi", e.target.value)}
                   placeholder="संक्षिप्त विवरण"
                 />
@@ -539,10 +749,10 @@ export default function ArticleEditor() {
                 {canEdit && (
                   <button
                     type="button"
-                    onClick={handleInsertRelatedArticle}
+                    onClick={() => handleInsertRelatedArticle("hi")}
                     className="inline-flex items-center gap-2 text-sm font-semibold text-brand border border-brand/30 rounded-lg px-3 py-2 hover:bg-brand/5"
                   >
-                    <Link2 size={16} /> संबंधित लेख जोड़ें (9 अंक ID)
+                    <Link2 size={16} /> संबंधित लेख लिंक जोड़ें
                   </button>
                 )}
                 <Field label="मुख्य सामग्री (Body)" required>
@@ -557,63 +767,6 @@ export default function ArticleEditor() {
               </div>
             </div>
           )}
-
-          <div className="bg-slate-50 rounded-xl border border-slate-200 border-dashed p-6 space-y-5">
-            <h2 className="font-semibold text-slate-500 text-sm uppercase tracking-wide">
-              {form.primaryLocale === "en" ? "Hindi (required)" : "English (required)"}
-            </h2>
-            {form.primaryLocale === "en" ? (
-              <>
-                <Field label="शीर्षक (Title)">
-                  <Input
-                    value={form.titleHi} disabled={!canEdit}
-                    onChange={(e) => set("titleHi", e.target.value)}
-                    placeholder="हिंदी में शीर्षक"
-                  />
-                </Field>
-                <Field label="सारांश (Summary)">
-                  <Textarea
-                    rows={2} value={form.summaryHi} disabled={!canEdit}
-                    onChange={(e) => set("summaryHi", e.target.value)}
-                    placeholder="संक्षिप्त विवरण"
-                  />
-                </Field>
-                <Field label="मुख्य सामग्री (Body)">
-                  <RichTextEditor
-                    value={form.bodyHi}
-                    onChange={(html) => set("bodyHi", html)}
-                    disabled={!canEdit}
-                    placeholder="पूरा लेख"
-                  />
-                </Field>
-              </>
-            ) : (
-              <>
-                <Field label="Title">
-                  <Input
-                    value={form.title} disabled={!canEdit}
-                    onChange={(e) => set("title", e.target.value)}
-                    placeholder="English headline"
-                  />
-                </Field>
-                <Field label="Summary">
-                  <Textarea
-                    rows={2} value={form.summary} disabled={!canEdit}
-                    onChange={(e) => set("summary", e.target.value)}
-                    placeholder="Brief summary in English"
-                  />
-                </Field>
-                <Field label="Body">
-                  <RichTextEditor
-                    value={form.body}
-                    onChange={(html) => set("body", html)}
-                    disabled={!canEdit}
-                    placeholder="Full article in English"
-                  />
-                </Field>
-              </>
-            )}
-          </div>
 
           {/* Image upload */}
           <div className="bg-white rounded-xl border border-slate-200 p-6">
@@ -730,24 +883,27 @@ export default function ArticleEditor() {
           <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
             <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">Settings</h2>
 
-            <Field label="Primary language" required>
+            {deskMode === "both" ? (
+            <Field label="Primary language (cards & lead)" required>
               <select
                 value={form.primaryLocale}
-                disabled={!canEdit || lockPrimaryEn || lockPrimaryHi}
+                disabled={!canEdit}
                 onChange={(e) => set("primaryLocale", e.target.value)}
                 className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand bg-white"
               >
-                <option value="en">English — separate upload per language</option>
-                <option value="hi">हिंदी (Hindi)</option>
+                <option value="en">English lead on site</option>
+                <option value="hi">Hindi lead on site</option>
               </select>
-              {(lockPrimaryEn || lockPrimaryHi) && (
-                <p className="text-xs text-slate-500 mt-1.5">
-                  {lockPrimaryEn
-                    ? "English desk: articles must use English as the primary language."
-                    : "Hindi desk: articles must use Hindi as the primary language."}
-                </p>
-              )}
             </Field>
+            ) : deskMode === "en" ? (
+              <p className="text-sm text-slate-600 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
+                <span className="font-semibold text-slate-800">Your desk:</span> English — you edit the English story; the Hindi desk fills the Hindi side.
+              </p>
+            ) : (
+              <p className="text-sm text-slate-600 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
+                <span className="font-semibold text-slate-800">Your desk:</span> Hindi — you edit the Hindi story; the English desk fills the English side.
+              </p>
+            )}
 
             <Field label="English writer" required>
               <select
@@ -758,7 +914,7 @@ export default function ArticleEditor() {
               >
                 <option value="">Select English writer</option>
                 {assignmentUsers.writers
-                  .filter((u) => ["writer", "writer_en"].includes(u.role))
+                  .filter((u) => u.role === "writer_en")
                   .map((u) => (
                     <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
                   ))}
@@ -774,7 +930,7 @@ export default function ArticleEditor() {
               >
                 <option value="">Select Hindi writer</option>
                 {assignmentUsers.writers
-                  .filter((u) => ["writer", "writer_hi"].includes(u.role))
+                  .filter((u) => u.role === "writer_hi")
                   .map((u) => (
                     <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
                   ))}
@@ -825,6 +981,18 @@ export default function ArticleEditor() {
               </select>
             </Field>
 
+            <Field label="URL slug (optional)">
+              <Input
+                value={form.slug}
+                disabled={!canEdit}
+                onChange={(e) => set("slug", e.target.value)}
+                placeholder="e.g. budget-session-2025 (lowercase, hyphens)"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                When set, the public URL is /article/your-slug- plus the numeric id; otherwise /article/ plus id only.
+              </p>
+            </Field>
+
             <Field label="Tags">
               <Input
                 value={form.tags} disabled={!canEdit}
@@ -863,18 +1031,13 @@ export default function ArticleEditor() {
 
           <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
             <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide">SEO &amp; byline</h2>
+            {deskMode !== "hi" && (
+            <>
             <Field label="Meta title (English)">
               <Input
                 value={form.metaTitle} disabled={!canEdit}
                 onChange={(e) => set("metaTitle", e.target.value)}
                 placeholder="optional — English meta title"
-              />
-            </Field>
-            <Field label="Meta title (Hindi)">
-              <Input
-                value={form.metaTitleHi} disabled={!canEdit}
-                onChange={(e) => set("metaTitleHi", e.target.value)}
-                placeholder="optional — हिंदी"
               />
             </Field>
             <Field label="Meta description (English)">
@@ -884,6 +1047,17 @@ export default function ArticleEditor() {
                 placeholder="optional"
               />
             </Field>
+            </>
+            )}
+            {deskMode !== "en" && (
+            <>
+            <Field label="Meta title (Hindi)">
+              <Input
+                value={form.metaTitleHi} disabled={!canEdit}
+                onChange={(e) => set("metaTitleHi", e.target.value)}
+                placeholder="optional — हिंदी"
+              />
+            </Field>
             <Field label="Meta description (Hindi)">
               <Textarea
                 rows={2} value={form.metaDescriptionHi} disabled={!canEdit}
@@ -891,6 +1065,8 @@ export default function ArticleEditor() {
                 placeholder="optional"
               />
             </Field>
+            </>
+            )}
             <Field label="Meta keywords (English only)">
               <Input
                 value={form.metaKeywords} disabled={!canEdit}
@@ -952,9 +1128,23 @@ export default function ArticleEditor() {
             <p className="text-brand font-semibold text-sm mb-2">Tips</p>
             <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
               <li>Save draft anytime with the Save button</li>
-              <li>Submit only when article is complete</li>
-              <li>Upload the hero image first</li>
-              <li>Both Hindi and English sections are mandatory before submit/publish</li>
+              <li>Upload the hero image after the article is saved</li>
+              {deskMode === "both" ? (
+                <>
+                  <li>Fill both English and Hindi columns, then mark each desk complete and submit</li>
+                  <li>Choose primary language for which version leads on listing cards</li>
+                </>
+              ) : deskMode === "en" ? (
+                <>
+                  <li>You only edit English; assign a Hindi writer for the other desk</li>
+                  <li>When the Hindi desk marks complete, you can submit for editors (with images and assignments)</li>
+                </>
+              ) : (
+                <>
+                  <li>You only edit Hindi; assign an English writer for the other desk</li>
+                  <li>When the English desk marks complete, you can submit for editors (with images and assignments)</li>
+                </>
+              )}
             </ul>
           </div>
         </div>

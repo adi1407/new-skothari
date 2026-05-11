@@ -4,11 +4,12 @@ import { getUsers, createUser, updateUser, deactivateUser } from "../../api";
 import { ALL_USER_ROLES, writerDeskLabel } from "../../constants/roles";
 
 const ROLE_BADGE = {
+  super_admin: "bg-amber-100 text-amber-800",
   admin:  "bg-purple-100 text-purple-700",
   editor: "bg-blue-100 text-blue-700",
   editor_en: "bg-blue-100 text-blue-700",
   editor_hi: "bg-blue-100 text-blue-700",
-  writer: "bg-green-100 text-green-700",
+  video_editor: "bg-fuchsia-100 text-fuchsia-800",
   writer_en: "bg-green-100 text-green-700",
   writer_hi: "bg-green-100 text-green-700",
 };

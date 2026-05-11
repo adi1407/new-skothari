@@ -68,6 +68,8 @@ export const updateArticle = (id, data) => http.put(`/articles/${id}`, data);
 export const deleteArticle = (id)     => http.delete(`/articles/${id}`);
 
 export const submitArticle  = (id)         => http.patch(`/articles/${id}/submit`);
+export const submitArticleDeskEn = (id)   => http.patch(`/articles/${id}/submit-en`);
+export const submitArticleDeskHi = (id)   => http.patch(`/articles/${id}/submit-hi`);
 export const publishArticle = (id)         => http.patch(`/articles/${id}/publish`);
 export const unpublishArticle = (id)       => http.patch(`/articles/${id}/unpublish`);
 export const rejectArticle  = (id, reason) => http.patch(`/articles/${id}/reject`, { reason });
@@ -83,7 +85,7 @@ export const patchArticleImage = (id, index, data) =>
 
 /** Resolve another article by public 9-digit number (internal linking). */
 export const lookupArticleByNumber = (articleNumber) =>
-  http.get(`/articles/lookup-by-number/${articleNumber}`);
+  http.get(`/articles/lookup-by-number/${encodeURIComponent(String(articleNumber).trim())}`);
 
 // ── Videos (YouTube) — editor + admin ─────────────────
 export const getVideos = (params) => http.get("/videos", { params });

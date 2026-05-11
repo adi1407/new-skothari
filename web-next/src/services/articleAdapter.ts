@@ -87,6 +87,7 @@ export function adaptArticle(a: BackendArticle): ContentArticle {
     tagsEn:       a.tags,
     content:      bodyHi ? [bodyHi] : bodyEn ? [bodyEn] : undefined,
     contentEn:    bodyEn ? [bodyEn] : bodyHi ? [bodyHi] : undefined,
+    slug:         String(a.slug || "").trim() || undefined,
   };
 }
 

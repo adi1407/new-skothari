@@ -3,9 +3,9 @@ const User = require("../models/User");
 const Article = require("../models/Article");
 const Task = require("../models/Task");
 const { authenticate, authorize } = require("../middleware/auth");
-const { WRITER_ROLES, isWriterRole } = require("../utils/roles");
+const { WRITER_ROLES, EDITOR_ROLES, isWriterRole } = require("../utils/roles");
 
-router.use(authenticate, authorize("editor", "editor_en", "editor_hi", "admin"));
+router.use(authenticate, authorize("__textEditors__", "__adminLike__"));
 
 // ── GET /api/editor/assignment-users ───────────────────
 // Writers/editors list for bilingual story ownership assignment.
@@ -16,7 +16,7 @@ router.get("/assignment-users", async (_req, res) => {
         .select("name email role")
         .sort({ name: 1 })
         .lean(),
-      User.find({ role: { $in: ["editor", "editor_en", "editor_hi"] }, isActive: true })
+      User.find({ role: { $in: EDITOR_ROLES }, isActive: true })
         .select("name email role")
         .sort({ name: 1 })
         .lean(),

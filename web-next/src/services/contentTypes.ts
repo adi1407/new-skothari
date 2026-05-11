@@ -24,6 +24,8 @@ export interface ContentArticle {
   upvoteCount: number;
   tags: string[];
   tagsEn: string[];
+  /** Optional public URL slug (before numeric id). */
+  slug?: string;
   content?: string[];
   contentEn?: string[];
 }

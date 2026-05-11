@@ -11,7 +11,7 @@ import {
   removeUpvote,
   sendSignal,
 } from "../../../services/readerApi";
-import { upvoteCountFromApi } from "../utils/formatArticle";
+import { publicArticleSegmentsMatch, upvoteCountFromApi } from "../utils/formatArticle";
 
 /**
  * Reader bookmark/upvote state, sync with API, and lightweight engagement signals.
@@ -30,7 +30,7 @@ export function useBookmarks(
   const [upvoteCount, setUpvoteCount] = useState(0);
 
   useEffect(() => {
-    if (!article || String(article.id) !== articleId) {
+    if (!article || !publicArticleSegmentsMatch(articleId, article)) {
       setUpvoteCount(0);
       return;
     }

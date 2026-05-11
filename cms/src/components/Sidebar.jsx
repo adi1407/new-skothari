@@ -13,7 +13,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { isWriterRole, writerDeskLabel, EDITOR_ROLES } from "../constants/roles";
+import { isWriterRole, writerDeskLabel, isEditorRole, isAdminLike } from "../constants/roles";
 import CmsBrandLogo from "./CmsBrandLogo";
 
 const WRITER_NAV = [
@@ -41,19 +41,25 @@ const ADMIN_NAV = [
   { to: "/editor/queue", label: "Review", icon: CheckSquare },
 ];
 
+const VIDEO_EDITOR_NAV = [
+  { to: "/editor/videos", label: "Videos", icon: Video },
+];
+
 function navForUser(role) {
-  if (role === "admin") return ADMIN_NAV;
-  if (EDITOR_ROLES.includes(role)) return EDITOR_NAV;
+  if (isAdminLike(role)) return ADMIN_NAV;
+  if (isEditorRole(role)) return EDITOR_NAV;
+  if (role === "video_editor") return VIDEO_EDITOR_NAV;
   if (isWriterRole(role)) return WRITER_NAV;
   return WRITER_NAV;
 }
 
 const ROLE_BADGE = {
+  super_admin: "bg-amber-500/20 text-amber-100 ring-1 ring-amber-400/30",
   admin: "bg-violet-500/20 text-violet-100 ring-1 ring-violet-400/30",
   editor: "bg-sky-500/20 text-sky-100 ring-1 ring-sky-400/30",
   editor_en: "bg-sky-500/20 text-sky-100 ring-1 ring-sky-400/30",
   editor_hi: "bg-sky-500/20 text-sky-100 ring-1 ring-sky-400/30",
-  writer: "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25",
+  video_editor: "bg-fuchsia-500/20 text-fuchsia-100 ring-1 ring-fuchsia-400/30",
   writer_en: "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25",
   writer_hi: "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/25",
 };
@@ -115,7 +121,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white">{user?.name}</p>
             <span
-              className={`mt-1 inline-block rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${ROLE_BADGE[user?.role] || ROLE_BADGE.writer}`}
+              className={`mt-1 inline-block rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${ROLE_BADGE[user?.role] || "bg-slate-500/20 text-slate-200 ring-1 ring-slate-400/25"}`}
             >
               {writerDeskLabel(user?.role)}
             </span>

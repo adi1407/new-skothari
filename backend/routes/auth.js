@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const User = require("../models/User");
 const { authenticate, authorize } = require("../middleware/auth");
+const { ALL_STAFF_ROLES } = require("../utils/roles");
 const {
   sendCmsPasswordResetOtp,
   isPasswordResetMailConfigured,
@@ -232,16 +233,14 @@ router.get("/me", authenticate, (req, res) => {
 router.post(
   "/register",
   authenticate,
-  authorize("admin"),
+  authorize("__adminLike__"),
   [
     body("name").trim().notEmpty().withMessage("Name required"),
     body("email").isEmail().normalizeEmail(),
     body("password")
       .isLength({ min: 8 })
       .withMessage("Password must be at least 8 characters"),
-    body("role")
-      .isIn(["admin", "editor", "editor_en", "editor_hi", "writer", "writer_en", "writer_hi"])
-      .withMessage("Role must be admin/editor/editor_en/editor_hi/writer/writer_en/writer_hi"),
+    body("role").isIn(ALL_STAFF_ROLES).withMessage("Invalid role"),
   ],
   async (req, res) => {
     const errors = validationResult(req);

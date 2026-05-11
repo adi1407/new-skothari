@@ -77,7 +77,7 @@ router.get("/:id", authenticate, async (req, res) => {
 router.post(
   "/",
   authenticate,
-  authorize("admin"),
+  authorize("__adminLike__"),
   [
     body("title").trim().notEmpty().withMessage("Title is required"),
     body("assignedTo").notEmpty().withMessage("assignedTo (writer ID) is required"),
@@ -120,7 +120,7 @@ router.post(
 router.put(
   "/:id",
   authenticate,
-  authorize("admin"),
+  authorize("__adminLike__"),
   [
     body("deadline").optional().isISO8601(),
     body("priority").optional().isIn(["low","medium","high","urgent"]),
@@ -149,7 +149,7 @@ router.put(
 );
 
 // ── DELETE /api/tasks/:id  (admin) ────────────────────
-router.delete("/:id", authenticate, authorize("admin"), async (req, res) => {
+router.delete("/:id", authenticate, authorize("__adminLike__"), async (req, res) => {
   try {
     const task = await Task.findByIdAndDelete(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
@@ -160,7 +160,7 @@ router.delete("/:id", authenticate, authorize("admin"), async (req, res) => {
 });
 
 // ── PATCH /api/tasks/:id/start  (writer starts task) ─
-router.patch("/:id/start", authenticate, authorize("writer"), async (req, res) => {
+router.patch("/:id/start", authenticate, authorize("__writers__"), async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
@@ -180,7 +180,7 @@ router.patch("/:id/start", authenticate, authorize("writer"), async (req, res) =
 });
 
 // ── PATCH /api/tasks/:id/complete  (writer completes) ─
-router.patch("/:id/complete", authenticate, authorize("writer","admin"), async (req, res) => {
+router.patch("/:id/complete", authenticate, authorize("__writers__", "__adminLike__"), async (req, res) => {
   try {
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });

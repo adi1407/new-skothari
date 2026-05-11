@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import type { NewsItem } from "../types/article";
 import { adaptArticle, adaptArticles } from "../../../services/articleAdapter";
 import { getArticleById, getPublishedArticlesPage, getRecommendedForArticle } from "../services/articleApi";
-import { isArticleRefId } from "../utils/formatArticle";
+import { isArticleRefId, publicArticleSegmentsMatch } from "../utils/formatArticle";
 
 export function useArticle(articleId: string, lang: "hi" | "en") {
   const [article, setArticle] = useState<NewsItem | null>(null);
@@ -39,23 +39,22 @@ export function useArticle(articleId: string, lang: "hi" | "en") {
   }, [articleId]);
 
   useEffect(() => {
-    if (!articleId || !article || String(article.id) !== String(articleId)) {
+    if (!articleId || !article || !publicArticleSegmentsMatch(articleId, article)) {
       setRecommendedArticles([]);
       setMostReadSidebar([]);
       return;
     }
-    const aid = articleId;
     let cancelled = false;
     Promise.all([
-      getRecommendedForArticle(aid, { limit: 14, locale: lang }),
+      getRecommendedForArticle(articleId, { limit: 14, locale: lang }),
       getPublishedArticlesPage({ limit: 24, page: 2, locale: lang }),
     ]).then(([recRaw, moreRaw]) => {
       if (cancelled) return;
-      const recItems = adaptArticles(recRaw).filter((n) => String(n.id) !== aid);
+      const recItems = adaptArticles(recRaw).filter((n) => String(n.id) !== String(article.id));
       setRecommendedArticles(recItems);
       const recIds = new Set(recItems.map((r) => String(r.id)));
       const more = adaptArticles(moreRaw)
-        .filter((n) => String(n.id) !== aid && !recIds.has(String(n.id)))
+        .filter((n) => String(n.id) !== String(article.id) && !recIds.has(String(n.id)))
         .slice(0, 5);
       setMostReadSidebar(more);
     });

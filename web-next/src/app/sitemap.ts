@@ -7,9 +7,29 @@ import { getSiteUrl } from "../lib/seo/metadataHelpers";
 type PublicArticle = {
   _id: string;
   articleNumber?: number;
+  slug?: string;
   publishedAt?: string;
   createdAt?: string;
 };
+
+function normalizeSlugForUrl(s: string): string {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function articlePathForSitemap(a: PublicArticle): string {
+  const hasNum = a.articleNumber != null && Number.isFinite(Number(a.articleNumber));
+  const numStr = hasNum ? String(a.articleNumber) : "";
+  const slug = normalizeSlugForUrl(a.slug || "");
+  if (slug && hasNum && /^\d{9}$/.test(numStr)) {
+    return `/article/${slug}-${numStr}`;
+  }
+  return `/article/${hasNum ? numStr : a._id}`;
+}
 
 const PAGE_LIMIT = 100;
 const MAX_ARTICLES = Number(process.env.SITEMAP_MAX_ARTICLES || 5000);
@@ -73,9 +93,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const articles = await fetchPublishedArticles();
   const articleRoutes: MetadataRoute.Sitemap = articles.map((a) => ({
-    url: absolute(
-      `/article/${a.articleNumber != null && Number.isFinite(Number(a.articleNumber)) ? a.articleNumber : a._id}`
-    ),
+    url: absolute(articlePathForSitemap(a)),
     lastModified: a.publishedAt ? new Date(a.publishedAt) : a.createdAt ? new Date(a.createdAt) : now,
     changeFrequency: "daily",
     priority: 0.9,
