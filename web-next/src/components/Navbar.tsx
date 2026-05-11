@@ -20,7 +20,6 @@ import { useReaderAuth } from "../context/ReaderAuthContext";
 import { fetchPublicSearch } from "../services/newsApi";
 import { adaptArticles } from "../services/articleAdapter";
 import BrandLogo from "./BrandLogo";
-import BrandWordmark from "./BrandWordmark";
 
 interface NavbarProps {
   darkMode: boolean;
@@ -178,7 +177,6 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
             aria-label={t("खबर कोठरी — होम", "Khabar Kothri — Home")}
           >
             <BrandLogo className="nav-brand-logo-img" height={44} decorative />
-            <BrandWordmark className="nav-brand-wordmark-img" decorative />
           </a>
 
           {/* Center tabs: Home | Shows */}
@@ -365,8 +363,7 @@ export default function Navbar({ darkMode, toggleDark }: NavbarProps) {
                   onClick={(e) => { e.preventDefault(); navigate("/"); setMobileOpen(false); }}
                   aria-label={t("खबर कोठरी — होम", "Khabar Kothri — Home")}
                 >
-                  <BrandLogo height={36} decorative />
-                  <BrandWordmark className="drawer-brand-wordmark-img" decorative />
+                  <BrandLogo className="drawer-brand-logo-img" height={40} decorative />
                 </a>
                 <button type="button" onClick={() => setMobileOpen(false)} className="drawer-close" aria-label={t("बंद करें", "Close")}><X size={22} aria-hidden /></button>
               </div>

@@ -7,7 +7,6 @@ import {
 import { useLang } from "../context/LangContext";
 import { categories } from "../data/publicCategories";
 import BrandLogo from "./BrandLogo";
-import BrandWordmark from "./BrandWordmark";
 import { withPublicOrigin } from "../config/publicApi";
 
 const SOCIAL = [
@@ -101,7 +100,6 @@ export default function SiteFooter() {
           <div className="footer-premium-brand-row">
             <Link to="/" className="footer-premium-brand-logo-link" aria-label={t("होम", "Home")}>
               <BrandLogo className="footer-premium-brand-logo" height={56} decorative />
-              <BrandWordmark className="footer-premium-brand-wordmark" decorative />
             </Link>
           </div>
           <p className="footer-premium-brand-tagline">

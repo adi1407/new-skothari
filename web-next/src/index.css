@@ -420,10 +420,13 @@ a { text-decoration:none; color:inherit }
   display:inline-flex; align-items:center; gap:3px; line-height:0; border-radius:12px;
   text-decoration:none; padding:2px; margin:-2px;
 }
-.drawer-brand-wordmark-img {
-  height: 22px;
-  width: auto;
-  max-width: 132px;
+.drawer-brand-logo-img {
+  width: 40px;
+  height: 40px;
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 10px;
 }
 .drawer-brand-hit:focus-visible {
   outline:2px solid var(--brand-red); outline-offset:2px;
@@ -3904,15 +3907,10 @@ a { text-decoration:none; color:inherit }
 .footer-premium-brand-logo {
   width: 56px;
   height: 56px;
-  border-radius: 50%;
+  border-radius: 12px;
   box-shadow:
     0 12px 36px rgba(0, 0, 0, 0.35),
     0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-.footer-premium-brand-wordmark {
-  height: 38px;
-  width: auto;
-  max-width: 220px;
 }
 
 .footer-premium-brand-tagline {
@@ -4460,9 +4458,9 @@ a { text-decoration:none; color:inherit }
     padding-top: 2rem;
     padding-bottom: 2rem;
   }
-  .footer-premium-brand-wordmark {
-    height: 30px;
-    max-width: 180px;
+  .footer-premium-brand-logo {
+    width: 48px;
+    height: 48px;
   }
   .footer-premium-newsletter-card {
     grid-template-columns: 1fr;

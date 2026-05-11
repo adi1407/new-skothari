@@ -9,10 +9,10 @@ export default function CmsBrandLogo({
   return (
     <img
       src={CMS_BRAND_LOGO_SRC}
-      alt={decorative ? "" : "News Kothari"}
+      alt={decorative ? "" : "Kothari News"}
       width={height}
       height={height}
-      className={`object-contain select-none ${className}`.trim()}
+      className={`object-contain select-none rounded-xl ${className}`.trim()}
       decoding="async"
       draggable={false}
       {...(decorative ? { "aria-hidden": true } : {})}

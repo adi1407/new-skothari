@@ -1,5 +1,3 @@
-import { useLang } from "../context/LangContext";
-
 export const BRAND_LOGO_SRC = "/brand-logo.png";
 
 type BrandLogoProps = {
@@ -11,8 +9,8 @@ type BrandLogoProps = {
 };
 
 export default function BrandLogo({ className = "", height = 44, decorative = false }: BrandLogoProps) {
-  const { lang } = useLang();
-  const alt = decorative ? "" : lang === "hi" ? "खबर कोठरी" : "Khabar Kothri";
+  /** Same visual mark for HI/EN — alt stays language-neutral for accessibility. */
+  const alt = decorative ? "" : "Kothari News";
 
   return (
     <img

@@ -7,6 +7,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
+  icons: {
+    icon: [{ url: "/brand-logo.png", type: "image/png" }],
+    apple: [{ url: "/brand-logo.png", type: "image/png" }],
+  },
   title: {
     default: siteName,
     template: `%s | ${siteName}`,
