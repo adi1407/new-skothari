@@ -25,6 +25,16 @@ function articleEditorDeskMode(user) {
 const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
 const RELATED_LINK_RE = /<a\s+[^>]*href=["']\/article\/(?:[a-z0-9-]+-)?(\d{9})["'][^>]*>([\s\S]*?)<\/a>/gi;
 
+function revokePreviewList(list) {
+  list.forEach((p) => {
+    try {
+      URL.revokeObjectURL(p.previewUrl);
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
 function stripHtml(s) {
   return String(s || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }
@@ -98,6 +108,7 @@ export default function ArticleEditor() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const fileRef  = useRef(null);
+  const pendingBlobUrlsRef = useRef([]);
   const isEdit   = Boolean(id);
   /** English desk: only English body fields in UI. Hindi desk: only Hindi. Admin: both. */
   const deskMode = articleEditorDeskMode(user);
@@ -123,6 +134,18 @@ export default function ArticleEditor() {
   const [loading, setLoading]       = useState(isEdit);
   const [articleNumber, setArticleNumber] = useState(null);
   const [relatedLinks, setRelatedLinks] = useState([]);
+  /** Files chosen in the picker — user fills source/alt/title/description, then confirms upload. */
+  const [pendingUploads, setPendingUploads] = useState([]);
+
+  useEffect(() => {
+    pendingBlobUrlsRef.current = pendingUploads;
+  }, [pendingUploads]);
+
+  useEffect(() => {
+    return () => {
+      revokePreviewList(pendingBlobUrlsRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isEdit && (user?.role === "writer_en" || user?.role === "writer")) {
@@ -372,43 +395,83 @@ export default function ArticleEditor() {
     }
   };
 
-  const handleFileChange = async (e) => {
-    const files = Array.from(e.target.files);
+  const handleFilePick = (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
     if (!files.length) return;
     if (!id) {
-      setError("Save the article first before uploading images");
-      e.target.value = "";
+      setError("Save the article draft first, then add images.");
       return;
     }
-    setUploading(true);
     setError("");
-    const fd = new FormData();
-    const headline =
-      (deskMode === "hi" ? form.titleHi : form.title).trim() || "Article";
-    files.forEach((f, i) => {
-      /* API requires these multipart fields per file index (writers refine in “Save details”). */
-      fd.append(`source_${i}`, "News desk");
-      fd.append(
-        `imageDescription_${i}`,
-        "Attached to this story — edit description and credit after upload if needed."
-      );
-      fd.append(
-        `alt_${i}`,
-        i === 0 ? headline.slice(0, 200) : `${headline.slice(0, 160)} — image ${i + 1}`
-      );
-      fd.append(`imageTitle_${i}`, i === 0 ? "Hero image" : `Image ${i + 1}`);
-      fd.append("images", f);
+    const headline = (deskMode === "hi" ? form.titleHi : form.title).trim() || "Article";
+    setPendingUploads((prev) => {
+      revokePreviewList(prev);
+      return files.map((file, i) => ({
+        id: `${Date.now()}-${i}-${file.name}`,
+        file,
+        previewUrl: URL.createObjectURL(file),
+        source: "",
+        imageDescription: "",
+        alt: i === 0 ? headline.slice(0, 200) : `${headline.slice(0, 160)} — image ${i + 1}`,
+        imageTitle: i === 0 ? "Hero image" : `Image ${i + 1}`,
+      }));
     });
+  };
+
+  const clearPendingUploads = () => {
+    setPendingUploads((prev) => {
+      revokePreviewList(prev);
+      return [];
+    });
+  };
+
+  const updatePendingUpload = (pendingId, key, value) => {
+    setPendingUploads((list) =>
+      list.map((p) => (p.id === pendingId ? { ...p, [key]: value } : p))
+    );
+  };
+
+  const submitPendingUploads = async () => {
+    if (!id || pendingUploads.length === 0) return;
+    for (let i = 0; i < pendingUploads.length; i += 1) {
+      const p = pendingUploads[i];
+      if (
+        !String(p.source || "").trim() ||
+        !String(p.imageDescription || "").trim() ||
+        !String(p.alt || "").trim() ||
+        !String(p.imageTitle || "").trim()
+      ) {
+        setError(
+          `Image ${i + 1}: fill all required fields — source / credit, description, alt text, and image title.`
+        );
+        return;
+      }
+    }
+    setError("");
+    setUploading(true);
+    const fd = new FormData();
+    pendingUploads.forEach((p, i) => {
+      fd.append(`source_${i}`, String(p.source).trim());
+      fd.append(`imageDescription_${i}`, String(p.imageDescription).trim());
+      fd.append(`alt_${i}`, String(p.alt).trim());
+      fd.append(`imageTitle_${i}`, String(p.imageTitle).trim());
+      fd.append("images", p.file);
+    });
+    const n = pendingUploads.length;
     try {
       const { data } = await uploadImages(id, fd);
       setImages((prev) => [...prev, ...data.images]);
-      setSuccess(`${data.images?.length || files.length} image(s) uploaded — use Save details to set credits.`);
+      setSuccess(`${data.images?.length || n} image(s) uploaded. You can still edit details below.`);
       setTimeout(() => setSuccess(""), 4000);
+      setPendingUploads((prev) => {
+        revokePreviewList(prev);
+        return [];
+      });
     } catch (err) {
       setError(err.response?.data?.message || "Upload failed");
     } finally {
       setUploading(false);
-      e.target.value = "";
     }
   };
 
@@ -820,8 +883,26 @@ export default function ArticleEditor() {
 
             {canEdit && (
               <div
-                onClick={() => fileRef.current?.click()}
-                className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center cursor-pointer hover:border-brand hover:bg-brand/5 transition-colors"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(ev) => {
+                  if (ev.key === "Enter" || ev.key === " ") {
+                    ev.preventDefault();
+                    fileRef.current?.click();
+                  }
+                }}
+                onClick={() => {
+                  if (!id) {
+                    setError("Save the article draft first, then add images.");
+                    return;
+                  }
+                  fileRef.current?.click();
+                }}
+                className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                  id
+                    ? "border-slate-200 cursor-pointer hover:border-brand hover:bg-brand/5"
+                    : "border-slate-100 cursor-not-allowed opacity-70"
+                }`}
               >
                 {uploading ? (
                   <Loader2 size={24} className="mx-auto text-brand animate-spin mb-2" />
@@ -831,15 +912,111 @@ export default function ArticleEditor() {
                 <p className="text-sm text-slate-500">
                   {uploading
                     ? "Uploading…"
-                    : "JPEG, PNG, or WebP · up to 12MB each · cropped to hero 2180×750 on the server"}
+                    : "Choose JPEG, PNG, or WebP (up to 12MB each) — then add credits in the form below"}
+                </p>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                  Images are cropped to hero size 2180×750 on the server. You must enter source, description, alt text, and title before upload.
                 </p>
                 {!isEdit && (
-                  <p className="text-xs text-slate-400 mt-1">Save the article draft first, then upload images here</p>
+                  <p className="text-xs text-amber-600 mt-2 font-medium">Save the article draft first to enable uploads</p>
                 )}
                 <input
                   ref={fileRef} type="file" accept="image/*" multiple hidden
-                  onChange={handleFileChange}
+                  onChange={handleFilePick}
                 />
+              </div>
+            )}
+
+            {canEdit && pendingUploads.length > 0 && (
+              <div className="mt-6 rounded-xl border-2 border-brand/30 bg-slate-50/80 p-5 space-y-5">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
+                  <div>
+                    <h3 className="font-semibold text-slate-800 text-sm">Image details (required before upload)</h3>
+                    <p className="text-xs text-slate-600 mt-1 max-w-xl">
+                      Source/credit, description, alt text, and title are required for accessibility and publishing. The first image becomes the hero unless you change it later.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearPendingUploads}
+                    disabled={uploading}
+                    className="text-sm font-medium text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 bg-white disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                <div className="space-y-6 max-h-[min(70vh,720px)] overflow-y-auto pr-1">
+                  {pendingUploads.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm grid gap-4 sm:grid-cols-[minmax(0,160px)_1fr]"
+                    >
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          Preview {idx + 1}/{pendingUploads.length}
+                        </p>
+                        <div className="aspect-video rounded-md overflow-hidden border border-slate-200 bg-slate-100">
+                          <img
+                            src={p.previewUrl}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <p className="text-[11px] text-slate-500 break-all">{p.file.name}</p>
+                      </div>
+                      <div className="space-y-3 min-w-0">
+                        <Field label="Image title" required>
+                          <Input
+                            value={p.imageTitle}
+                            onChange={(e) => updatePendingUpload(p.id, "imageTitle", e.target.value)}
+                            placeholder="Short title shown in CMS and metadata"
+                          />
+                        </Field>
+                        <Field label="Alt text (accessibility)" required>
+                          <Input
+                            value={p.alt}
+                            onChange={(e) => updatePendingUpload(p.id, "alt", e.target.value)}
+                            placeholder="Describe what appears in the image for screen readers"
+                          />
+                        </Field>
+                        <Field label="Image description" required>
+                          <Textarea
+                            rows={3}
+                            value={p.imageDescription}
+                            onChange={(e) => updatePendingUpload(p.id, "imageDescription", e.target.value)}
+                            placeholder="What the image shows — context for editors and readers"
+                          />
+                        </Field>
+                        <Field label="Source / credit" required>
+                          <Input
+                            value={p.source}
+                            onChange={(e) => updatePendingUpload(p.id, "source", e.target.value)}
+                            placeholder="e.g. PTI, Reuters, staff photo, or photographer name"
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap justify-end gap-2 pt-1 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={clearPendingUploads}
+                    disabled={uploading}
+                    className="px-4 py-2.5 rounded-lg border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitPendingUploads}
+                    disabled={uploading}
+                    className="px-4 py-2.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-sm font-semibold disabled:opacity-50 inline-flex items-center gap-2"
+                  >
+                    {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                    Upload {pendingUploads.length} image{pendingUploads.length === 1 ? "" : "s"}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -865,28 +1042,37 @@ export default function ArticleEditor() {
                       )}
                     </div>
                     {canEdit && (
-                      <div className="p-3 space-y-2 text-xs">
-                        <Input
-                          placeholder="Alt text"
-                          value={img.alt ?? ""}
-                          onChange={(e) => patchLocalImage(i, "alt", e.target.value)}
-                        />
-                        <Input
-                          placeholder="Image title"
-                          value={img.imageTitle ?? ""}
-                          onChange={(e) => patchLocalImage(i, "imageTitle", e.target.value)}
-                        />
-                        <Textarea
-                          rows={2}
-                          placeholder="Image description"
-                          value={img.imageDescription ?? ""}
-                          onChange={(e) => patchLocalImage(i, "imageDescription", e.target.value)}
-                        />
-                        <Input
-                          placeholder="Source / credit"
-                          value={img.source ?? ""}
-                          onChange={(e) => patchLocalImage(i, "source", e.target.value)}
-                        />
+                      <div className="p-4 space-y-3 text-sm border-t border-slate-100 bg-white">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Edit image details</p>
+                        <Field label="Image title" required>
+                          <Input
+                            value={img.imageTitle ?? ""}
+                            onChange={(e) => patchLocalImage(i, "imageTitle", e.target.value)}
+                            placeholder="Short title"
+                          />
+                        </Field>
+                        <Field label="Alt text (accessibility)" required>
+                          <Input
+                            value={img.alt ?? ""}
+                            onChange={(e) => patchLocalImage(i, "alt", e.target.value)}
+                            placeholder="Describe the image"
+                          />
+                        </Field>
+                        <Field label="Image description" required>
+                          <Textarea
+                            rows={3}
+                            value={img.imageDescription ?? ""}
+                            onChange={(e) => patchLocalImage(i, "imageDescription", e.target.value)}
+                            placeholder="What the image shows"
+                          />
+                        </Field>
+                        <Field label="Source / credit" required>
+                          <Input
+                            value={img.source ?? ""}
+                            onChange={(e) => patchLocalImage(i, "source", e.target.value)}
+                            placeholder="Agency or photographer credit"
+                          />
+                        </Field>
                         <div className="flex flex-wrap gap-2 pt-1">
                           <button
                             type="button"
@@ -898,14 +1084,14 @@ export default function ArticleEditor() {
                                 source: img.source || "",
                               })
                             }
-                            className="px-2 py-1 rounded bg-slate-800 text-white text-xs font-semibold"
+                            className="px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold hover:bg-slate-900"
                           >
-                            Save details
+                            Save details to server
                           </button>
                           <button
                             type="button"
                             onClick={() => saveImageMeta(i, { isHero: true })}
-                            className="px-2 py-1 rounded border border-slate-300 text-xs font-semibold text-slate-700"
+                            className="px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                           >
                             Set as hero
                           </button>
