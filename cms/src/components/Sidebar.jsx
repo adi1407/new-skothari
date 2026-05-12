@@ -38,7 +38,8 @@ const ADMIN_NAV = [
   { to: "/admin/users", label: "Users", icon: UserCog },
   { to: "/writer", label: "Write", icon: PlusCircle },
   { to: "/editor", label: "Editor overview", icon: LayoutDashboard },
-  { to: "/editor/queue", label: "Review", icon: CheckSquare },
+  { to: "/editor/queue", label: "Review queue", icon: CheckSquare },
+  { to: "/editor/articles", label: "All articles", icon: FileText },
 ];
 
 const VIDEO_EDITOR_NAV = [

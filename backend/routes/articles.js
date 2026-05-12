@@ -175,7 +175,7 @@ function buildQuery(role, userId, filters = {}) {
   else if (isWriterRole(role)) {
     /* all statuses for assigned writers */
   } else if (isEditorRole(role) || isAdminLike(role)) {
-    if (!filters.status) q.status = { $in: ["submitted", "published", "rejected"] };
+    if (!filters.status) q.status = { $in: ["draft", "submitted", "published", "rejected"] };
   }
 
   if (filters.category) q.category = filters.category;
@@ -241,7 +241,7 @@ router.get(
 );
 
 // ── GET /api/articles ────────────────────────────────
-// Writer: own articles | Editor: submitted+published | Admin: all
+// Writer: own articles | Editor/Admin (list): drafts + pipeline when no status filter
 router.get("/", authenticate, async (req, res) => {
   try {
     const { status, category, search, page = 1, limit = 20 } = req.query;
@@ -718,7 +718,7 @@ router.patch(
         return res.status(403).json({ message: "Access denied" });
       }
 
-      if (article.status !== "submitted") {
+      if (article.status !== "submitted" && article.status !== "draft") {
         return res.status(400).json({ message: `Cannot publish from status: ${article.status}` });
       }
 

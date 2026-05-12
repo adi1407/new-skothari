@@ -136,6 +136,12 @@ export default function ArticleEditor() {
   const [relatedLinks, setRelatedLinks] = useState([]);
   /** Files chosen in the picker — user fills source/alt/title/description, then confirms upload. */
   const [pendingUploads, setPendingUploads] = useState([]);
+  /** Bump after server article hydrates so CKEditor remounts with `body` / `bodyHi` (data prop alone does not sync). */
+  const [rteEpoch, setRteEpoch] = useState(0);
+
+  useEffect(() => {
+    setRteEpoch(0);
+  }, [id]);
 
   useEffect(() => {
     pendingBlobUrlsRef.current = pendingUploads;
@@ -200,6 +206,7 @@ export default function ArticleEditor() {
         setImages(art.images || []);
         setStatus(art.status);
         setArticleNumber(art.articleNumber ?? null);
+        setRteEpoch((e) => e + 1);
       }
     }).finally(() => setLoading(false));
   }, [id, isEdit]);
@@ -741,6 +748,7 @@ export default function ArticleEditor() {
                   )}
                   <Field label="Main article content" required>
                     <RichTextEditor
+                      key={`rte-body-both-${rteEpoch}`}
                       value={form.body}
                       onChange={(html) => set("body", html)}
                       disabled={!canEdit}
@@ -783,6 +791,7 @@ export default function ArticleEditor() {
                   )}
                   <Field label="मुख्य सामग्री (Body)" required>
                     <RichTextEditor
+                      key={`rte-bodyhi-both-${rteEpoch}`}
                       value={form.bodyHi}
                       onChange={(html) => set("bodyHi", html)}
                       disabled={!canEdit}
@@ -825,6 +834,7 @@ export default function ArticleEditor() {
                 )}
                 <Field label="Main article content" required>
                   <RichTextEditor
+                    key={`rte-body-en-${rteEpoch}`}
                     value={form.body}
                     onChange={(html) => set("body", html)}
                     disabled={!canEdit}
@@ -866,6 +876,7 @@ export default function ArticleEditor() {
                 )}
                 <Field label="मुख्य सामग्री (Body)" required>
                   <RichTextEditor
+                    key={`rte-bodyhi-hi-${rteEpoch}`}
                     value={form.bodyHi}
                     onChange={(html) => set("bodyHi", html)}
                     disabled={!canEdit}

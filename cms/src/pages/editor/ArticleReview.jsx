@@ -7,6 +7,7 @@ import {
   getArticle, updateArticle, publishArticle, unpublishArticle, rejectArticle, mediaUrl,
 } from "../../api";
 import { useAuth } from "../../context/AuthContext";
+import { isAdminLike, isEditorRole } from "../../constants/roles";
 
 const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
 
@@ -122,9 +123,11 @@ export default function ArticleReview() {
     }
   };
 
-  const canEdit = ["editor", "editor_en", "editor_hi", "admin"].includes(user?.role);
+  const canEdit = isAdminLike(user?.role) || isEditorRole(user?.role);
   const isSubmitted = article?.status === "submitted";
+  const isDraft = article?.status === "draft";
   const isPublished = article?.status === "published";
+  const canPublishFromDesk = isSubmitted || isDraft;
 
   if (loading) return (
     <div className="cms-page-center">
@@ -178,15 +181,17 @@ export default function ArticleReview() {
             </>
           )}
 
-          {canEdit && isSubmitted && !editMode && (
+          {canEdit && canPublishFromDesk && !editMode && (
             <>
-              <button
-                onClick={() => setShowReject(true)}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50"
-              >
-                <XCircle size={14} />
-                Reject
-              </button>
+              {isSubmitted && (
+                <button
+                  onClick={() => setShowReject(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50"
+                >
+                  <XCircle size={14} />
+                  Reject
+                </button>
+              )}
               <button
                 onClick={handlePublish} disabled={saving}
                 className="flex items-center gap-1.5 px-4 py-2 text-sm bg-brand text-white rounded-lg hover:bg-brand-dark disabled:opacity-50"
