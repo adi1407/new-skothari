@@ -3868,6 +3868,24 @@ a { text-decoration:none; color:inherit }
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+.footer-premium-top-band {
+  position: relative;
+  z-index: 1;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: clamp(12px, 2.2vw, 18px) var(--gutter) clamp(10px, 2vw, 16px);
+  display: grid;
+  gap: 14px;
+  align-items: stretch;
+}
+
+@media (min-width: 900px) {
+  .footer-premium-top-band {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+    align-items: stretch;
+  }
+}
+
 .footer-premium-inner {
   position: relative;
   z-index: 1;

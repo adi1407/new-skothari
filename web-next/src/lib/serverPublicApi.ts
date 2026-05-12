@@ -2,6 +2,12 @@ import type { BackendArticle } from "../services/newsApi";
 import { apiFetchSignal } from "./apiFetchSignal";
 import { serverApiUrl } from "./serverApiOrigin";
 
+export type PublicArticlesPage = {
+  articles: BackendArticle[];
+  total: number;
+  page: number;
+};
+
 export async function fetchPublicArticles(params: {
   category?: string;
   limit?: number;
@@ -9,6 +15,17 @@ export async function fetchPublicArticles(params: {
   locale?: "hi" | "en";
   latestDays?: number;
 } = {}): Promise<BackendArticle[]> {
+  const { articles } = await fetchPublicArticlesPage(params);
+  return articles;
+}
+
+export async function fetchPublicArticlesPage(params: {
+  category?: string;
+  limit?: number;
+  page?: number;
+  locale?: "hi" | "en";
+  latestDays?: number;
+} = {}): Promise<PublicArticlesPage> {
   const qs = new URLSearchParams();
   if (params.category) qs.set("category", params.category);
   if (params.limit) qs.set("limit", String(params.limit));
@@ -21,12 +38,16 @@ export async function fetchPublicArticles(params: {
       next: { revalidate: 60 },
       signal: apiFetchSignal(),
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { articles: [], total: 0, page: Number(params.page) || 1 };
 
-    const data = (await res.json()) as { articles?: BackendArticle[] };
-    return data.articles || [];
+    const data = (await res.json()) as { articles?: BackendArticle[]; total?: number; page?: number };
+    return {
+      articles: data.articles || [],
+      total: Number(data.total) || 0,
+      page: Number(data.page) || Number(params.page) || 1,
+    };
   } catch {
-    return [];
+    return { articles: [], total: 0, page: Number(params.page) || 1 };
   }
 }
 

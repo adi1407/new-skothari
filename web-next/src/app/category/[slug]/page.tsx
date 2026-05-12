@@ -6,8 +6,9 @@ import { buildCategoryMetadata } from "../../../features/category/seo/metadata";
 import { buildCategoryCollectionJsonLd } from "../../../features/category/seo/schema";
 import { categoryDek, categoryHeadline } from "../../../features/category/server/categoryFeed";
 import { adaptArticles } from "../../../services/articleAdapter";
-import { fetchPublicArticles } from "../../../lib/serverPublicApi";
+import { fetchPublicArticlesPage } from "../../../lib/serverPublicApi";
 import { getServerUiLang } from "../../../lib/serverLocale";
+import InfinitePublicArticleList from "../../../components/InfinitePublicArticleList";
 import styles from "../../newsroom.module.css";
 
 export async function generateMetadata(
@@ -23,13 +24,13 @@ export default async function CategoryPage(
   const { slug } = await params;
   const locale = await getServerUiLang();
   const category = categories.find((c) => c.slug === slug);
-  const list = adaptArticles(
-    await fetchPublicArticles(
-      slug === "latest"
-        ? { latestDays: 3, limit: 24, locale }
-        : { category: slug, limit: 24, locale }
-    )
+  const { articles: rawList, total: listTotal } = await fetchPublicArticlesPage(
+    slug === "latest"
+      ? { latestDays: 3, limit: 24, locale }
+      : { category: slug, limit: 24, locale }
   );
+  const list = adaptArticles(rawList);
+  const seedIds = list.map((a) => a.id);
   const jsonLd = buildCategoryCollectionJsonLd(slug, list, locale);
 
   return (
@@ -40,11 +41,11 @@ export default async function CategoryPage(
           <p className="cat-page-count">
             {slug === "latest"
               ? locale === "hi"
-                ? `${list.length} खबरें · पिछले 3 दिन`
-                : `${list.length} stories · last 3 days`
+                ? `${list.length} खबरें · पिछले 3 दिन · ${listTotal} कुल`
+                : `${list.length} stories · last 3 days · ${listTotal} total`}
               : locale === "hi"
-                ? `${list.length} खबरें`
-                : `${list.length} stories`}
+                ? `${list.length} खबरें · ${listTotal} कुल`
+                : `${list.length} stories · ${listTotal} total`}
           </p>
         </div>
       </div>
@@ -76,6 +77,16 @@ export default async function CategoryPage(
             </article>
           ))}
         </section>
+        <InfinitePublicArticleList
+          locale={locale}
+          seedIds={seedIds}
+          total={listTotal}
+          category={slug === "latest" ? undefined : slug}
+          latestDays={slug === "latest" ? 3 : undefined}
+          headline={categoryHeadline}
+          dek={categoryDek}
+          sectionTitle={locale === "hi" ? "और खबरें" : "More stories"}
+        />
       </div>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     </main>

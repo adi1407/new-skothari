@@ -1,0 +1,48 @@
+.btn {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(20px + var(--kn-bottom-nav-h, 0px));
+  z-index: 8050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(145deg, var(--brand-red), color-mix(in srgb, var(--brand-red) 72%, #1a0505));
+  box-shadow:
+    0 4px 18px color-mix(in srgb, var(--brand-red) 42%, transparent),
+    0 1px 0 color-mix(in srgb, #fff 18%, transparent) inset;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 28px color-mix(in srgb, var(--brand-red) 50%, transparent),
+    0 1px 0 color-mix(in srgb, #fff 22%, transparent) inset;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--brand-red);
+  outline-offset: 3px;
+}
+
+.btnHidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+}
+
+@media (min-width: 901px) {
+  .btn {
+    bottom: 28px;
+  }
+}

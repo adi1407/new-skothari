@@ -43,6 +43,13 @@ function getImageUrl(article: BackendArticle): string {
   return withPublicOrigin(hero.url);
 }
 
+/** Public route segment for `/article/:id` (article number when set, else Mongo id). */
+export function backendArticlePublicId(a: BackendArticle): string {
+  return a.articleNumber != null && Number.isFinite(Number(a.articleNumber))
+    ? String(a.articleNumber)
+    : a._id;
+}
+
 export function adaptArticle(a: BackendArticle): ContentArticle {
   const time = relativeTime(a.publishedAt ?? a.createdAt);
   const authorName =
@@ -59,10 +66,7 @@ export function adaptArticle(a: BackendArticle): ContentArticle {
   const summary = rawSummaryHi || rawSummaryEn;
   const summaryEnOut = rawSummaryEn || rawSummaryHi;
 
-  const publicId =
-    a.articleNumber != null && Number.isFinite(Number(a.articleNumber))
-      ? String(a.articleNumber)
-      : a._id;
+  const publicId = backendArticlePublicId(a);
 
   return {
     id:           publicId,

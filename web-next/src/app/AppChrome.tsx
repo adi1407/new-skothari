@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import BottomNav from "../components/BottomNav";
 import SiteFooter from "../components/SiteFooter";
+import ScrollToTopButton from "../components/ScrollToTopButton";
 import { useLang } from "../context/LangContext";
 
 const DARK_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -46,6 +47,7 @@ export default function AppChrome({
       <Navbar darkMode={darkMode} toggleDark={toggleDark} />
       {children}
       <SiteFooter />
+      <ScrollToTopButton />
       <BottomNav />
     </div>
   );

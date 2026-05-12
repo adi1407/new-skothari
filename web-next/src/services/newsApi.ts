@@ -64,13 +64,33 @@ export interface BackendVideo {
   createdAt?: string;
 }
 
+export type PublishedArticlesPageResult = {
+  articles: BackendArticle[];
+  total: number;
+  page: number;
+};
+
 export async function fetchPublishedArticles(opts: {
   category?: string;
   limit?: number;
   page?: number;
   locale?: "hi" | "en";
   latestDays?: number;
+  signal?: AbortSignal;
 } = {}): Promise<BackendArticle[]> {
+  const { articles } = await fetchPublishedArticlesPage(opts);
+  return articles;
+}
+
+/** Public article list with pagination metadata (same endpoint as `fetchPublishedArticles`). */
+export async function fetchPublishedArticlesPage(opts: {
+  category?: string;
+  limit?: number;
+  page?: number;
+  locale?: "hi" | "en";
+  latestDays?: number;
+  signal?: AbortSignal;
+} = {}): Promise<PublishedArticlesPageResult> {
   try {
     const params = new URLSearchParams();
     if (opts.category) params.set("category", opts.category);
@@ -78,12 +98,17 @@ export async function fetchPublishedArticles(opts: {
     if (opts.page) params.set("page", String(opts.page));
     if (opts.locale) params.set("locale", opts.locale);
     if (opts.latestDays) params.set("latestDays", String(opts.latestDays));
-    const res = await fetch(publicUrl(`${BASE}/articles?${params}`), { signal: apiFetchSignal() });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.articles ?? [];
+    const signal = opts.signal ?? apiFetchSignal() ?? undefined;
+    const res = await fetch(publicUrl(`${BASE}/articles?${params}`), { signal });
+    if (!res.ok) return { articles: [], total: 0, page: Number(opts.page) || 1 };
+    const data = (await res.json()) as { articles?: BackendArticle[]; total?: number; page?: number };
+    return {
+      articles: data.articles ?? [],
+      total: Number(data.total) || 0,
+      page: Number(data.page) || Number(opts.page) || 1,
+    };
   } catch {
-    return [];
+    return { articles: [], total: 0, page: Number(opts.page) || 1 };
   }
 }
 

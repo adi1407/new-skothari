@@ -3,10 +3,11 @@ import HeroSection from "../components/HeroSection";
 import NewsTicker from "../components/NewsTicker";
 import HomeCategorySection from "../features/home/components/HomeCategorySection";
 import { homeSections } from "../features/home/config/sections";
-import { pickCategory } from "../features/home/server/homeFeed";
+import { pickCategory, dek, headline } from "../features/home/server/homeFeed";
 import { buildHomeWebSiteJsonLd } from "../features/home/seo/schema";
 import { adaptArticles } from "../services/articleAdapter";
-import { fetchPublicArticles } from "../lib/serverPublicApi";
+import { fetchPublicArticlesPage } from "../lib/serverPublicApi";
+import InfinitePublicArticleList from "../components/InfinitePublicArticleList";
 import { getServerUiLang } from "../lib/serverLocale";
 import { defaultDescription, siteName } from "../lib/seo/metadataHelpers";
 import styles from "./newsroom.module.css";
@@ -31,8 +32,9 @@ export const metadata: Metadata = {
 
 export default async function Home() {
   const locale = await getServerUiLang();
-  const raw = await fetchPublicArticles({ limit: 120, locale });
+  const { articles: raw, total: feedTotal } = await fetchPublicArticlesPage({ limit: 120, locale });
   const feed = adaptArticles(raw);
+  const seedIds = feed.map((a) => a.id);
   const jsonLd = buildHomeWebSiteJsonLd();
 
   return (
@@ -56,6 +58,14 @@ export default async function Home() {
           const [lead, ...rest] = list;
           return <HomeCategorySection key={section.slug} section={section} locale={locale} lead={lead} rest={rest} />;
         })}
+        <InfinitePublicArticleList
+          locale={locale}
+          seedIds={seedIds}
+          total={feedTotal}
+          headline={headline}
+          dek={dek}
+          sectionTitle={locale === "hi" ? "और खबरें" : "More stories"}
+        />
       </div>
     </main>
   );
