@@ -4,9 +4,29 @@ function stripTrailingSlash(url: string): string {
   return url.replace(/\/+$/, "");
 }
 
+/**
+ * Canonical origin for metadata, sitemap, and robots.
+ * - Accepts `https://host`, `http://host`, or bare `host` (https assumed).
+ * - On Vercel, falls back to `VERCEL_URL` when `NEXT_PUBLIC_SITE_URL` is unset.
+ * - Never returns a string that would make `new URL(...)` throw.
+ */
 export function getSiteUrl(): string {
-  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (fromEnv) return stripTrailingSlash(fromEnv);
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "";
+  if (raw) {
+    try {
+      const u = new URL(raw.includes("://") ? raw : `https://${raw}`);
+      return stripTrailingSlash(u.origin);
+    } catch {
+      /* fall through */
+    }
+  }
+
+  const vercel = process.env.VERCEL_URL?.trim();
+  if (vercel) {
+    const host = vercel.replace(/^https?:\/\//i, "");
+    if (host) return `https://${host}`;
+  }
+
   return "http://localhost:3000";
 }
 
