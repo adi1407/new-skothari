@@ -11,6 +11,14 @@ import styles from "../app/newsroom.module.css";
 const PAGE_SIZE = 24;
 const MAX_SKIP_PAGES = 60;
 
+/** True when another page might exist (handles missing `total` from older APIs). */
+function computeLoadable(total: number, seedLen: number): boolean {
+  if (seedLen === 0) return false;
+  if (total > seedLen) return true;
+  if (total === 0 && seedLen >= PAGE_SIZE) return true;
+  return false;
+}
+
 type Props = {
   locale: "hi" | "en";
   seedIds: string[];
@@ -36,12 +44,13 @@ export default function InfinitePublicArticleList({
   const [extra, setExtra] = useState<ContentArticle[]>([]);
   const [nextPage, setNextPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(total <= seedIds.length);
+  const loadable = computeLoadable(total, seedIds.length);
+  const [done, setDone] = useState(!loadable);
   const [err, setErr] = useState("");
   const sentinelRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const nextPageRef = useRef(1);
-  const doneRef = useRef(total <= seedIds.length);
+  const doneRef = useRef(!loadable);
   const inFlightRef = useRef(false);
 
   const seedKey = seedIds.join(",");
@@ -55,11 +64,12 @@ export default function InfinitePublicArticleList({
   }, [done]);
 
   useEffect(() => {
+    const nextLoadable = computeLoadable(total, seedIds.length);
     seen.current = new Set(seedIds);
     setExtra([]);
     setNextPage(1);
     nextPageRef.current = 1;
-    const initialDone = total <= seedIds.length;
+    const initialDone = !nextLoadable;
     setDone(initialDone);
     doneRef.current = initialDone;
     setErr("");
@@ -67,7 +77,7 @@ export default function InfinitePublicArticleList({
 
   const loadMore = useCallback(async () => {
     if (inFlightRef.current || doneRef.current) return;
-    if (seen.current.size >= total) {
+    if (total > 0 && seen.current.size >= total) {
       setDone(true);
       doneRef.current = true;
       return;
@@ -106,7 +116,10 @@ export default function InfinitePublicArticleList({
         const fresh = adapted.filter((a) => !seen.current.has(a.id));
         fresh.forEach((a) => seen.current.add(a.id));
 
-        const atEnd = resPage * PAGE_SIZE >= resTotal;
+        const atEnd =
+          resTotal > 0
+            ? resPage * PAGE_SIZE >= resTotal
+            : articles.length < PAGE_SIZE;
         if (atEnd) {
           if (fresh.length) setExtra((prev) => [...prev, ...fresh]);
           setDone(true);
@@ -144,22 +157,22 @@ export default function InfinitePublicArticleList({
   }, [category, latestDays, locale, total]);
 
   useEffect(() => {
-    if (done) return;
+    if (done || !computeLoadable(total, seedIds.length)) return;
     const el = sentinelRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) void loadMore();
       },
-      { root: null, rootMargin: "280px 0px", threshold: 0 }
+      { root: null, rootMargin: "320px 0px", threshold: 0 }
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [done, loadMore]);
+  }, [done, loadMore, total, seedIds.length]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  if (total <= seedIds.length && extra.length === 0) return null;
+  if (seedIds.length === 0) return null;
 
   return (
     <section className={styles.sectionBlock} aria-busy={loading}>
@@ -169,25 +182,35 @@ export default function InfinitePublicArticleList({
         </div>
       ) : null}
 
-      <div className="cat-page-grid">
-        {extra.map((item) => (
-          <article key={String(item.id)} className={`card-default ${styles.cardBody}`}>
-            <Link href={`/article/${item.id}`} className={styles.cardLink}>
-              <Image
-                src={item.image}
-                alt={headline(item, locale)}
-                width={800}
-                height={450}
-                className={styles.cardImage}
-              />
-              <h3 className="card-title">{headline(item, locale)}</h3>
-              <p className="card-summary">{dek(item, locale)}</p>
-            </Link>
-          </article>
-        ))}
-      </div>
+      {!loadable ? (
+        <p className="card-summary" style={{ marginTop: 4 }}>
+          {locale === "hi"
+            ? "होम पर दिखाई गईं सभी उपलब्ध खबरें ऊपर दी गई हैं।"
+            : "All available stories for the home page are shown in the sections above."}
+        </p>
+      ) : null}
 
-      {loading ? (
+      {loadable ? (
+        <div className="cat-page-grid">
+          {extra.map((item) => (
+            <article key={String(item.id)} className={`card-default ${styles.cardBody}`}>
+              <Link href={`/article/${item.id}`} className={styles.cardLink}>
+                <Image
+                  src={item.image}
+                  alt={headline(item, locale)}
+                  width={800}
+                  height={450}
+                  className={styles.cardImage}
+                />
+                <h3 className="card-title">{headline(item, locale)}</h3>
+                <p className="card-summary">{dek(item, locale)}</p>
+              </Link>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {loadable && loading ? (
         <p className="card-summary" style={{ marginTop: 12 }}>
           {locale === "hi" ? "लोड हो रहा है…" : "Loading…"}
         </p>
@@ -197,13 +220,13 @@ export default function InfinitePublicArticleList({
           {err}
         </p>
       ) : null}
-      {done && extra.length > 0 ? (
+      {loadable && done && extra.length > 0 ? (
         <p className="card-summary" style={{ marginTop: 12, opacity: 0.85 }}>
           {locale === "hi" ? "और खबरें यहीं समाप्त।" : "You are caught up."}
         </p>
       ) : null}
 
-      <div ref={sentinelRef} style={{ height: 1, width: "100%" }} aria-hidden />
+      {loadable ? <div ref={sentinelRef} style={{ height: 1, width: "100%" }} aria-hidden /> : null}
     </section>
   );
 }

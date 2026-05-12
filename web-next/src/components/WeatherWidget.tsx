@@ -30,7 +30,7 @@ function weatherIcon(code: number | undefined) {
   return CloudSun;
 }
 
-export default function WeatherWidget() {
+export default function WeatherWidget({ variant = "footer" }: { variant?: "footer" | "surface" }) {
   const { lang, t } = useLang();
   const defaultId = "in-dl";
   const [locId, setLocId] = useState(defaultId);
@@ -80,9 +80,11 @@ export default function WeatherWidget() {
   const label = lang === "hi" ? loc.labelHi : loc.labelEn;
   const india = WEATHER_LOCATIONS.filter((l) => l.region === "india");
   const world = WEATHER_LOCATIONS.filter((l) => l.region === "world");
+  const isSurface = variant === "surface";
+  const iconColor = isSurface ? "var(--brand-red)" : "rgba(255,255,255,0.92)";
 
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${isSurface ? styles.cardSurface : ""}`}>
       <div className={styles.head}>
         <div className={styles.titleRow}>
           <ThermometerSun size={18} strokeWidth={2.2} aria-hidden />
@@ -115,7 +117,7 @@ export default function WeatherWidget() {
       {!loading && err ? <p className={styles.err}>{err}</p> : null}
       {!loading && !err && temp != null ? (
         <div className={styles.body}>
-          <Icon size={56} strokeWidth={1.6} color="rgba(255,255,255,0.92)" aria-hidden />
+          <Icon size={56} strokeWidth={1.6} color={iconColor} aria-hidden />
           <div>
             <div className={styles.tempBlock}>
               <span className={styles.tempMain}>{Math.round(temp)}°C</span>

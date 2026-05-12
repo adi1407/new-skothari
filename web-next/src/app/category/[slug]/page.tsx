@@ -42,7 +42,7 @@ export default async function CategoryPage(
             {slug === "latest"
               ? locale === "hi"
                 ? `${list.length} खबरें · पिछले 3 दिन · ${listTotal} कुल`
-                : `${list.length} stories · last 3 days · ${listTotal} total`}
+                : `${list.length} stories · last 3 days · ${listTotal} total`
               : locale === "hi"
                 ? `${list.length} खबरें · ${listTotal} कुल`
                 : `${list.length} stories · ${listTotal} total`}

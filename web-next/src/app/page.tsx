@@ -8,6 +8,7 @@ import { buildHomeWebSiteJsonLd } from "../features/home/seo/schema";
 import { adaptArticles } from "../services/articleAdapter";
 import { fetchPublicArticlesPage } from "../lib/serverPublicApi";
 import InfinitePublicArticleList from "../components/InfinitePublicArticleList";
+import HomeDiscoverRow from "../components/HomeDiscoverRow";
 import { getServerUiLang } from "../lib/serverLocale";
 import { defaultDescription, siteName } from "../lib/seo/metadataHelpers";
 import styles from "./newsroom.module.css";
@@ -43,6 +44,7 @@ export default async function Home() {
       <div className={`section-inner ${styles.sectionStack}`}>
         <HeroSection />
         <NewsTicker />
+        <HomeDiscoverRow />
         {feed.length === 0 ? (
           <section className={styles.sectionBlock}>
             <p className="card-summary">

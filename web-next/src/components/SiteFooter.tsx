@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -94,7 +96,7 @@ export default function SiteFooter() {
   };
 
   return (
-    <footer className="site-footer site-footer-premium">
+    <footer id="kn-site-footer" className="site-footer site-footer-premium">
       <div className="footer-premium-accent" aria-hidden />
       <div className="footer-premium-noise" aria-hidden />
 

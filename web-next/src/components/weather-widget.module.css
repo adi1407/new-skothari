@@ -12,6 +12,61 @@
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
 }
 
+.cardSurface {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--card-bg) 98%, var(--brand-red) 4%) 0%,
+    var(--card-bg) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--card-border) 88%, transparent);
+  box-shadow: var(--shadow-ui-rest);
+}
+
+.cardSurface .titleRow {
+  color: var(--text-muted);
+}
+
+.cardSurface .select {
+  border-color: color-mix(in srgb, var(--card-border) 95%, transparent);
+  background: var(--bg-secondary);
+  color: var(--text);
+}
+
+.cardSurface .tempMain {
+  color: var(--text);
+}
+
+.cardSurface .tempSub,
+.cardSurface .meta {
+  color: var(--text-muted);
+}
+
+.cardSurface .err {
+  color: #b91c1c;
+}
+
+.cardSurface .attr {
+  border-top-color: color-mix(in srgb, var(--card-border) 80%, transparent);
+  color: var(--text-muted);
+}
+
+.cardSurface .attr a {
+  color: var(--brand-red);
+}
+
+.cardSurface .attr a:hover {
+  color: color-mix(in srgb, var(--brand-red) 85%, #000);
+}
+
+.cardSurface .skeleton {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bg-secondary) 80%, transparent) 0%,
+    color-mix(in srgb, var(--card-border) 35%, transparent) 50%,
+    color-mix(in srgb, var(--bg-secondary) 80%, transparent) 100%
+  );
+}
+
 .head {
   display: flex;
   flex-wrap: wrap;

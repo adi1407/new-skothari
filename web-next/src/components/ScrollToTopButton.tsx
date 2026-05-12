@@ -5,8 +5,13 @@ import { ChevronUp } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import styles from "./scroll-to-top.module.css";
 
-const THRESHOLD = 420;
+const THRESHOLD = 260;
 const SCROLL_DEBOUNCE_MS = 120;
+
+function readScrollY(): number {
+  if (typeof window === "undefined") return 0;
+  return window.scrollY || document.documentElement?.scrollTop || document.body?.scrollTop || 0;
+}
 
 export default function ScrollToTopButton() {
   const { t } = useLang();
@@ -17,7 +22,7 @@ export default function ScrollToTopButton() {
     const onScroll = () => {
       if (tid) clearTimeout(tid);
       tid = setTimeout(() => {
-        setVisible(window.scrollY > THRESHOLD);
+        setVisible(readScrollY() > THRESHOLD);
       }, SCROLL_DEBOUNCE_MS);
     };
     onScroll();
