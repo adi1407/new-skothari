@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { categories } from "../../../data/publicCategories";
 import { buildCategoryMetadata } from "../../../features/category/seo/metadata";
@@ -64,12 +63,14 @@ export default async function CategoryPage(
           {list.map((item) => (
             <article key={String(item.id)} className={`card-default ${styles.cardBody}`}>
               <Link href={`/article/${item.id}`} className={styles.cardLink}>
-                <Image
+                <img
                   src={item.image}
                   alt={categoryHeadline(item, locale)}
                   width={800}
                   height={450}
                   className={styles.cardImage}
+                  loading="lazy"
+                  decoding="async"
                 />
                 <h3 className="card-title">{categoryHeadline(item, locale)}</h3>
                 <p className="card-summary">{categoryDek(item, locale)}</p>

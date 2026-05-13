@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { ContentArticle } from "../../../services/contentTypes";
 import { homeSections } from "../config/sections";
@@ -30,12 +29,15 @@ export default function HomeCategorySection({
       <div className={styles.storyLayout}>
         <article className={`card-default ${styles.leadCard}`}>
           <Link href={`/article/${lead.id}`} className={styles.leadLink}>
-            <Image
+            {/* Native <img>: CMS/API may host images on domains outside `next.config` remotePatterns; next/image would 500 SSR. */}
+            <img
               src={lead.image}
               alt={headline(lead, locale)}
               width={800}
               height={450}
               className={styles.leadImage}
+              loading="lazy"
+              decoding="async"
             />
             <div className={styles.leadTextWrap}>
               <h3 className={styles.leadTitle}>{headline(lead, locale)}</h3>
@@ -48,12 +50,14 @@ export default function HomeCategorySection({
           {rest.map((item) => (
             <article key={String(item.id)} className={`card-default ${styles.cardBody}`}>
               <Link href={`/article/${item.id}`} className={styles.cardLink}>
-                <Image
+                <img
                   src={item.image}
                   alt={headline(item, locale)}
                   width={800}
                   height={450}
                   className={styles.cardImage}
+                  loading="lazy"
+                  decoding="async"
                 />
                 <h3 className="card-title">{headline(item, locale)}</h3>
                 <p className="card-summary">{dek(item, locale)}</p>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import type { ContentArticle } from "../services/contentTypes";
 import { adaptArticles } from "../services/articleAdapter";
@@ -195,12 +194,14 @@ export default function InfinitePublicArticleList({
           {extra.map((item) => (
             <article key={String(item.id)} className={`card-default ${styles.cardBody}`}>
               <Link href={`/article/${item.id}`} className={styles.cardLink}>
-                <Image
+                <img
                   src={item.image}
                   alt={headline(item, locale)}
                   width={800}
                   height={450}
                   className={styles.cardImage}
+                  loading="lazy"
+                  decoding="async"
                 />
                 <h3 className="card-title">{headline(item, locale)}</h3>
                 <p className="card-summary">{dek(item, locale)}</p>
