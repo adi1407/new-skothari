@@ -5,7 +5,7 @@ import { useLang } from "../context/LangContext";
 import WeatherWidget from "./WeatherWidget";
 import styles from "./home-discover-row.module.css";
 
-/** Weather + hint so Open-Meteo / mixed headlines are visible without scrolling to the footer. */
+/** Weather snapshot + link to the mixed “More stories” section on the home page. */
 export default function HomeDiscoverRow() {
   const { lang, t } = useLang();
 
