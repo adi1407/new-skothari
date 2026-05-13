@@ -3,7 +3,7 @@ import HeroSection from "../components/HeroSection";
 import NewsTicker from "../components/NewsTicker";
 import HomeCategorySection from "../features/home/components/HomeCategorySection";
 import { homeSections } from "../features/home/config/sections";
-import { pickCategory, dek, headline } from "../features/home/server/homeFeed";
+import { pickCategory } from "../features/home/server/homeFeed";
 import { buildHomeWebSiteJsonLd } from "../features/home/seo/schema";
 import { adaptArticles } from "../services/articleAdapter";
 import { fetchPublicArticlesPage } from "../lib/serverPublicApi";
@@ -64,8 +64,7 @@ export default async function Home() {
           locale={locale}
           seedIds={seedIds}
           total={feedTotal}
-          headline={headline}
-          dek={dek}
+          feedSource="home"
           sectionTitle={locale === "hi" ? "और खबरें" : "More stories"}
         />
       </div>

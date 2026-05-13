@@ -36,7 +36,10 @@ export const defaultDescription =
   "Khabar Kothari brings fast, verified coverage across desh, videsh, rajneeti, khel, health, krishi, business and manoranjan.";
 
 export function toAbsoluteUrl(path: string): string {
-  const p = path.startsWith("/") ? path : `/${path}`;
+  const t = String(path || "").trim();
+  if (!t) return getSiteUrl();
+  if (/^https?:\/\//i.test(t)) return t;
+  const p = t.startsWith("/") ? t : `/${t}`;
   return `${getSiteUrl()}${p}`;
 }
 

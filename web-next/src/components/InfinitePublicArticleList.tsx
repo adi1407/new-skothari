@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { ContentArticle } from "../services/contentTypes";
+import { categoryDek, categoryHeadline } from "../features/category/server/categoryFeed";
+import { dek as homeDek, headline as homeHeadline } from "../features/home/server/homeFeed";
 import { adaptArticles } from "../services/articleAdapter";
 import { fetchPublishedArticlesPage } from "../services/newsApi";
 import styles from "../app/newsroom.module.css";
@@ -18,16 +20,26 @@ function computeLoadable(total: number, seedLen: number): boolean {
   return false;
 }
 
+type FeedSource = "home" | "category";
+
 type Props = {
   locale: "hi" | "en";
   seedIds: string[];
   total: number;
   category?: string;
   latestDays?: number;
-  headline: (item: ContentArticle, locale: "hi" | "en") => string;
-  dek: (item: ContentArticle, locale: "hi" | "en") => string;
+  /** Must not pass function props from RSC → client (breaks serialization / Vercel 500). */
+  feedSource?: FeedSource;
   sectionTitle?: string;
 };
+
+function itemHeadline(item: ContentArticle, locale: "hi" | "en", source: FeedSource): string {
+  return source === "category" ? categoryHeadline(item, locale) : homeHeadline(item, locale);
+}
+
+function itemDek(item: ContentArticle, locale: "hi" | "en", source: FeedSource): string {
+  return source === "category" ? categoryDek(item, locale) : homeDek(item, locale);
+}
 
 export default function InfinitePublicArticleList({
   locale,
@@ -35,8 +47,7 @@ export default function InfinitePublicArticleList({
   total,
   category,
   latestDays,
-  headline,
-  dek,
+  feedSource = "home",
   sectionTitle,
 }: Props) {
   const seen = useRef(new Set(seedIds));
@@ -196,15 +207,15 @@ export default function InfinitePublicArticleList({
               <Link href={`/article/${item.id}`} className={styles.cardLink}>
                 <img
                   src={item.image}
-                  alt={headline(item, locale)}
+                  alt={itemHeadline(item, locale, feedSource)}
                   width={800}
                   height={450}
                   className={styles.cardImage}
                   loading="lazy"
                   decoding="async"
                 />
-                <h3 className="card-title">{headline(item, locale)}</h3>
-                <p className="card-summary">{dek(item, locale)}</p>
+                <h3 className="card-title">{itemHeadline(item, locale, feedSource)}</h3>
+                <p className="card-summary">{itemDek(item, locale, feedSource)}</p>
               </Link>
             </article>
           ))}

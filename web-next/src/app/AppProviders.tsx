@@ -4,7 +4,15 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { LangProvider } from "../context/LangContext";
 import { ReaderAuthProvider } from "../context/ReaderAuthContext";
 
-const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+/** GoogleOAuthProvider throws on invalid IDs; Vercel often has placeholder env values. */
+function readGoogleWebClientId(): string {
+  const raw = (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "").trim();
+  if (!raw || raw === "undefined" || raw === "null") return "";
+  if (!raw.includes(".apps.googleusercontent.com")) return "";
+  return raw;
+}
+
+const googleClientId = readGoogleWebClientId();
 
 export default function AppProviders({
   children,

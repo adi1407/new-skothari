@@ -84,8 +84,7 @@ export default async function CategoryPage(
           total={listTotal}
           category={slug === "latest" ? undefined : slug}
           latestDays={slug === "latest" ? 3 : undefined}
-          headline={categoryHeadline}
-          dek={categoryDek}
+          feedSource="category"
           sectionTitle={locale === "hi" ? "और खबरें" : "More stories"}
         />
       </div>
