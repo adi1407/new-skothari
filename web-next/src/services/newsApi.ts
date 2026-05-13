@@ -10,7 +10,7 @@ export interface BackendArticle {
   summaryHi?: string;
   body?: string;
   bodyHi?: string;
-  images: Array<{
+  images?: Array<{
     url: string;
     caption?: string;
     isHero?: boolean;
@@ -20,7 +20,7 @@ export interface BackendArticle {
     source?: string;
   }>;
   category: string;
-  tags: string[];
+  tags?: string[];
   isBreaking: boolean;
   readTime: number;
   status: string;

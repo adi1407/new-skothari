@@ -40,6 +40,23 @@ export function toAbsoluteUrl(path: string): string {
   return `${getSiteUrl()}${p}`;
 }
 
+/** Safe for `metadataBase` in `layout.tsx` — never throws even if env is mis-set at build/runtime. */
+export function getMetadataBase(): URL {
+  try {
+    return new URL(getSiteUrl());
+  } catch {
+    const v = process.env.VERCEL_URL?.trim();
+    if (v) {
+      try {
+        return new URL(`https://${v.replace(/^https?:\/\//i, "")}`);
+      } catch {
+        /* fall through */
+      }
+    }
+    return new URL("http://localhost:3000");
+  }
+}
+
 export function buildNoIndexMetadata(title: string): Metadata {
   return {
     title,

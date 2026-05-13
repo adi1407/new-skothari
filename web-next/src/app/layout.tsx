@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { defaultDescription, getSiteUrl, siteName } from "../lib/seo/metadataHelpers";
+import { defaultDescription, getMetadataBase, siteName } from "../lib/seo/metadataHelpers";
 import AppChrome from "./AppChrome";
 import AppProviders from "./AppProviders";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(getSiteUrl()),
+  metadataBase: getMetadataBase(),
   icons: {
     icon: [{ url: "/brand-logo.png", type: "image/png" }],
     apple: [{ url: "/brand-logo.png", type: "image/png" }],

@@ -38,8 +38,10 @@ function relativeTime(dateStr?: string): { hi: string; en: string } {
 }
 
 function getImageUrl(article: BackendArticle): string {
-  const hero = article.images.find((i) => i.isHero) ?? article.images[0];
-  if (!hero) return `https://picsum.photos/seed/${article._id}/800/500`;
+  const imgs = Array.isArray(article.images) ? article.images : [];
+  const hero = imgs.find((i) => i.isHero) ?? imgs[0];
+  const id = String(article._id || "x").trim() || "x";
+  if (!hero?.url) return `https://picsum.photos/seed/${encodeURIComponent(id)}/800/500`;
   return withPublicOrigin(hero.url);
 }
 
@@ -87,8 +89,8 @@ export function adaptArticle(a: BackendArticle): ContentArticle {
     readTime:     String(a.readTime || ""),
     viewCount:    typeof a.views === "number" ? a.views : 0,
     upvoteCount:  typeof a.upvotes === "number" ? a.upvotes : 0,
-    tags:         a.tags,
-    tagsEn:       a.tags,
+    tags:         Array.isArray(a.tags) ? a.tags : [],
+    tagsEn:       Array.isArray(a.tags) ? a.tags : [],
     content:      bodyHi ? [bodyHi] : bodyEn ? [bodyEn] : undefined,
     contentEn:    bodyEn ? [bodyEn] : bodyHi ? [bodyHi] : undefined,
     slug:         String(a.slug || "").trim() || undefined,
