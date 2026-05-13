@@ -7,7 +7,9 @@ import { pickCategory } from "../features/home/server/homeFeed";
 import { buildHomeWebSiteJsonLd } from "../features/home/seo/schema";
 import { adaptArticles } from "../services/articleAdapter";
 import { fetchPublicArticlesPage } from "../lib/serverPublicApi";
-import InfinitePublicArticleList from "../components/InfinitePublicArticleList";
+import InfinitePublicArticleList, {
+  type InfinitePublicArticleListProps,
+} from "../components/InfinitePublicArticleList";
 import HomeDiscoverRow from "../components/HomeDiscoverRow";
 import { getServerUiLang } from "../lib/serverLocale";
 import { defaultDescription, siteName } from "../lib/seo/metadataHelpers";
@@ -38,6 +40,14 @@ export default async function Home() {
   const seedIds = feed.map((a) => a.id);
   const jsonLd = buildHomeWebSiteJsonLd();
 
+  const infiniteListProps: InfinitePublicArticleListProps = {
+    locale,
+    seedIds,
+    total: feedTotal,
+    feedSource: "home",
+    sectionTitle: locale === "hi" ? "और खबरें" : "More stories",
+  };
+
   return (
     <main className={styles.homeMain}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
@@ -60,13 +70,7 @@ export default async function Home() {
           const [lead, ...rest] = list;
           return <HomeCategorySection key={section.slug} section={section} locale={locale} lead={lead} rest={rest} />;
         })}
-        <InfinitePublicArticleList
-          locale={locale}
-          seedIds={seedIds}
-          total={feedTotal}
-          feedSource="home"
-          sectionTitle={locale === "hi" ? "और खबरें" : "More stories"}
-        />
+        <InfinitePublicArticleList {...infiniteListProps} />
       </div>
     </main>
   );

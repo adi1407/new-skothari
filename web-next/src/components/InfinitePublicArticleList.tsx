@@ -22,13 +22,13 @@ function computeLoadable(total: number, seedLen: number): boolean {
 
 type FeedSource = "home" | "category";
 
-type Props = {
+/** Serializable props only — never add functions (RSC → client boundary). */
+export type InfinitePublicArticleListProps = {
   locale: "hi" | "en";
   seedIds: string[];
   total: number;
   category?: string;
   latestDays?: number;
-  /** Must not pass function props from RSC → client (breaks serialization / Vercel 500). */
   feedSource?: FeedSource;
   sectionTitle?: string;
 };
@@ -49,7 +49,7 @@ export default function InfinitePublicArticleList({
   latestDays,
   feedSource = "home",
   sectionTitle,
-}: Props) {
+}: InfinitePublicArticleListProps) {
   const seen = useRef(new Set(seedIds));
   const [extra, setExtra] = useState<ContentArticle[]>([]);
   const [nextPage, setNextPage] = useState(1);

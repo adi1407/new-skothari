@@ -7,7 +7,9 @@ import { categoryDek, categoryHeadline } from "../../../features/category/server
 import { adaptArticles } from "../../../services/articleAdapter";
 import { fetchPublicArticlesPage } from "../../../lib/serverPublicApi";
 import { getServerUiLang } from "../../../lib/serverLocale";
-import InfinitePublicArticleList from "../../../components/InfinitePublicArticleList";
+import InfinitePublicArticleList, {
+  type InfinitePublicArticleListProps,
+} from "../../../components/InfinitePublicArticleList";
 import styles from "../../newsroom.module.css";
 
 export async function generateMetadata(
@@ -31,6 +33,16 @@ export default async function CategoryPage(
   const list = adaptArticles(rawList);
   const seedIds = list.map((a) => a.id);
   const jsonLd = buildCategoryCollectionJsonLd(slug, list, locale);
+
+  const infiniteListProps: InfinitePublicArticleListProps = {
+    locale,
+    seedIds,
+    total: listTotal,
+    category: slug === "latest" ? undefined : slug,
+    latestDays: slug === "latest" ? 3 : undefined,
+    feedSource: "category",
+    sectionTitle: locale === "hi" ? "और खबरें" : "More stories",
+  };
 
   return (
     <main className="cat-page">
@@ -78,15 +90,7 @@ export default async function CategoryPage(
             </article>
           ))}
         </section>
-        <InfinitePublicArticleList
-          locale={locale}
-          seedIds={seedIds}
-          total={listTotal}
-          category={slug === "latest" ? undefined : slug}
-          latestDays={slug === "latest" ? 3 : undefined}
-          feedSource="category"
-          sectionTitle={locale === "hi" ? "और खबरें" : "More stories"}
-        />
+        <InfinitePublicArticleList {...infiniteListProps} />
       </div>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     </main>
