@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import HeroSection from "../components/HeroSection";
-import NewsTicker from "../components/NewsTicker";
 import HomeCategorySection from "../features/home/components/HomeCategorySection";
 import { homeSections } from "../features/home/config/sections";
 import { pickCategory } from "../features/home/server/homeFeed";
@@ -53,7 +52,6 @@ export default async function Home() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className={`section-inner ${styles.sectionStack}`}>
         <HeroSection />
-        <NewsTicker />
         <HomeDiscoverRow />
         {feed.length === 0 ? (
           <section className={styles.sectionBlock}>

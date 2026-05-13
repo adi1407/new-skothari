@@ -14,15 +14,15 @@ export default function HomeDiscoverRow() {
       <div className={styles.grid}>
         <WeatherWidget variant="surface" />
         <div className={styles.hint}>
-          <p className={styles.hintTitle}>{t("साइट के नीचे", "At the bottom of the site")}</p>
+          <p className={styles.hintTitle}>{t("और खबरें", "More stories")}</p>
           <p className={styles.hintBody}>
             {t(
-              "मिली-जुली खबरों की पट्टी और पूरे भारत व दुनिया के मौसम का विस्तारित पैनल भी मिलेगा।",
-              "You will also find the mixed-headlines ticker and the full weather panel in the footer."
+              "नीचे की ओर «और खबरें» में श्रेणियों से मिली-जुली खबरें मिलेंगी। यहाँ मौसम का संक्षिप्त विवरण है।",
+              "Scroll to “More stories” for a mixed feed from across sections. Here is a quick weather snapshot."
             )}
           </p>
-          <Link href="#kn-site-footer" className={styles.hintLink}>
-            {t("फ़ुटर पर जाएँ", "Jump to footer")}
+          <Link href="#kn-more-stories" className={styles.hintLink}>
+            {t("और खबरें पर जाएँ", "Jump to more stories")}
           </Link>
         </div>
       </div>

@@ -11,8 +11,6 @@ import { categories } from "../data/publicCategories";
 import BrandLogo from "./BrandLogo";
 import { withPublicOrigin } from "../config/publicApi";
 import { SITE_SOCIAL } from "../config/siteSocial";
-import FooterMixedNewsMarquee from "./FooterMixedNewsMarquee";
-import WeatherWidget from "./WeatherWidget";
 
 const SOCIAL = [
   { key: "yt", name: "YouTube", nameHi: "यूट्यूब", url: SITE_SOCIAL.youtube, icon: CirclePlay, color: "#FF0000" },
@@ -99,11 +97,6 @@ export default function SiteFooter() {
     <footer id="kn-site-footer" className="site-footer site-footer-premium">
       <div className="footer-premium-accent" aria-hidden />
       <div className="footer-premium-noise" aria-hidden />
-
-      <div className="footer-premium-top-band">
-        <FooterMixedNewsMarquee />
-        <WeatherWidget />
-      </div>
 
       <div className="footer-premium-inner">
         <section className="footer-premium-brand">

@@ -7,7 +7,12 @@ import { categoryDek, categoryHeadline } from "../features/category/server/categ
 import { dek as homeDek, headline as homeHeadline } from "../features/home/server/homeFeed";
 import { adaptArticles } from "../services/articleAdapter";
 import { fetchPublishedArticlesPage } from "../services/newsApi";
+import { interleaveByCategory } from "../lib/mixedArticleOrder";
 import styles from "../app/newsroom.module.css";
+
+const MIXED_FALLBACK_TARGET = 12;
+const MIXED_FETCH_PAGES = 5;
+const MIXED_PAGE_SIZE = 24;
 
 const PAGE_SIZE = 24;
 const MAX_SKIP_PAGES = 60;
@@ -63,6 +68,10 @@ export default function InfinitePublicArticleList({
   const doneRef = useRef(!loadable);
   const inFlightRef = useRef(false);
 
+  const [mixedFallback, setMixedFallback] = useState<ContentArticle[]>([]);
+  const [mixedLoading, setMixedLoading] = useState(false);
+  const [mixedErr, setMixedErr] = useState("");
+
   const seedKey = seedIds.join(",");
 
   useEffect(() => {
@@ -83,7 +92,70 @@ export default function InfinitePublicArticleList({
     setDone(initialDone);
     doneRef.current = initialDone;
     setErr("");
+    setMixedFallback([]);
+    setMixedErr("");
   }, [seedKey, total]);
+
+  useEffect(() => {
+    const loadableNow = computeLoadable(total, seedIds.length);
+    if (loadableNow || seedIds.length === 0) {
+      setMixedFallback([]);
+      setMixedLoading(false);
+      setMixedErr("");
+      return;
+    }
+
+    const seed = new Set(seedIds);
+    let cancelled = false;
+    const ac = new AbortController();
+
+    async function loadMixed() {
+      setMixedLoading(true);
+      setMixedErr("");
+      const collected: ContentArticle[] = [];
+      const seenIds = new Set<string>();
+
+      try {
+        for (let page = 1; page <= MIXED_FETCH_PAGES && collected.length < MIXED_FALLBACK_TARGET; page += 1) {
+          const { articles } = await fetchPublishedArticlesPage({
+            category,
+            latestDays,
+            limit: MIXED_PAGE_SIZE,
+            page,
+            locale,
+            signal: ac.signal,
+          });
+          if (!articles.length) break;
+
+          const ordered = interleaveByCategory(articles);
+          const adapted = adaptArticles(ordered);
+          for (const a of adapted) {
+            if (seed.has(a.id) || seenIds.has(a.id)) continue;
+            seenIds.add(a.id);
+            collected.push(a);
+            if (collected.length >= MIXED_FALLBACK_TARGET) break;
+          }
+        }
+        if (!cancelled) setMixedFallback(collected);
+      } catch (e: unknown) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        if (!cancelled) {
+          setMixedFallback([]);
+          setMixedErr(
+            locale === "hi" ? "मिश्रित खबरें लोड नहीं हो सकीं।" : "Could not load mixed picks."
+          );
+        }
+      } finally {
+        if (!cancelled) setMixedLoading(false);
+      }
+    }
+
+    void loadMixed();
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [seedKey, total, locale, category, latestDays]);
 
   const loadMore = useCallback(async () => {
     if (inFlightRef.current || doneRef.current) return;
@@ -185,7 +257,11 @@ export default function InfinitePublicArticleList({
   if (seedIds.length === 0) return null;
 
   return (
-    <section className={styles.sectionBlock} aria-busy={loading}>
+    <section
+      id="kn-more-stories"
+      className={styles.sectionBlock}
+      aria-busy={loading || mixedLoading}
+    >
       {sectionTitle ? (
         <div className={styles.sectionHead}>
           <h2 className="section-title">{sectionTitle}</h2>
@@ -193,11 +269,55 @@ export default function InfinitePublicArticleList({
       ) : null}
 
       {!loadable ? (
-        <p className="card-summary" style={{ marginTop: 4 }}>
-          {locale === "hi"
-            ? "होम पर दिखाई गईं सभी उपलब्ध खबरें ऊपर दी गई हैं।"
-            : "All available stories for the home page are shown in the sections above."}
-        </p>
+        <>
+          <p className="card-summary" style={{ marginTop: 4 }}>
+            {feedSource === "category"
+              ? locale === "hi"
+                ? "इस श्रेणी में मिली-जुली और खबरें — ऊपर दिखाई सूची के अलावा।"
+                : "More mixed stories in this category — beyond the list above."
+              : locale === "hi"
+                ? "श्रेणियों से मिलाकर चुनी गईं और खबरें — ऊपर दिखाई सूची के अलावा।"
+                : "Mixed picks from across sections — beyond what is already shown above."}
+          </p>
+          {mixedLoading ? (
+            <p className="card-summary" style={{ marginTop: 12 }}>
+              {locale === "hi" ? "लोड हो रहा है…" : "Loading…"}
+            </p>
+          ) : null}
+          {mixedErr ? (
+            <p className="card-summary" role="alert" style={{ marginTop: 8 }}>
+              {mixedErr}
+            </p>
+          ) : null}
+          {!mixedLoading && !mixedErr && mixedFallback.length === 0 ? (
+            <p className="card-summary" style={{ marginTop: 8, opacity: 0.9 }}>
+              {locale === "hi"
+                ? "अतिरिक्त खबरें अभी उपलब्ध नहीं हैं। श्रेणियाँ देखें।"
+                : "No additional stories to show right now. Browse categories."}
+            </p>
+          ) : null}
+          {mixedFallback.length > 0 ? (
+            <div className="cat-page-grid" style={{ marginTop: 16 }}>
+              {mixedFallback.map((item) => (
+                <article key={String(item.id)} className={`card-default ${styles.cardBody}`}>
+                  <Link href={`/article/${item.id}`} className={styles.cardLink}>
+                    <img
+                      src={item.image}
+                      alt={itemHeadline(item, locale, feedSource)}
+                      width={800}
+                      height={450}
+                      className={styles.cardImage}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <h3 className="card-title">{itemHeadline(item, locale, feedSource)}</h3>
+                    <p className="card-summary">{itemDek(item, locale, feedSource)}</p>
+                  </Link>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </>
       ) : null}
 
       {loadable ? (
