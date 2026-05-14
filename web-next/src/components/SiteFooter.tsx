@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import {
   CirclePlay, Camera, AtSign, Globe, Send,
-  Heart, Flag, Tv, Sparkles, Building2, ArrowRight, Check,
+  Heart, Flag, Tv, Sparkles, Building2,
 } from "lucide-react";
 import { useLang } from "../context/LangContext";
 import { categories } from "../data/publicCategories";
 import BrandLogo from "./BrandLogo";
-import { withPublicOrigin } from "../config/publicApi";
 import { SITE_SOCIAL } from "../config/siteSocial";
 
 const SOCIAL = [
@@ -34,11 +33,6 @@ const CAT_COLOR: Record<string, string> = {
 
 export default function SiteFooter() {
   const { lang, t } = useLang();
-  const [email, setEmail] = useState("");
-  const [nlCadence, setNlCadence] = useState<"daily" | "weekly">("daily");
-  const [nlStatus, setNlStatus] = useState<"idle" | "done">("idle");
-  const [nlPending, setNlPending] = useState(false);
-  const [nlErr, setNlErr] = useState("");
 
   const browseCats = categories.filter((c) => c.slug !== "home");
 
@@ -66,32 +60,6 @@ export default function SiteFooter() {
           { hi: "Cookies", en: "Cookies", to: "/cookies" },
           { hi: "Terms", en: "Terms", to: "/terms" },
         ];
-
-  const onNewsletter = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const addr = email.trim();
-    if (!addr || nlPending) return;
-    setNlErr("");
-    setNlPending(true);
-    try {
-      const res = await fetch(withPublicOrigin("/api/public/newsletter/subscribe"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: addr }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(typeof data.message === "string" ? data.message : "Subscribe failed");
-      }
-      setNlStatus("done");
-      setEmail("");
-      window.setTimeout(() => setNlStatus("idle"), 6000);
-    } catch {
-      setNlErr(lang === "hi" ? "अभी सब्सक्राइब नहीं हो सका — फिर कोशिश करें।" : "Could not subscribe. Try again.");
-    } finally {
-      setNlPending(false);
-    }
-  };
 
   return (
     <footer id="kn-site-footer" className="site-footer site-footer-premium">
@@ -192,73 +160,6 @@ export default function SiteFooter() {
             ))}
           </ul>
         </nav>
-      </div>
-
-      <div className="footer-premium-newsletter">
-        <div className="footer-premium-newsletter-inner">
-          <div className="footer-premium-newsletter-card">
-            <div className="footer-premium-newsletter-copy">
-              <p className="footer-premium-newsletter-title">{t("न्यूज़लेटर", "Newsletter")}</p>
-              <p className="footer-premium-newsletter-sub">
-                {t(
-                  "सुबह की बड़ी खबरें अपने इनबॉक्स में — बिना शोर के, सिर्फ़ काम की बात।",
-                  "Morning briefings in your inbox — signal, not noise."
-                )}
-              </p>
-            </div>
-            {nlStatus === "done" ? (
-              <div className="footer-premium-nl-done" role="status">
-                <Check size={18} strokeWidth={2.5} />
-                {t(
-                  "धन्यवाद! नवीनतम खबरें आपके ईमेल पर भेज दी गईं।",
-                  "Thanks — latest stories are heading to your inbox."
-                )}
-              </div>
-            ) : (
-              <form className="footer-premium-nl-stack" onSubmit={onNewsletter}>
-                <div className="footer-premium-nl-cadence" role="group" aria-label={t("आवृत्ति", "Frequency")}>
-                  <button
-                    type="button"
-                    className={`footer-premium-nl-cadence-btn${nlCadence === "daily" ? " is-active" : ""}`}
-                    onClick={() => setNlCadence("daily")}
-                  >
-                    {t("दैनिक", "Daily")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`footer-premium-nl-cadence-btn${nlCadence === "weekly" ? " is-active" : ""}`}
-                    onClick={() => setNlCadence("weekly")}
-                  >
-                    {t("साप्ताहिक", "Weekly")}
-                  </button>
-                </div>
-                <div className="footer-premium-nl-form">
-                  <label htmlFor="footer-nl-email" className="kn-visually-hidden">
-                    {t("ईमेल", "Email")}
-                  </label>
-                  <input
-                    id="footer-nl-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={lang === "hi" ? "आपका ईमेल" : "Your email"}
-                    className="footer-premium-nl-input"
-                    autoComplete="email"
-                  />
-                  <button type="submit" className="footer-premium-nl-submit" disabled={nlPending}>
-                    {nlPending ? t("भेज रहे हैं…", "Sending…") : t("जुड़ें", "Subscribe")}
-                    {!nlPending ? <ArrowRight size={16} strokeWidth={2.5} aria-hidden /> : null}
-                  </button>
-                </div>
-              </form>
-            )}
-            {nlErr ? (
-              <p className="footer-premium-nl-err" role="alert">
-                {nlErr}
-              </p>
-            ) : null}
-          </div>
-        </div>
       </div>
 
       <div className="footer-premium-bottom">

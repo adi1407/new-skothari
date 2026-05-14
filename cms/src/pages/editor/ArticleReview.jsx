@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Globe, XCircle, Edit3, Save, Loader2, AlertCircle, CheckCircle,
 } from "lucide-react";
@@ -37,7 +37,13 @@ function LocaleBadge({ locale }) {
 export default function ArticleReview() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
+
+  const queuePath = () => {
+    const s = searchParams.toString();
+    return s ? `/editor/queue?${s}` : "/editor/queue";
+  };
 
   const [article, setArticle]     = useState(null);
   const [editMode, setEditMode]   = useState(false);
@@ -86,7 +92,7 @@ export default function ArticleReview() {
       const { data } = await publishArticle(id);
       setArticle(data.article);
       setSuccess("Article published to website!");
-      setTimeout(() => navigate("/editor/queue"), 2000);
+      setTimeout(() => navigate(queuePath()), 2000);
     } catch (err) {
       setError(err.response?.data?.message || "Publish failed");
     } finally {
@@ -115,7 +121,7 @@ export default function ArticleReview() {
       setArticle(data.article);
       setShowReject(false);
       setSuccess("Article rejected and returned to writer");
-      setTimeout(() => navigate("/editor/queue"), 2000);
+      setTimeout(() => navigate(queuePath()), 2000);
     } catch (err) {
       setError(err.response?.data?.message || "Reject failed");
     } finally {
@@ -141,7 +147,7 @@ export default function ArticleReview() {
       {/* Header */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-          <button type="button" onClick={() => navigate("/editor/queue")} className="flex min-h-10 min-w-10 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition-colors hover:bg-slate-100">
+          <button type="button" onClick={() => navigate(queuePath())} className="flex min-h-10 min-w-10 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition-colors hover:bg-slate-100">
             <ArrowLeft size={16} />
           </button>
           <div>
@@ -149,7 +155,7 @@ export default function ArticleReview() {
             <div className="flex flex-wrap items-center gap-2 mt-0.5">
               <Badge status={article.status} />
               <LocaleBadge locale={article.primaryLocale === "hi" ? "hi" : "en"} />
-              <span className="text-xs text-slate-400">by {article.author?.name}</span>
+              <span className="text-xs text-slate-400">by {article.bylineName?.trim() || article.author?.name}</span>
               <span className="text-xs text-slate-400">· {new Date(article.updatedAt).toLocaleDateString()}</span>
             </div>
           </div>
@@ -465,13 +471,13 @@ export default function ArticleReview() {
               {article.publishedAt && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">Published</span>
-                  <span className="font-medium text-slate-800">{new Date(article.publishedAt).toLocaleDateString()}</span>
+                  <span className="font-medium text-slate-800">{new Date(article.publishedAt).toLocaleString()}</span>
                 </div>
               )}
-              {article.views > 0 && (
+              {article.publishedBy?.name && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Views</span>
-                  <span className="font-medium text-slate-800">{article.views}</span>
+                  <span className="text-slate-500">Published by</span>
+                  <span className="font-medium text-slate-800">{article.publishedBy.name}</span>
                 </div>
               )}
             </div>

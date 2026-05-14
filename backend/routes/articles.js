@@ -102,8 +102,8 @@ function hasHindiDeskContent(article) {
 
 function canDeskEditorActOnArticle(user, article) {
   if (user.role === "super_admin" || user.role === "admin" || user.role === "editor") return true;
-  if (user.role === "editor_en") return article.editorEn && String(article.editorEn) === String(user._id);
-  if (user.role === "editor_hi") return article.editorHi && String(article.editorHi) === String(user._id);
+  if (user.role === "editor_en") return normalizePrimaryLocale(article.primaryLocale) === "en";
+  if (user.role === "editor_hi") return normalizePrimaryLocale(article.primaryLocale) === "hi";
   return false;
 }
 
@@ -111,12 +111,8 @@ function canViewArticle(user, articleDoc) {
   if (user.role === "video_editor") return false;
   if (isAdminLike(user.role) || user.role === "editor") return true;
   if (isEditorRole(user.role)) {
-    if (user.role === "editor_en") {
-      return articleDoc.editorEn && String(articleDoc.editorEn) === String(user._id);
-    }
-    if (user.role === "editor_hi") {
-      return articleDoc.editorHi && String(articleDoc.editorHi) === String(user._id);
-    }
+    if (user.role === "editor_en") return normalizePrimaryLocale(articleDoc.primaryLocale) === "en";
+    if (user.role === "editor_hi") return normalizePrimaryLocale(articleDoc.primaryLocale) === "hi";
   }
   if (isWriterRole(user.role)) return isAssignedWriter(articleDoc, user._id);
   return false;
@@ -165,10 +161,14 @@ function buildQuery(role, userId, filters = {}) {
 
   if (isWriterRole(role)) {
     q.$or = [{ author: uid }, { writerEn: uid }, { writerHi: uid }];
+    if (role === "writer_en") q.primaryLocale = "en";
+    if (role === "writer_hi") q.primaryLocale = "hi";
   } else if (role === "editor_en") {
-    q.editorEn = uid;
+    q.primaryLocale = "en";
   } else if (role === "editor_hi") {
-    q.editorHi = uid;
+    q.primaryLocale = "hi";
+  } else if (role === "editor" && filters.primaryLocale) {
+    q.primaryLocale = normalizePrimaryLocale(filters.primaryLocale);
   }
 
   if (filters.status) q.status = filters.status;
@@ -244,13 +244,19 @@ router.get(
 // Writer: own articles | Editor/Admin (list): drafts + pipeline when no status filter
 router.get("/", authenticate, async (req, res) => {
   try {
-    const { status, category, search, page = 1, limit = 20 } = req.query;
-    const q = buildQuery(req.user.role, req.user._id, { status, category, search });
+    const { status, category, search, page = 1, limit = 20, primaryLocale } = req.query;
+    const q = buildQuery(req.user.role, req.user._id, {
+      status,
+      category,
+      search,
+      primaryLocale,
+    });
 
     const finalQuery = isAdminLike(req.user.role) ? {} : q;
     if (isAdminLike(req.user.role)) {
       if (status)   finalQuery.status   = status;
       if (category) finalQuery.category = category;
+      if (primaryLocale) finalQuery.primaryLocale = normalizePrimaryLocale(primaryLocale);
       if (search) {
         finalQuery.$or = [
           { title: { $regex: search, $options: "i" } },
@@ -265,6 +271,7 @@ router.get("/", authenticate, async (req, res) => {
       Article.find(finalQuery)
         .populate("author", "name email role")
         .populate("lastEditedBy", "name role")
+        .populate("publishedBy", "name role")
         .populate("writerEn writerHi editorEn editorHi", "name email role")
         .sort({ updatedAt: -1 })
         .skip(skip)
@@ -330,6 +337,7 @@ router.get("/:id", authenticate, async (req, res) => {
     let article = await Article.findOne(ref)
       .populate("author", "name email role avatar bio")
       .populate("lastEditedBy", "name role")
+      .populate("publishedBy", "name role")
       .populate("writerEn writerHi editorEn editorHi", "name email role")
       .populate("task", "title deadline priority");
 
@@ -347,6 +355,7 @@ router.get("/:id", authenticate, async (req, res) => {
       )
         .populate("author", "name email role avatar bio")
         .populate("lastEditedBy", "name role")
+        .populate("publishedBy", "name role")
         .populate("writerEn writerHi editorEn editorHi", "name email role")
         .populate("task", "title deadline priority");
       if (!article) {
@@ -430,6 +439,7 @@ router.post(
 
       const populated = await article.populate([
         { path: "author", select: "name email role" },
+        { path: "publishedBy", select: "name role" },
         { path: "writerEn writerHi editorEn editorHi", select: "name email role" },
       ]);
       res.status(201).json({ article: populated });
@@ -547,6 +557,7 @@ router.put("/:id", authenticate, async (req, res) => {
     const populated = await article.populate([
       { path: "author", select: "name email role" },
       { path: "lastEditedBy", select: "name role" },
+      { path: "publishedBy", select: "name role" },
       { path: "writerEn writerHi editorEn editorHi", select: "name email role" },
     ]);
     res.json({ article: populated });
@@ -754,6 +765,7 @@ router.patch(
 
       article.status = "published";
       article.publishedAt = new Date();
+      article.publishedBy = req.user._id;
       article.lastEditedBy = req.user._id;
       await article.save();
       if (article.isBreaking) {
@@ -768,7 +780,12 @@ router.patch(
         });
       }
 
-      res.json({ article, message: "Article published successfully" });
+      const published = await Article.findById(article._id)
+        .populate("author", "name email role")
+        .populate("lastEditedBy", "name role")
+        .populate("publishedBy", "name role")
+        .populate("writerEn writerHi editorEn editorHi", "name email role");
+      res.json({ article: published, message: "Article published successfully" });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
@@ -795,10 +812,16 @@ router.patch(
 
       article.status = "submitted";
       article.publishedAt = null;
+      article.publishedBy = null;
       article.lastEditedBy = req.user._id;
       await article.save();
 
-      res.json({ article, message: "Article unpublished" });
+      const updated = await Article.findById(article._id)
+        .populate("author", "name email role")
+        .populate("lastEditedBy", "name role")
+        .populate("publishedBy", "name role")
+        .populate("writerEn writerHi editorEn editorHi", "name email role");
+      res.json({ article: updated, message: "Article unpublished" });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }

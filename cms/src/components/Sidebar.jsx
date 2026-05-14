@@ -14,41 +14,47 @@ import {
   X,
 } from "lucide-react";
 import { isWriterRole, writerDeskLabel, isEditorRole, isAdminLike } from "../constants/roles";
+import { withEditorListSearch } from "../utils/editorDeskParams";
 import CmsBrandLogo from "./CmsBrandLogo";
 
 const WRITER_NAV = [
-  { to: "/writer", label: "My Articles", icon: FileText },
-  { to: "/writer/new", label: "Write Article", icon: PlusCircle },
+  { to: "/writer", label: "My Articles", icon: FileText, end: true },
+  { to: "/writer/new", label: "Write Article", icon: PlusCircle, end: true },
 ];
 
 const EDITOR_NAV = [
-  { to: "/editor", label: "Overview", icon: LayoutDashboard },
-  { to: "/editor/queue", label: "Review queue", icon: CheckSquare },
-  { to: "/editor/articles", label: "All articles", icon: FileText },
-  { to: "/editor/videos", label: "Videos", icon: Video },
-  { to: "/editor/writers", label: "Writers", icon: Users },
-  { to: "/editor/tasks", label: "Tasks", icon: ClipboardList },
+  { to: "/editor", label: "Overview", icon: LayoutDashboard, end: true },
+  { to: "/editor/queue", label: "Review queue", icon: CheckSquare, end: true },
+  { to: "/editor/articles", label: "All articles", icon: FileText, end: true },
+  { to: "/editor/videos", label: "Videos", icon: Video, end: true },
+  { to: "/editor/writers", label: "Writers", icon: Users, end: true },
+  { to: "/editor/tasks", label: "Tasks", icon: ClipboardList, end: true },
 ];
 
 const ADMIN_NAV = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/admin/writers", label: "Writers", icon: Users },
-  { to: "/admin/videos", label: "Videos", icon: Video },
-  { to: "/admin/tasks", label: "Tasks", icon: ClipboardList },
-  { to: "/admin/users", label: "Users", icon: UserCog },
-  { to: "/writer", label: "Write", icon: PlusCircle },
-  { to: "/editor", label: "Editor overview", icon: LayoutDashboard },
-  { to: "/editor/queue", label: "Review queue", icon: CheckSquare },
-  { to: "/editor/articles", label: "All articles", icon: FileText },
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/writers", label: "Writers", icon: Users, end: false },
+  { to: "/admin/videos", label: "Videos", icon: Video, end: true },
+  { to: "/admin/tasks", label: "Tasks", icon: ClipboardList, end: true },
+  { to: "/admin/users", label: "Users", icon: UserCog, end: true },
+  { to: "/writer", label: "Write", icon: PlusCircle, end: true },
+  { to: "/editor", label: "Editor overview", icon: LayoutDashboard, end: true },
+  { to: "/editor/queue", label: "Review queue", icon: CheckSquare, end: true },
+  { to: "/editor/articles", label: "All articles", icon: FileText, end: true },
 ];
 
 const VIDEO_EDITOR_NAV = [
-  { to: "/editor/videos", label: "Videos", icon: Video },
+  { to: "/editor/videos", label: "Videos", icon: Video, end: true },
 ];
 
 function navForUser(role) {
   if (isAdminLike(role)) return ADMIN_NAV;
-  if (isEditorRole(role)) return EDITOR_NAV;
+  if (isEditorRole(role)) {
+    return EDITOR_NAV.map((item) => ({
+      ...item,
+      to: withEditorListSearch(item.to, role),
+    }));
+  }
   if (role === "video_editor") return VIDEO_EDITOR_NAV;
   if (isWriterRole(role)) return WRITER_NAV;
   return WRITER_NAV;
@@ -131,11 +137,11 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 py-4 sm:px-3">
-        {nav.map(({ to, label, icon: Icon }) => (
+        {nav.map(({ to, label, icon: Icon, end: endProp }) => (
           <NavLink
             key={to + label}
             to={to}
-            end={to === "/editor" || to === "/admin" || (to !== "/admin/writers" && to !== "/writer")}
+            end={endProp ?? false}
             onClick={() => onMobileClose()}
             className={navClass}
           >

@@ -8,6 +8,7 @@ const {
   EDITOR_ROLES,
   ADMIN_LIKE_ROLES,
   isWriterRole,
+  isAdminLike,
 } = require("../utils/roles");
 
 const ASSIGNMENT_EDITOR_ROLES = [...new Set([...EDITOR_ROLES, ...ADMIN_LIKE_ROLES])];
@@ -285,7 +286,7 @@ router.get("/writers/:id/tasks", async (req, res) => {
 // ── GET /api/editor/articles — global article browser ──
 router.get("/articles", async (req, res) => {
   try {
-    const { status, category, author, search, page = 1, limit = 20 } = req.query;
+    const { status, category, author, search, page = 1, limit = 20, primaryLocale } = req.query;
     const q = {};
     if (status) q.status = status;
     if (category) q.category = category;
@@ -296,11 +297,19 @@ router.get("/articles", async (req, res) => {
         { titleHi: { $regex: search, $options: "i" } },
       ];
 
+    const role = req.user.role;
+    if (role === "editor_en") q.primaryLocale = "en";
+    else if (role === "editor_hi") q.primaryLocale = "hi";
+    else if (primaryLocale && (role === "editor" || isAdminLike(role))) {
+      q.primaryLocale = primaryLocale === "hi" ? "hi" : "en";
+    }
+
     const skip = (Number(page) - 1) * Number(limit);
     const [articles, total] = await Promise.all([
       Article.find(q)
         .populate("author", "name email role")
         .populate("lastEditedBy", "name role")
+        .populate("publishedBy", "name role")
         .populate("writerEn writerHi editorEn editorHi", "name email role")
         .sort({ updatedAt: -1 })
         .skip(skip)

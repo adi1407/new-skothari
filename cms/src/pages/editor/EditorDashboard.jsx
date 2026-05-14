@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { CheckSquare, Clock, Globe, XCircle, Eye, Search } from "lucide-react";
 import { getArticles, mediaUrl } from "../../api";
 import DashboardHero from "../../components/DashboardHero";
 import StatTile from "../../components/dashboard/StatTile";
 import PanelCard from "../../components/dashboard/PanelCard";
+import { useAuth } from "../../context/AuthContext";
+import { articleListParamsFromRole } from "../../utils/editorDeskParams";
 
 const TAB_FILTER = {
   submitted: { label: "Pending review" },
@@ -31,6 +33,8 @@ function articleListSummary(a) {
 }
 
 export default function EditorDashboard() {
+  const { user } = useAuth();
+  const location = useLocation();
   const [tab, setTab] = useState("submitted");
   const [articles, setArticles] = useState([]);
   const [search, setSearch] = useState("");
@@ -38,18 +42,22 @@ export default function EditorDashboard() {
   const [counts, setCounts] = useState({ submitted: 0, published: 0, rejected: 0 });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    setLoading(true);
-    getArticles({ status: tab, search: search || undefined })
-      .then((r) => setArticles(r.data.articles))
-      .finally(() => setLoading(false));
-  }, [tab, search]);
+  const listBase = () =>
+    articleListParamsFromRole(user?.role, { search: search || undefined });
 
   useEffect(() => {
+    setLoading(true);
+    getArticles({ status: tab, ...listBase() })
+      .then((r) => setArticles(r.data.articles))
+      .finally(() => setLoading(false));
+  }, [tab, search, user?.role]);
+
+  useEffect(() => {
+    const base = () => articleListParamsFromRole(user?.role, {});
     Promise.all([
-      getArticles({ status: "submitted" }),
-      getArticles({ status: "published" }),
-      getArticles({ status: "rejected" }),
+      getArticles({ status: "submitted", ...base() }),
+      getArticles({ status: "published", ...base() }),
+      getArticles({ status: "rejected", ...base() }),
     ]).then(([s, p, r]) =>
       setCounts({
         submitted: s.data.pagination.total,
@@ -57,7 +65,7 @@ export default function EditorDashboard() {
         rejected: r.data.pagination.total,
       })
     );
-  }, []);
+  }, [user?.role]);
 
   return (
     <div className="cms-page">
@@ -143,8 +151,19 @@ export default function EditorDashboard() {
                 key={a._id}
                 role="button"
                 tabIndex={0}
-                onClick={() => navigate(`/editor/review/${a._id}`)}
-                onKeyDown={(e) => e.key === "Enter" && navigate(`/editor/review/${a._id}`)}
+                onClick={() =>
+                  navigate({
+                    pathname: `/editor/review/${a._id}`,
+                    search: location.search || undefined,
+                  })
+                }
+                onKeyDown={(e) =>
+                  e.key === "Enter" &&
+                  navigate({
+                    pathname: `/editor/review/${a._id}`,
+                    search: location.search || undefined,
+                  })
+                }
                 className="group/row flex cursor-pointer items-start gap-4 px-4 py-4 transition-colors hover:bg-slate-50/90 sm:px-6 sm:py-4"
               >
                 <div className="h-14 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200/80">
@@ -172,11 +191,15 @@ export default function EditorDashboard() {
                     {articleListSummary(a) || "—"}
                   </p>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
-                    <span>By {a.author?.name}</span>
+                    <span>By {a.bylineName?.trim() || a.author?.name}</span>
                     <span className="text-slate-300">·</span>
                     <span className="capitalize">{a.category}</span>
                     <span className="text-slate-300">·</span>
-                    <span>{new Date(a.updatedAt).toLocaleDateString()}</span>
+                    <span>
+                      {a.status === "published" && a.publishedAt
+                        ? `Published ${new Date(a.publishedAt).toLocaleString()}`
+                        : `Updated ${new Date(a.updatedAt).toLocaleDateString()}`}
+                    </span>
                     {a.isBreaking && (
                       <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-700 ring-1 ring-red-200/60">
                         Breaking

@@ -61,10 +61,10 @@ function isAssignedWriter(article, userId) {
   return false;
 }
 
-/** Mongo filter for article list by editor desk (null = no extra filter). */
-function editorArticleListExtra(role, userId) {
-  if (role === "editor_en") return { editorEn: userId };
-  if (role === "editor_hi") return { editorHi: userId };
+/** Mongo filter for article list by editor desk (null = no extra filter). Desk pool by primaryLocale. */
+function editorArticleListExtra(role) {
+  if (role === "editor_en") return { primaryLocale: "en" };
+  if (role === "editor_hi") return { primaryLocale: "hi" };
   if (role === "editor" || role === "super_admin" || role === "admin") return null;
   return null;
 }

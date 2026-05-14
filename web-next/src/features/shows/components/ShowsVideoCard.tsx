@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Play, Clock, Eye, ExternalLink } from "lucide-react";
+import { Play, Clock, ExternalLink } from "lucide-react";
 import YoutubeThumbImg from "../../../components/YoutubeThumbImg";
 import type { VideoItem } from "../types/shows";
 
@@ -50,11 +50,6 @@ export default function ShowsVideoCard({
           <p className="shows-page-card-summary">{lang === "hi" ? v.summary : v.summaryEn ?? v.summary}</p>
         ) : null}
         <div className="shows-meta">
-          <Eye size={12} />
-          <span>
-            {v.views} {t("व्यूज़", "views")}
-          </span>
-          <span className="shows-meta-dot" />
           <Clock size={12} />
           <span>{v.duration}</span>
         </div>

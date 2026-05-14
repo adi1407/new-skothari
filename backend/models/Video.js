@@ -13,6 +13,9 @@ const videoSchema = new mongoose.Schema(
     summary: { type: String, trim: true, maxlength: 500, default: "" },
     summaryEn: { type: String, trim: true, maxlength: 500, default: "" },
     youtubeUrl: { type: String, required: true, trim: true, maxlength: 500 },
+    /** Optional display metadata from the channel (filled in CMS). */
+    youtubeChannelTitle: { type: String, trim: true, maxlength: 220, default: "" },
+    youtubeChannelUrl: { type: String, trim: true, maxlength: 500, default: "" },
     duration: { type: String, trim: true, default: "" },
     views: { type: String, trim: true, default: "" },
     category: {

@@ -2,6 +2,7 @@ const router = require("express").Router();
 const { body, query, validationResult } = require("express-validator");
 const Video = require("../models/Video");
 const { authenticate, authorize } = require("../middleware/auth");
+const { isAdminLike } = require("../utils/roles");
 
 const YT_HOST = /youtube\.com|youtu\.be/i;
 
@@ -13,6 +14,10 @@ function isLikelyYoutubeUrl(url) {
   } catch {
     return false;
   }
+}
+
+function canPublishVideo(user) {
+  return user.role === "editor" || isAdminLike(user.role);
 }
 
 // ── GET /api/videos (editor + admin desk) ─────────────────
@@ -93,6 +98,13 @@ router.post(
 
     try {
       const payload = { ...req.body };
+      if (req.user.role === "video_editor") {
+        payload.status = "draft";
+        delete payload.publishedAt;
+      }
+      if (payload.status === "published" && !canPublishVideo(req.user)) {
+        return res.status(403).json({ message: "Video editors cannot publish" });
+      }
       if (payload.status === "published" && !payload.publishedAt) {
         payload.publishedAt = new Date();
       }
@@ -126,9 +138,19 @@ router.put(
       const video = await Video.findById(req.params.id);
       if (!video) return res.status(404).json({ message: "Video not found" });
 
+      if (req.user.role === "video_editor") {
+        if (video.status === "published") {
+          return res.status(403).json({ message: "Only editors or admins can change published videos" });
+        }
+        if (req.body.status === "published") {
+          return res.status(403).json({ message: "Video editors cannot publish" });
+        }
+      }
+
       const allowed = [
         "primaryLocale",
         "title", "titleEn", "summary", "summaryEn", "youtubeUrl",
+        "youtubeChannelTitle", "youtubeChannelUrl",
         "duration", "views", "category", "thumbnailOverride", "sortOrder", "status", "publishedAt",
         "seedTag",
       ];

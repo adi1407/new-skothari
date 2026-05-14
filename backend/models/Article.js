@@ -146,6 +146,13 @@ const articleSchema = new mongoose.Schema(
     rejectedAt: { type: Date, default: null },
 
     publishedAt: { type: Date, default: null },
+    /** Staff who clicked Publish (CMS). */
+    publishedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
 
     task: {
       type: mongoose.Schema.Types.ObjectId,

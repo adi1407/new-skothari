@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FileText,
@@ -16,11 +16,19 @@ import DashboardHero from "../../components/DashboardHero";
 import StatTile from "../../components/dashboard/StatTile";
 import PanelCard from "../../components/dashboard/PanelCard";
 import MiniBar from "../../components/dashboard/MiniBar";
+import { useAuth } from "../../context/AuthContext";
+import { withEditorListSearch } from "../../utils/editorDeskParams";
 
 export default function EditorOverview() {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const deskQueue = useMemo(() => withEditorListSearch("/editor/queue", user?.role), [user?.role]);
+  const deskArticles = useMemo(() => withEditorListSearch("/editor/articles", user?.role), [user?.role]);
+  const deskWriters = useMemo(() => withEditorListSearch("/editor/writers", user?.role), [user?.role]);
+  const deskTasks = useMemo(() => withEditorListSearch("/editor/tasks", user?.role), [user?.role]);
 
   useEffect(() => {
     getEditorStats()
@@ -38,10 +46,10 @@ export default function EditorOverview() {
   const catMax = stats?.byCategory?.[0]?.count || 1;
 
   const quickLinks = [
-    { label: "Review queue", path: "/editor/queue", className: "bg-emerald-700 text-white hover:bg-emerald-800" },
-    { label: "All articles", path: "/editor/articles", className: "bg-slate-800 text-white hover:bg-slate-900" },
-    { label: "Writers", path: "/editor/writers", className: "bg-brand text-white hover:bg-brand-dark" },
-    { label: "Tasks", path: "/editor/tasks", className: "bg-violet-700 text-white hover:bg-violet-800" },
+    { label: "Review queue", path: deskQueue, className: "bg-emerald-700 text-white hover:bg-emerald-800" },
+    { label: "All articles", path: deskArticles, className: "bg-slate-800 text-white hover:bg-slate-900" },
+    { label: "Writers", path: deskWriters, className: "bg-brand text-white hover:bg-brand-dark" },
+    { label: "Tasks", path: deskTasks, className: "bg-violet-700 text-white hover:bg-violet-800" },
   ];
 
   return (
@@ -60,21 +68,21 @@ export default function EditorOverview() {
           value={stats?.articles?.published}
           sub={`+${stats?.articles?.recentPublished ?? 0} this week`}
           variant="success"
-          onClick={() => navigate("/editor/queue")}
+          onClick={() => navigate(deskQueue)}
         />
         <StatTile
           icon={Clock}
           label="Pending review"
           value={stats?.articles?.submitted}
           variant="warn"
-          onClick={() => navigate("/editor/queue")}
+          onClick={() => navigate(deskQueue)}
         />
         <StatTile
           icon={AlertTriangle}
           label="Overdue tasks"
           value={stats?.tasks?.overdue}
           variant="danger"
-          onClick={() => navigate("/editor/tasks")}
+          onClick={() => navigate(deskTasks)}
         />
       </div>
 
@@ -84,7 +92,7 @@ export default function EditorOverview() {
           label="Writers"
           value={stats?.users?.writers}
           variant="violet"
-          onClick={() => navigate("/editor/writers")}
+          onClick={() => navigate(deskWriters)}
         />
         <StatTile icon={CheckSquare} label="Tasks completed" value={stats?.tasks?.completed} variant="success" />
         <StatTile icon={TrendingUp} label="Drafts" value={stats?.articles?.draft} variant="neutral" />
@@ -93,7 +101,7 @@ export default function EditorOverview() {
           label="Rejected"
           value={stats?.articles?.rejected}
           variant="danger"
-          onClick={() => navigate("/editor/queue")}
+          onClick={() => navigate(deskQueue)}
         />
       </div>
 
@@ -134,7 +142,7 @@ export default function EditorOverview() {
             <p className="text-sm text-slate-500">Desk workload</p>
             <button
               type="button"
-              onClick={() => navigate("/editor/tasks")}
+              onClick={() => navigate(deskTasks)}
               className="inline-flex items-center gap-1 text-sm font-bold text-brand hover:underline"
             >
               View tasks

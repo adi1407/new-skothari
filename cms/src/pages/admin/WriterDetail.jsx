@@ -82,13 +82,6 @@ export default function WriterDetail({
         ))}
       </div>
 
-      {articles.totalViews > 0 && (
-        <div className="bg-brand/5 border border-brand/20 rounded-xl px-5 py-4 mb-6 flex items-center gap-3">
-          <Eye size={18} className="text-brand" />
-          <span className="text-slate-700 font-semibold">{articles.totalViews.toLocaleString()} total article views</span>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent articles */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -109,12 +102,6 @@ export default function WriterDetail({
                     <span className="text-xs text-slate-400 capitalize">{a.category}</span>
                     <span className="text-slate-300">·</span>
                     <span className="text-xs text-slate-400">{new Date(a.createdAt).toLocaleDateString()}</span>
-                    {a.views > 0 && (
-                      <>
-                        <span className="text-slate-300">·</span>
-                        <span className="text-xs text-slate-400">{a.views} views</span>
-                      </>
-                    )}
                   </div>
                 </div>
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${STATUS_BADGE[a.status]}`}>

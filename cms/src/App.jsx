@@ -26,6 +26,7 @@ import Users          from "./pages/admin/Users";
 import Videos         from "./pages/admin/Videos";
 import VideoEditor    from "./pages/admin/VideoEditor";
 import { isWriterRole, isEditorRole, isAdminLike, isVideoStaff } from "./constants/roles";
+import { withEditorListSearch } from "./utils/editorDeskParams";
 
 const WRITER_ROUTE_ROLES = ["__writers__", "__adminLike__"];
 const EDITOR_ROUTE_ROLES = ["__textEditors__", "__adminLike__"];
@@ -38,6 +39,9 @@ function RoleHome() {
   if (isAdminLike(r)) return <Navigate to="/admin" replace />;
   if (isWriterRole(r)) return <Navigate to="/writer" replace />;
   if (isVideoStaff(r) && !isEditorRole(r)) return <Navigate to="/editor/videos" replace />;
+  if (r === "editor_en" || r === "editor_hi") {
+    return <Navigate to={withEditorListSearch("/editor/queue", r)} replace />;
+  }
   if (isEditorRole(r)) return <Navigate to="/editor" replace />;
   return <Navigate to="/login" replace />;
 }

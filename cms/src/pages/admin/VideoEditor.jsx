@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Save, Loader2, AlertCircle } from "lucide-react";
 import { getVideo, createVideo, updateVideo } from "../../api";
+import { useAuth } from "../../context/AuthContext";
 
 const CATEGORIES = ["desh", "videsh", "rajneeti", "khel", "health", "krishi", "business", "manoranjan"];
 
@@ -39,8 +40,10 @@ export default function VideoEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const isNew = !id;
   const base = location.pathname.startsWith("/editor") ? "/editor/videos" : "/admin/videos";
+  const canPublishVideo = user?.role === "editor" || user?.role === "super_admin" || user?.role === "admin";
 
   const [form, setForm] = useState({
     title: "",
@@ -48,8 +51,9 @@ export default function VideoEditor() {
     summary: "",
     summaryEn: "",
     youtubeUrl: "",
+    youtubeChannelTitle: "",
+    youtubeChannelUrl: "",
     duration: "",
-    views: "",
     category: "desh",
     thumbnailOverride: "",
     sortOrder: 0,
@@ -71,8 +75,9 @@ export default function VideoEditor() {
           summary: v.summary || "",
           summaryEn: v.summaryEn || "",
           youtubeUrl: v.youtubeUrl || "",
+          youtubeChannelTitle: v.youtubeChannelTitle || "",
+          youtubeChannelUrl: v.youtubeChannelUrl || "",
           duration: v.duration || "",
-          views: v.views || "",
           category: v.category || "desh",
           thumbnailOverride: v.thumbnailOverride || "",
           sortOrder: v.sortOrder ?? 0,
@@ -95,6 +100,10 @@ export default function VideoEditor() {
         ...form,
         sortOrder: Number(form.sortOrder) || 0,
       };
+      if (!canPublishVideo) {
+        payload.status = "draft";
+        delete payload.publishedAt;
+      }
       if (isNew) {
         const { data } = await createVideo(payload);
         navigate(`${base}/${data.video._id}`, { replace: true });
@@ -159,20 +168,29 @@ export default function VideoEditor() {
             placeholder="https://www.youtube.com/watch?v=… or youtu.be/…"
           />
         </Field>
+        <Field label="YouTube channel title (optional)">
+          <Input
+            value={form.youtubeChannelTitle}
+            onChange={(e) => set("youtubeChannelTitle", e.target.value)}
+            placeholder="Channel display name"
+          />
+        </Field>
+        <Field label="YouTube channel URL (optional)">
+          <Input
+            value={form.youtubeChannelUrl}
+            onChange={(e) => set("youtubeChannelUrl", e.target.value)}
+            placeholder="https://www.youtube.com/@channel"
+          />
+        </Field>
         <Field label="Summary (Hindi)">
           <Textarea value={form.summary} onChange={(e) => set("summary", e.target.value)} rows={3} />
         </Field>
         <Field label="Summary (English)">
           <Textarea value={form.summaryEn} onChange={(e) => set("summaryEn", e.target.value)} rows={3} />
         </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Duration (display)">
-            <Input value={form.duration} onChange={(e) => set("duration", e.target.value)} placeholder="12:34" />
-          </Field>
-          <Field label="Views (display)">
-            <Input value={form.views} onChange={(e) => set("views", e.target.value)} placeholder="1.2M" />
-          </Field>
-        </div>
+        <Field label="Duration (display)">
+          <Input value={form.duration} onChange={(e) => set("duration", e.target.value)} placeholder="12:34" />
+        </Field>
         <Field label="Category">
           <select
             value={form.category}
@@ -205,10 +223,11 @@ export default function VideoEditor() {
             <select
               value={form.status}
               onChange={(e) => set("status", e.target.value)}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand"
+              disabled={!canPublishVideo}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-brand disabled:bg-slate-50 disabled:text-slate-500"
             >
               <option value="draft">draft</option>
-              <option value="published">published</option>
+              {canPublishVideo && <option value="published">published</option>}
             </select>
           </Field>
         </div>

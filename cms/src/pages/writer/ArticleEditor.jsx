@@ -10,7 +10,7 @@ import {
 } from "../../api";
 import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { useAuth } from "../../context/AuthContext";
-import { isAdminLike, ENGLISH_EDITOR_ASSIGNMENT_ROLES, writerDeskLabel } from "../../constants/roles";
+import { isAdminLike, ENGLISH_EDITOR_ASSIGNMENT_ROLES, writerDeskLabel, isWriterRole } from "../../constants/roles";
 
 /** Bilingual UI for admins; single-language form for desk writers. Legacy `writer` → English desk. */
 function articleEditorDeskMode(user) {
@@ -138,6 +138,8 @@ export default function ArticleEditor() {
   const [pendingUploads, setPendingUploads] = useState([]);
   /** Bump after server article hydrates so CKEditor remounts with `body` / `bodyHi` (data prop alone does not sync). */
   const [rteEpoch, setRteEpoch] = useState(0);
+  const [autosaveMsg, setAutosaveMsg] = useState("");
+  const autosaveTimerRef = useRef(null);
 
   useEffect(() => {
     setRteEpoch(0);
@@ -370,6 +372,36 @@ export default function ArticleEditor() {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (!isEdit || loading) return;
+    if (!isWriterRole(user?.role)) return;
+    if (!["draft", "rejected"].includes(status)) return;
+
+    clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(async () => {
+      if (deskMode === "en" || deskMode === "both") {
+        if (!form.title.trim() || !form.summary.trim() || !form.body.trim()) return;
+      }
+      if (deskMode === "hi" || deskMode === "both") {
+        if (!form.titleHi.trim() || !form.summaryHi.trim() || !form.bodyHi.trim()) return;
+      }
+      try {
+        const payload = {
+          ...form,
+          tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        };
+        const { data } = await updateArticle(id, payload);
+        if (data?.article?.articleNumber != null) setArticleNumber(data.article.articleNumber);
+        setAutosaveMsg("Autosaved");
+        setTimeout(() => setAutosaveMsg(""), 2500);
+      } catch {
+        setAutosaveMsg("");
+      }
+    }, 2000);
+
+    return () => clearTimeout(autosaveTimerRef.current);
+  }, [form, isEdit, loading, status, user?.role, deskMode, id]);
 
   const handleSubmit = async () => {
     if (!images.length) {
@@ -662,6 +694,9 @@ export default function ArticleEditor() {
                 status === "rejected"  ? "bg-red-100 text-red-700" :
                 "bg-slate-100 text-slate-600"
               }`}>{status}</span>
+            )}
+            {isEdit && autosaveMsg && isWriterRole(user?.role) && ["draft", "rejected"].includes(status) && (
+              <span className="text-xs text-slate-500 mt-1 block">{autosaveMsg}</span>
             )}
           </div>
         </div>

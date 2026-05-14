@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Search, Eye } from "lucide-react";
 import { getEditorArticles } from "../../api";
+import { useAuth } from "../../context/AuthContext";
+import { articleListParamsFromRole } from "../../utils/editorDeskParams";
 
 const STATUS_BADGE = {
   draft: "bg-slate-100 text-slate-600",
@@ -19,6 +21,8 @@ function articleListTitle(a) {
 }
 
 export default function EditorArticles() {
+  const { user } = useAuth();
+  const location = useLocation();
   const [articles, setArticles] = useState([]);
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("");
@@ -31,7 +35,7 @@ export default function EditorArticles() {
 
   useEffect(() => {
     setLoading(true);
-    const params = { page, limit: 20 };
+    const params = { page, limit: 20, ...articleListParamsFromRole(user?.role, {}) };
     if (status) params.status = status;
     if (category) params.category = category;
     if (appliedSearch.trim()) params.search = appliedSearch.trim();
@@ -41,7 +45,7 @@ export default function EditorArticles() {
         setPages(r.data.pagination?.pages || 1);
       })
       .finally(() => setLoading(false));
-  }, [status, category, page, appliedSearch]);
+  }, [status, category, page, appliedSearch, user?.role]);
 
   return (
     <div className="cms-page">
@@ -119,7 +123,12 @@ export default function EditorArticles() {
               <button
                 type="button"
                 key={a._id}
-                onClick={() => navigate(`/editor/review/${a._id}`)}
+                onClick={() =>
+                  navigate({
+                    pathname: `/editor/review/${a._id}`,
+                    search: location.search || undefined,
+                  })
+                }
                 className="flex w-full items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50 sm:gap-4 sm:px-6"
               >
                 <div className="flex-1 min-w-0">
@@ -130,8 +139,10 @@ export default function EditorArticles() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    {a.author?.name} · <span className="capitalize">{a.category}</span> ·{" "}
-                    {new Date(a.updatedAt).toLocaleString()}
+                    {a.bylineName?.trim() || a.author?.name} · <span className="capitalize">{a.category}</span> ·{" "}
+                    {a.status === "published" && a.publishedAt
+                      ? `Published ${new Date(a.publishedAt).toLocaleString()}`
+                      : new Date(a.updatedAt).toLocaleString()}
                   </p>
                 </div>
                 <span className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_BADGE[a.status] || ""}`}>
