@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams, useSearchParams, useLocation, useBlocker } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import {
   Save, Send, ArrowLeft, Upload, X, Image as ImgIcon, Loader2, AlertCircle, Link2, Copy,
 } from "lucide-react";
@@ -146,14 +146,13 @@ export default function ArticleEditor() {
   const [rejectionReason, setRejectionReason] = useState("");
   /** False during server hydrate / roster sync so programmatic setForm does not mark dirty. */
   const allowDirtyRef = useRef(false);
-  const blockedNavConfirmShownRef = useRef(false);
 
   const resolvedDesk = resolveArticleDeskLocale(user, searchParams, form.primaryLocale);
   const deskMode = articleEditorDeskMode(user, resolvedDesk);
 
+  /** Tab close / refresh only — useBlocker requires a data router (RouterProvider), not BrowserRouter. */
   const writerMayHaveUnsavedWork =
     isWriterRole(user?.role) && ["draft", "rejected"].includes(status) && isDirty;
-  const blocker = useBlocker(writerMayHaveUnsavedWork);
 
   useEffect(() => {
     if (!writerMayHaveUnsavedWork) return;
@@ -164,23 +163,6 @@ export default function ArticleEditor() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [writerMayHaveUnsavedWork]);
-
-  useEffect(() => {
-    if (blocker.state !== "blocked") {
-      blockedNavConfirmShownRef.current = false;
-      return;
-    }
-    if (blockedNavConfirmShownRef.current) return;
-    blockedNavConfirmShownRef.current = true;
-    const ok = window.confirm("You have unsaved changes. Leave without saving?");
-    if (ok) {
-      setIsDirty(false);
-      blocker.proceed();
-    } else {
-      blockedNavConfirmShownRef.current = false;
-      blocker.reset();
-    }
-  }, [blocker, blocker.state]);
 
   useEffect(() => {
     setRteEpoch(0);
