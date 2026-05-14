@@ -40,8 +40,8 @@ export default function InstitutionalPage({ kind }: { kind: InstitutionalKind })
   const lead =
     kind === "about"
       ? t(
-          "न्यूज़ कोठरी एक डिजिटल-फर्स्ट समाचार कक्ष है — जहाँ तथ्य, संदर्भ और स्पष्ट भाषा को प्राथमिकता मिलती है। हम देश और दुनिया की घटनाओं को आप तक पहुँचाते हैं, बिना शोर-शराबे के।",
-          "News Kothari is a digital-first newsroom where facts, context, and plain language come first. We bring India and the world to your screen — signal, not noise."
+          "‘न्यूज़ कोठरी’ कोई ज्ञान बाँचने वाला लाउडस्पीकर या एसी कमरों में बैठकर ‘देश क्या सोच रहा है’ तय करने वाला चैनल नहीं है। ये एक बगावत है उस बोरिंग और पकाऊ न्यूज़ के खिलाफ, जो आपको नींद की गोली जैसी लगती है। सीधी बात: ये आपके मोहल्ले की वो नुक्कड़ वाली चौपाल है, जहाँ बकैती भी होती है और समझ भी बढ़ती है। टीवी वाले जो खबरें टाई लगाकर पढ़ते हैं, हम उन्हें ‘कोठरी’ की भट्टी में तपाकर, बिना किसी फिल्टर के आपके सामने परोसते हैं।",
+          "News Kothari is not a lecturing loudspeaker or an air‑conditioned channel that decides ‘what the nation thinks.’ It is a rebellion against the boring, overcooked news that feels like a sleeping pill. In plain terms: it is your neighbourhood nukkad — where there is banter and there is real sense. We take the tie‑and‑teleprompter headlines, run them through the kothari forge, and serve them to you without the usual filter."
         )
       : kind === "mission"
         ? t(
@@ -57,17 +57,31 @@ export default function InstitutionalPage({ kind }: { kind: InstitutionalKind })
     kind === "about"
       ? [
           {
-            h: t("संपादकीय दृष्टिकोण", "Editorial approach"),
+            h: t("हम वो क्या लिखते हैं?", "What we actually write"),
             p: t(
-              "हम राजनीति, अर्थव्यवस्था, खेल, स्वास्थ्य, कृषि, मनोरंजन और अंतरराष्टीय मुद्दों को संतुलित ढंग से कवर करते हैं। गंभीर रिपोर्टिंग के साथ स्पष्ट व्याख्या — ताकि आप न केवल ‘क्या हुआ’ जानें, बल्कि ‘क्यों मायने रखता है’ भी समझें।",
-              "We cover politics, economy, sports, health, agriculture, entertainment, and global affairs with balance. Serious reporting meets clear explanation — so you understand not just what happened, but why it matters."
+              "हम वो लिखते हैं जो आप पान की गुमटी पर सोचते हैं और चाय की चुस्कियों के बीच बेधड़क बोलते हैं। खबर भी, नज़रिया भी, और उसके अंदर का पूरा भौकाल भी।",
+              "We write what you think at the paan stall and say out loud between sips of chai — the headline, the angle, and the full swagger inside the story."
             ),
           },
           {
-            h: t("भाषा व पहुँच", "Language & reach"),
+            h: t("हमारा भौकाल क्या है?", "What makes us tick"),
             p: t(
-              "द्विभाषी डेस्क का लक्ष्य है: एक ही मंच पर हिंदी और अंग्रेज़ी में विश्वसनीय कवरेज। मोबाइल-फर्स्ट डिज़ाइन से शहर और गाँव दोनों में पढ़ने का अनुभव तेज़ और साफ़ रहे।",
-              "Our bilingual desk exists to deliver trustworthy coverage in Hindi and English on one platform. Mobile-first design keeps reading fast and clear — from metros to small towns."
+              "हम खबरों के पीछे भेड़-बकरियों की तरह नहीं भागते। जो खबर आपके काम की है, उसे पकड़ते हैं और उसका पूरा एक्स-रे कर डालते हैं। हमारी सबसे बड़ी खासियत है हमारा स्वैग और हमारी जुबान — एकदम ठेठ, देसी, बिना लाग-लपेट के। भारी-भरकम शब्दों का रायता फैलाने से हमें परहेज है। हम उसी भाषा में बात करते हैं जिसमें आज का यंग इंडिया बात करता है — जहाँ देसी टशन है और अंग्रेज़ी की कूलनेस भी।",
+              "We do not herd-chase every headline. We grab the stories that matter to you and X‑ray them properly. Our edge is voice and swagger — straight, rooted, no pointless jargon. We speak the mix of languages young India actually uses — desi attitude with English cool where it fits."
+            ),
+          },
+          {
+            h: t("जहाँ कलम सख्त चलती है", "Where the pen gets serious"),
+            p: t(
+              "जैसे ड्रामा सिर्फ़ फिल्मों में नहीं होता, दांवपेंच सिर्फ़ राजनीति में नहीं होते, और खेल सिर्फ़ क्रिकेट नहीं है — वैसे ही खबरें सिर्फ़ वो नहीं जो सतह पर दिखती है; उन्हें चुनना पड़ता है, छानना पड़ता है। बेमतलब का सेन्सैशनलिज़म या किसी नेता का PR हम इन सबसे दूर रहते हैं, लेकिन जहाँ बात हक की हो, जेंडर, जाति, पर्यावरण और सिस्टम की नाकामी की हो, वहाँ हमारी कलम लट्ठ की तरह चलती है — एकदम अग्रेसिव और प्रो-पब्लिक।",
+              "Drama is not only in films, gambits are not only in politics, and sport is not only cricket — and news is never only what floats on the surface; you have to choose and sift. We steer clear of hollow sensationalism and politician PR theatre — but on rights, gender, caste, the environment, and systemic failure, our pen moves like a stick: sharp, aggressive, and pro‑public."
+            ),
+          },
+          {
+            h: t("कोठरी के पिटारे से और क्या निकलेगा?", "What else comes out of the pitara"),
+            p: t(
+              "सिर्फ़ सूखी ख़बरें पढ़कर तो दिमाग सुन्न हो जाता है न? इसलिए यहाँ हम सिर्फ़ ज्ञान नहीं पेलते, एंटरटेनमेंट का पूरा जुगाड़ भी रखते हैं — भन्नाट फैक्ट्स, दिमाग के जाले साफ करने वाले रिव्यू, मीम्स, और दुनिया भर का ऐसा रायता जिसे समेटने में आपको मज़ा आएगा। ‘लोग क्या कहेंगे’ वाले टैबू सब्जेक्ट्स पर भी हम ऑपरेशन बिना एनेस्थीसिया के करते हैं। इतिहास के वो पन्ने जो दीमक खा रहे थे, उन्हें झाड़-पोंछ कर लाते हैं। हमारी रेंज? ऑस्कर से लेकर पंचायत चुनाव तक, मंगल मिशन से लेकर गाँव के देसी जुगाड़ तक, और विदेशी वेब सीरीज से लेकर भोजपुरी सिनेमा तक — जहाँ दिल दहलता है, वहाँ हमारी नज़र रहती है।",
+              "Dry headlines alone numb the mind — so we do not only shovel ‘gyaan’; we keep the entertainment jugaad too: wild facts, brain‑clearing reviews, memes, and the kind of masala mix that is fun to unpack. We take on taboo topics without the anaesthesia of politeness. We dust off history’s moth‑eaten pages and bring them forward. Our range? From the Oscars to panchayat polls, from Mars missions to village jugaad, from foreign web series to Bhojpuri cinema — if it moves people, we are watching."
             ),
           },
         ]
@@ -108,9 +122,9 @@ export default function InstitutionalPage({ kind }: { kind: InstitutionalKind })
   const values =
     kind === "about"
       ? [
-          { icon: Shield, hi: "सत्यापन", en: "Verification" },
-          { icon: Sparkles, hi: "स्पष्टता", en: "Clarity" },
-          { icon: Users, hi: "समावेश", en: "Inclusion" },
+          { icon: Shield, hi: "तथ्य का एक्स-रे", en: "Fact-first X-ray" },
+          { icon: Sparkles, hi: "ठेठ जुबान", en: "Straight talk" },
+          { icon: Users, hi: "पाठक-पक्ष", en: "Pro-public" },
         ]
       : kind === "mission"
         ? [
@@ -128,10 +142,10 @@ export default function InstitutionalPage({ kind }: { kind: InstitutionalKind })
     kind === "about"
       ? {
           text: t(
-            "“समाचार तब शक्तिशाली होता है जब वह समझने योग्य हो।”",
-            "“News is powerful when it is understandable.”"
+            "“हम वो इंडिया हैं जो अपने ठेठपन पर कॉलर खड़ा करता है — जिसे अपनी जड़ों और अपनी बोली पर गुरूर है, लेकिन जो दुनिया को मुट्ठी में करने का माद्दा रखता है। ‘न्यूज़ कोठरी’ में आपका स्वागत है — आइए, कुंडी खोलिए, अंदर बैठिए और खबरों का असली स्वाद लीजिए!”",
+            "“We are the India that wears its rootedness with pride — proud of its roots and its tongue, yet bold enough to hold the world in its fist. Welcome to News Kothari: open the latch, step inside, and taste the news as it really is.”"
           ),
-          by: t("— संपादकीय मंत्र", "— Editorial motto"),
+          by: t("— संपादकीय आमंत्रण", "— Editorial welcome"),
         }
       : kind === "mission"
         ? {
