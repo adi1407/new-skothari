@@ -1,25 +1,52 @@
 .card {
   margin: 0;
   width: 100%;
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--topbar-bg) 88%, var(--brand-red) 12%) 0%,
-    color-mix(in srgb, var(--topbar-bg) 96%, #fff 4%) 100%
-  );
-  border: 1px solid color-mix(in srgb, #fff 10%, transparent);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  min-width: 0;
+  padding: 20px 22px 18px;
+  border-radius: 22px;
+  background:
+    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, #fff 14%, transparent) 0%, transparent 55%),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--topbar-bg) 82%, var(--brand-red) 18%) 0%,
+      color-mix(in srgb, var(--topbar-bg) 94%, #1a0505 6%) 100%
+    );
+  border: 1px solid color-mix(in srgb, #fff 14%, transparent);
+  box-shadow:
+    0 4px 0 color-mix(in srgb, #000 12%, transparent),
+    0 20px 48px rgba(0, 0, 0, 0.22);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 16%, transparent);
 }
 
 .cardSurface {
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--card-bg) 98%, var(--brand-red) 4%) 0%,
-    var(--card-bg) 100%
-  );
-  border: 1px solid color-mix(in srgb, var(--card-border) 88%, transparent);
-  box-shadow: var(--shadow-ui-rest);
+  background:
+    radial-gradient(100% 70% at 0% 0%, color-mix(in srgb, var(--brand-red) 10%, transparent) 0%, transparent 50%),
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--card-bg) 96%, var(--brand-red) 5%) 0%,
+      var(--card-bg) 100%
+    );
+  border: 1px solid color-mix(in srgb, var(--card-border) 90%, transparent);
+  box-shadow: var(--shadow-ui-rest), inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+}
+
+.cardSurface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--card-border) 55%, transparent);
 }
 
 .cardSurface .titleRow {
@@ -73,7 +100,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 1;
 }
 
 .titleRow {
@@ -89,17 +118,24 @@
 }
 
 .select {
-  min-width: min(100%, 220px);
+  min-width: min(100%, 200px);
   flex: 1;
-  max-width: 320px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, #fff 14%, transparent);
-  background: color-mix(in srgb, #fff 8%, transparent);
+  max-width: 100%;
+  padding: 11px 14px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, #fff 18%, transparent);
+  background: color-mix(in srgb, #fff 10%, transparent);
   color: #fff;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.select:hover {
+  border-color: color-mix(in srgb, #fff 28%, transparent);
+  background: color-mix(in srgb, #fff 14%, transparent);
 }
 
 .select option {
@@ -112,6 +148,8 @@
   grid-template-columns: auto 1fr;
   gap: 14px 18px;
   align-items: center;
+  position: relative;
+  z-index: 1;
 }
 
 .tempBlock {
@@ -178,12 +216,15 @@
 }
 
 .attr {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid color-mix(in srgb, #fff 8%, transparent);
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, #fff 10%, transparent);
   font-size: 11px;
-  color: color-mix(in srgb, #fff 45%, transparent);
+  line-height: 1.45;
+  color: color-mix(in srgb, #fff 48%, transparent);
   font-family: var(--font-ui);
+  position: relative;
+  z-index: 1;
 }
 
 .attr a {

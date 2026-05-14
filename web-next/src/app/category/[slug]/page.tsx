@@ -41,7 +41,7 @@ export default async function CategoryPage(
     category: slug === "latest" ? undefined : slug,
     latestDays: slug === "latest" ? 3 : undefined,
     feedSource: "category",
-    sectionTitle: locale === "hi" ? "और खबरें" : "More stories",
+    sectionTitle: locale === "hi" ? "इस श्रेणी से आगे" : "More in this section",
   };
 
   return (

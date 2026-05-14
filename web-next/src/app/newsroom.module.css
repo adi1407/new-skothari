@@ -44,6 +44,89 @@
   margin: 0;
 }
 
+/* “और खबरें” block: full prose — no global .card-summary line-clamp */
+.moreStoriesIntro {
+  margin: 0;
+  padding: 0;
+  max-width: min(72ch, 100%);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--text) 92%, var(--text-muted) 8%);
+  font-family: var(--font-body);
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: manual;
+}
+
+:global([data-lang="hi"]) .moreStoriesIntro {
+  font-family: var(--font-hi-body);
+  font-size: 1.08rem;
+  line-height: 1.75;
+}
+
+.moreStoriesIntroMuted {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.95em;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+:global([data-lang="hi"]) .moreStoriesIntroMuted {
+  font-family: var(--font-hi-body);
+}
+
+.moreCategoryNote {
+  margin: 0;
+  max-width: min(64ch, 100%);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  overflow-wrap: anywhere;
+}
+
+:global([data-lang="hi"]) .moreCategoryNote {
+  font-family: var(--font-hi-body);
+  font-size: 1rem;
+  line-height: 1.72;
+}
+
+.moreStoriesMeta {
+  margin: 0;
+  max-width: min(64ch, 100%);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  overflow-wrap: anywhere;
+}
+
+:global([data-lang="hi"]) .moreStoriesMeta {
+  font-family: var(--font-hi-body);
+}
+
+.mixedStripTitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+}
+
+.homeMixedGrid {
+  margin-top: 4px;
+}
+
+.moreStoriesDivider {
+  margin: 1.25rem 0 0.75rem;
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--card-border) 88%, transparent);
+}
+
 .sectionHead :global(.editors-all-btn) {
   flex-shrink: 0;
 }

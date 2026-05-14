@@ -97,8 +97,16 @@ export default function InfinitePublicArticleList({
   }, [seedKey, total]);
 
   useEffect(() => {
+    if (seedIds.length === 0) {
+      setMixedFallback([]);
+      setMixedLoading(false);
+      setMixedErr("");
+      return;
+    }
+
     const loadableNow = computeLoadable(total, seedIds.length);
-    if (loadableNow || seedIds.length === 0) {
+    /* Category + paginated API: only infinite scroll; no duplicate mixed strip. */
+    if (feedSource === "category" && loadableNow) {
       setMixedFallback([]);
       setMixedLoading(false);
       setMixedErr("");
@@ -136,7 +144,12 @@ export default function InfinitePublicArticleList({
             if (collected.length >= MIXED_FALLBACK_TARGET) break;
           }
         }
-        if (!cancelled) setMixedFallback(collected);
+        if (!cancelled) {
+          setMixedFallback(collected);
+          if (feedSource === "home" && collected.length) {
+            collected.forEach((a) => seen.current.add(a.id));
+          }
+        }
       } catch (e: unknown) {
         if (e instanceof DOMException && e.name === "AbortError") return;
         if (!cancelled) {
@@ -155,7 +168,7 @@ export default function InfinitePublicArticleList({
       cancelled = true;
       ac.abort();
     };
-  }, [seedKey, total, locale, category, latestDays]);
+  }, [seedKey, total, locale, category, latestDays, feedSource]);
 
   const loadMore = useCallback(async () => {
     if (inFlightRef.current || doneRef.current) return;
@@ -268,55 +281,90 @@ export default function InfinitePublicArticleList({
         </div>
       ) : null}
 
-      {!loadable ? (
+      {feedSource === "home" ? (
+        <p className={styles.moreStoriesIntro}>
+          {locale === "hi" ? (
+            <>
+              नीचे श्रेणियों से मिलाकर चुनी गईं <strong>ताज़ा खबरें</strong> दिख रही हैं। ये ऊपर वाली सूची से अलग
+              हैं।
+              <br />
+              <span className={styles.moreStoriesIntroMuted}>
+                जब और पृष्ठ उपलब्ध होंगे तो स्क्रॉल करने पर वे भी जुड़ते रहेंगे।
+              </span>
+            </>
+          ) : (
+            <>
+              Below is a <strong>fresh mixed strip</strong> from across sections—different from the lists above.
+              <br />
+              <span className={styles.moreStoriesIntroMuted}>
+                When more pages exist, scrolling loads additional stories.
+              </span>
+            </>
+          )}
+        </p>
+      ) : null}
+
+      {feedSource === "home" ? (
+        <h3 className={styles.mixedStripTitle}>
+          {locale === "hi" ? "ताज़ी मिली-जुली खबरें" : "Latest mixed picks"}
+        </h3>
+      ) : null}
+
+      {mixedLoading ? (
+        <p className={styles.moreStoriesMeta}>
+          {locale === "hi" ? "लोड हो रहा है…" : "Loading…"}
+        </p>
+      ) : null}
+      {mixedErr ? (
+        <p className={styles.moreStoriesMeta} role="alert">
+          {mixedErr}
+        </p>
+      ) : null}
+
+      {feedSource === "home" && !mixedLoading && !mixedErr && mixedFallback.length === 0 && !loadable ? (
+        <p className={styles.moreStoriesMeta}>
+          {locale === "hi"
+            ? "अतिरिक्त खबरें अभी उपलब्ध नहीं हैं। श्रेणियाँ देखें।"
+            : "No additional stories to show right now. Browse categories."}
+        </p>
+      ) : null}
+
+      {feedSource === "category" && !loadable && !mixedLoading && !mixedErr && mixedFallback.length === 0 ? (
+        <p className={styles.moreCategoryNote}>
+          {locale === "hi"
+            ? "इस सूची के लिए अभी और खबरें नहीं हैं।"
+            : "No further stories for this listing right now."}
+        </p>
+      ) : null}
+
+      {mixedFallback.length > 0 ? (
+        <div className={`cat-page-grid ${styles.homeMixedGrid}`}>
+          {mixedFallback.map((item) => (
+            <article key={String(item.id)} className={`card-default ${styles.cardBody}`}>
+              <Link href={`/article/${item.id}`} className={styles.cardLink}>
+                <img
+                  src={item.image}
+                  alt={itemHeadline(item, locale, feedSource)}
+                  width={800}
+                  height={450}
+                  className={styles.cardImage}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <h3 className="card-title">{itemHeadline(item, locale, feedSource)}</h3>
+                <p className="card-summary">{itemDek(item, locale, feedSource)}</p>
+              </Link>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {loadable && feedSource === "home" && mixedFallback.length > 0 ? (
         <>
-          <p className="card-summary" style={{ marginTop: 4 }}>
-            {feedSource === "category"
-              ? locale === "hi"
-                ? "इस श्रेणी में मिली-जुली और खबरें — ऊपर दिखाई सूची के अलावा।"
-                : "More mixed stories in this category — beyond the list above."
-              : locale === "hi"
-                ? "श्रेणियों से मिलाकर चुनी गईं और खबरें — ऊपर दिखाई सूची के अलावा।"
-                : "Mixed picks from across sections — beyond what is already shown above."}
-          </p>
-          {mixedLoading ? (
-            <p className="card-summary" style={{ marginTop: 12 }}>
-              {locale === "hi" ? "लोड हो रहा है…" : "Loading…"}
-            </p>
-          ) : null}
-          {mixedErr ? (
-            <p className="card-summary" role="alert" style={{ marginTop: 8 }}>
-              {mixedErr}
-            </p>
-          ) : null}
-          {!mixedLoading && !mixedErr && mixedFallback.length === 0 ? (
-            <p className="card-summary" style={{ marginTop: 8, opacity: 0.9 }}>
-              {locale === "hi"
-                ? "अतिरिक्त खबरें अभी उपलब्ध नहीं हैं। श्रेणियाँ देखें।"
-                : "No additional stories to show right now. Browse categories."}
-            </p>
-          ) : null}
-          {mixedFallback.length > 0 ? (
-            <div className="cat-page-grid" style={{ marginTop: 16 }}>
-              {mixedFallback.map((item) => (
-                <article key={String(item.id)} className={`card-default ${styles.cardBody}`}>
-                  <Link href={`/article/${item.id}`} className={styles.cardLink}>
-                    <img
-                      src={item.image}
-                      alt={itemHeadline(item, locale, feedSource)}
-                      width={800}
-                      height={450}
-                      className={styles.cardImage}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <h3 className="card-title">{itemHeadline(item, locale, feedSource)}</h3>
-                    <p className="card-summary">{itemDek(item, locale, feedSource)}</p>
-                  </Link>
-                </article>
-              ))}
-            </div>
-          ) : null}
+          <hr className={styles.moreStoriesDivider} />
+          <h3 className={styles.mixedStripTitle}>
+            {locale === "hi" ? "स्क्रॉल करके और पढ़ें" : "Keep scrolling"}
+          </h3>
         </>
       ) : null}
 
@@ -343,17 +391,17 @@ export default function InfinitePublicArticleList({
       ) : null}
 
       {loadable && loading ? (
-        <p className="card-summary" style={{ marginTop: 12 }}>
+        <p className={styles.moreStoriesMeta}>
           {locale === "hi" ? "लोड हो रहा है…" : "Loading…"}
         </p>
       ) : null}
       {err ? (
-        <p className="card-summary" role="alert" style={{ marginTop: 8 }}>
+        <p className={styles.moreStoriesMeta} role="alert">
           {err}
         </p>
       ) : null}
       {loadable && done && extra.length > 0 ? (
-        <p className="card-summary" style={{ marginTop: 12, opacity: 0.85 }}>
+        <p className={styles.moreStoriesMeta} style={{ opacity: 0.88 }}>
           {locale === "hi" ? "और खबरें यहीं समाप्त।" : "You are caught up."}
         </p>
       ) : null}
