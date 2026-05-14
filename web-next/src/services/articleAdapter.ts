@@ -1,6 +1,7 @@
 import type { BackendArticle } from "./newsApi";
 import type { ContentArticle } from "./contentTypes";
 import { withPublicOrigin } from "../config/publicApi";
+import { youtubeVideoIdFromUrl } from "../utils/youtube";
 
 const CAT_HI: Record<string, string> = {
   desh:       "देश",
@@ -70,6 +71,14 @@ export function adaptArticle(a: BackendArticle): ContentArticle {
 
   const publicId = backendArticlePublicId(a);
 
+  const rawEmbeds = Array.isArray(a.youtubeEmbeds) ? a.youtubeEmbeds : [];
+  const youtubeEmbeds = rawEmbeds
+    .map((e) => ({
+      youtubeUrl: String(e?.youtubeUrl || "").trim(),
+      caption: String(e?.caption || "").trim(),
+    }))
+    .filter((e) => Boolean(youtubeVideoIdFromUrl(e.youtubeUrl)));
+
   return {
     id:           publicId,
     mongoId:      a._id,
@@ -94,6 +103,7 @@ export function adaptArticle(a: BackendArticle): ContentArticle {
     content:      bodyHi ? [bodyHi] : bodyEn ? [bodyEn] : undefined,
     contentEn:    bodyEn ? [bodyEn] : bodyHi ? [bodyHi] : undefined,
     slug:         String(a.slug || "").trim() || undefined,
+    youtubeEmbeds: youtubeEmbeds.length ? youtubeEmbeds : undefined,
   };
 }
 

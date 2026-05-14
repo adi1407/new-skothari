@@ -90,6 +90,12 @@ export default function ArticleReview() {
           category: a.category,
           tags: (a.tags || []).join(", "),
           isBreaking: a.isBreaking,
+          youtubeEmbeds: Array.isArray(a.youtubeEmbeds)
+            ? a.youtubeEmbeds.map((row) => ({
+                youtubeUrl: String(row.youtubeUrl || "").trim(),
+                caption: String(row.caption || "").trim(),
+              }))
+            : [],
         });
         setRteEpoch((e) => e + 1);
       })
@@ -109,7 +115,16 @@ export default function ArticleReview() {
   const handleSave = async () => {
     setSaving(true); setError("");
     try {
-      const payload = { ...form, tags: form.tags?.split(",").map((t) => t.trim()).filter(Boolean) };
+      const payload = {
+        ...form,
+        tags: form.tags?.split(",").map((t) => t.trim()).filter(Boolean),
+        youtubeEmbeds: (form.youtubeEmbeds || [])
+          .map((r) => ({
+            youtubeUrl: String(r.youtubeUrl || "").trim(),
+            caption: String(r.caption || "").trim(),
+          }))
+          .filter((r) => r.youtubeUrl),
+      };
       const { data } = await updateArticle(id, payload);
       setArticle(data.article);
       setEditMode(false);

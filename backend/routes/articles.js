@@ -27,6 +27,7 @@ const {
   HERO_IMAGE_WIDTH,
   HERO_IMAGE_HEIGHT,
 } = require("../utils/resolveArticleRef");
+const { parseArticleYoutubeEmbeds } = require("../utils/youtubeUrl");
 
 /** Crop/scale in-place to hero spec when writers upload common camera sizes. */
 async function normalizeHeroImageToSpec(diskPath) {
@@ -395,6 +396,9 @@ router.post(
               metaKeywords, bylineName,
               writerEn, writerHi, editorEn, editorHi } = req.body;
 
+      const ytCreate = parseArticleYoutubeEmbeds(req.body.youtubeEmbeds ?? []);
+      if (!ytCreate.ok) return res.status(400).json({ message: ytCreate.message });
+
       const slugRaw = normalizeSlugInput(req.body.slug);
       if (slugRaw) {
         const clash = await Article.findOne({ slug: slugRaw }).select("_id").lean();
@@ -428,6 +432,7 @@ router.post(
         editorHi: editorHi || null,
         task: taskId || null,
         status: "draft",
+        youtubeEmbeds: ytCreate.value || [],
       });
 
       // Link article to task if provided
@@ -484,8 +489,18 @@ router.put("/:id", authenticate, async (req, res) => {
       "editorEn",
       "editorHi",
       "slug",
+      "youtubeEmbeds",
     ];
-    const writerSharedKeys = ["category", "tags", "isBreaking", "task", "slug", "metaKeywords", "bylineName"];
+    const writerSharedKeys = [
+      "category",
+      "tags",
+      "isBreaking",
+      "task",
+      "slug",
+      "metaKeywords",
+      "bylineName",
+      "youtubeEmbeds",
+    ];
     const writerEnKeys = [
       "primaryLocale",
       "title",
@@ -522,6 +537,7 @@ router.put("/:id", authenticate, async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
+    let youtubeEmbedsError = null;
     keysToApply.forEach((f) => {
       if (req.body[f] === undefined) return;
       if (f === "task") {
@@ -532,10 +548,15 @@ router.put("/:id", authenticate, async (req, res) => {
         article.slug = s || undefined;
       } else if (f === "primaryLocale") {
         article.primaryLocale = normalizePrimaryLocale(req.body[f]);
+      } else if (f === "youtubeEmbeds") {
+        const yt = parseArticleYoutubeEmbeds(req.body.youtubeEmbeds);
+        if (!yt.ok) youtubeEmbedsError = yt.message;
+        else if (yt.value !== undefined) article.youtubeEmbeds = yt.value;
       } else {
         article[f] = req.body[f];
       }
     });
+    if (youtubeEmbedsError) return res.status(400).json({ message: youtubeEmbedsError });
 
     const putLocaleErr = writerPrimaryLocaleConstraint(req.user.role, article.primaryLocale);
     if (putLocaleErr) return res.status(400).json({ message: putLocaleErr });

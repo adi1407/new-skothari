@@ -37,6 +37,7 @@ export interface BackendArticle {
   createdAt: string;
   views: number;
   upvotes?: number;
+  youtubeEmbeds?: { youtubeUrl: string; caption?: string }[];
 }
 
 function publicUrl(path: string): string {

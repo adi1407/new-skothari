@@ -12,6 +12,7 @@ import type { NewsItem } from "../types/article";
 import ArticleAuthor from "./ArticleAuthor";
 import CommentSection from "./CommentSection";
 import { ArticleRecommendationStrip } from "./RelatedArticles";
+import ArticleYoutubeEmbeds from "./ArticleYoutubeEmbeds";
 import { isHtmlParagraph } from "../utils/formatArticle";
 import { nativeShare, shareToFacebook, shareToTwitter, shareToWhatsApp } from "../utils/share";
 
@@ -135,6 +136,7 @@ export default function ArticleContent({
           </button>
         </div>
       </div>
+      <ArticleYoutubeEmbeds items={article.youtubeEmbeds ?? []} t={t} />
       <motion.div className="article-body" initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, duration: 0.45 }}>
         {paragraphs.length > 0 ? (
           <>

@@ -9,6 +9,15 @@ const mongoose = require("mongoose");
                                   draft  (writer edits and resubmits)
 */
 
+/** Optional YouTube clips (public site: thumbnail + link to YouTube in new tab). */
+const youtubeEmbedSchema = new mongoose.Schema(
+  {
+    youtubeUrl: { type: String, required: true, trim: true, maxlength: 500 },
+    caption: { type: String, trim: true, maxlength: 220, default: "" },
+  },
+  { _id: false }
+);
+
 const imageSchema = new mongoose.Schema(
   {
     url:              { type: String, required: true },
@@ -73,6 +82,11 @@ const articleSchema = new mongoose.Schema(
     bodyHi: { type: String, default: "" },
 
     images: [imageSchema],
+
+    youtubeEmbeds: {
+      type: [youtubeEmbedSchema],
+      default: [],
+    },
 
     category: {
       type: String,

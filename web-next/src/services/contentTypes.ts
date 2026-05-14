@@ -28,6 +28,7 @@ export interface ContentArticle {
   slug?: string;
   content?: string[];
   contentEn?: string[];
+  youtubeEmbeds?: { youtubeUrl: string; caption?: string }[];
 }
 
 /** Backend-adapted video model consumed by shows feature UI. */

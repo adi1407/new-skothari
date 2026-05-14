@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import {
   Save, Send, ArrowLeft, Upload, X, Image as ImgIcon, Loader2, AlertCircle, Link2, Copy,
+  Plus, Trash2, Youtube,
 } from "lucide-react";
 import {
   getArticle, createArticle, updateArticle, submitArticle,
@@ -25,6 +26,7 @@ import {
 
 const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
 const RELATED_LINK_RE = /<a\s+[^>]*href=["']\/article\/(?:[a-z0-9-]+-)?(\d{9})["'][^>]*>([\s\S]*?)<\/a>/gi;
+const MAX_YOUTUBE_EMBEDS = 5;
 
 function revokePreviewList(list) {
   list.forEach((p) => {
@@ -122,6 +124,7 @@ export default function ArticleEditor() {
     tags: "", isBreaking: false, task: "",
     metaTitle: "", metaTitleHi: "", metaDescription: "", metaDescriptionHi: "",
     metaKeywords: "", bylineName: "", slug: "",
+    youtubeEmbeds: [],
   });
   const [images, setImages]         = useState([]);
   const [tasks, setTasks]           = useState([]);
@@ -266,6 +269,12 @@ export default function ArticleEditor() {
           metaKeywords: art.metaKeywords || "",
           bylineName: art.bylineName || "",
           slug: art.slug || "",
+          youtubeEmbeds: Array.isArray(art.youtubeEmbeds)
+            ? art.youtubeEmbeds.map((row) => ({
+                youtubeUrl: String(row.youtubeUrl || "").trim(),
+                caption: String(row.caption || "").trim(),
+              }))
+            : [],
         });
         setImages(art.images || []);
         setStatus(art.status);
@@ -450,6 +459,33 @@ export default function ArticleEditor() {
     markWriterDirty();
   };
 
+  const addYoutubeEmbedRow = () => {
+    setForm((f) => {
+      const cur = Array.isArray(f.youtubeEmbeds) ? f.youtubeEmbeds : [];
+      if (cur.length >= MAX_YOUTUBE_EMBEDS) return f;
+      return { ...f, youtubeEmbeds: [...cur, { youtubeUrl: "", caption: "" }] };
+    });
+    markWriterDirty();
+  };
+
+  const setYoutubeEmbed = (index, field, value) => {
+    setForm((f) => {
+      const rows = [...(f.youtubeEmbeds || [])];
+      if (!rows[index]) return f;
+      rows[index] = { ...rows[index], [field]: value };
+      return { ...f, youtubeEmbeds: rows };
+    });
+    markWriterDirty();
+  };
+
+  const removeYoutubeEmbed = (index) => {
+    setForm((f) => ({
+      ...f,
+      youtubeEmbeds: (f.youtubeEmbeds || []).filter((_, i) => i !== index),
+    }));
+    markWriterDirty();
+  };
+
   useEffect(() => {
     if (deskMode === "en") setRelatedLinks(collectRelatedLinksFromHtml(form.body));
     else if (deskMode === "hi") setRelatedLinks(collectRelatedLinksFromHtml(form.bodyHi));
@@ -474,6 +510,12 @@ export default function ArticleEditor() {
       const payload = {
         ...form,
         tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        youtubeEmbeds: (form.youtubeEmbeds || [])
+          .map((r) => ({
+            youtubeUrl: String(r.youtubeUrl || "").trim(),
+            caption: String(r.caption || "").trim(),
+          }))
+          .filter((r) => r.youtubeUrl),
       };
       let result;
       if (isEdit) {
@@ -516,6 +558,12 @@ export default function ArticleEditor() {
         const payload = {
           ...form,
           tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+          youtubeEmbeds: (form.youtubeEmbeds || [])
+            .map((r) => ({
+              youtubeUrl: String(r.youtubeUrl || "").trim(),
+              caption: String(r.caption || "").trim(),
+            }))
+            .filter((r) => r.youtubeUrl),
         };
         const { data } = await updateArticle(id, payload);
         if (data?.article?.articleNumber != null) setArticleNumber(data.article.articleNumber);
@@ -1084,6 +1132,71 @@ export default function ArticleEditor() {
               </div>
             </div>
           )}
+
+          {/* YouTube clips — public site shows thumbnail; click opens YouTube in a new tab */}
+          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h2 className="font-semibold text-slate-700 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <Youtube size={18} className="text-red-600 shrink-0" aria-hidden />
+                  YouTube clips
+                </h2>
+                <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+                  Optional. Readers see a thumbnail and optional caption; the clip opens on YouTube in a new tab (no embedded player on the article page).
+                </p>
+              </div>
+              {canEdit && (form.youtubeEmbeds || []).length < MAX_YOUTUBE_EMBEDS && (
+                <button
+                  type="button"
+                  onClick={addYoutubeEmbedRow}
+                  className="inline-flex items-center justify-center gap-1.5 shrink-0 text-sm font-semibold text-slate-700 border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 self-start"
+                >
+                  <Plus size={16} aria-hidden /> Add clip
+                </button>
+              )}
+            </div>
+            {(form.youtubeEmbeds || []).length === 0 ? (
+              <p className="text-sm text-slate-400">No YouTube clips added.</p>
+            ) : (
+              <ul className="space-y-3">
+                {(form.youtubeEmbeds || []).map((row, idx) => (
+                  <li
+                    key={idx}
+                    className="flex flex-col gap-3 p-3 rounded-lg border border-slate-100 bg-slate-50/80 lg:flex-row lg:items-end"
+                  >
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      <span className="block text-xs font-medium text-slate-600">YouTube URL</span>
+                      <Input
+                        value={row.youtubeUrl}
+                        disabled={!canEdit}
+                        onChange={(e) => setYoutubeEmbed(idx, "youtubeUrl", e.target.value)}
+                        placeholder="https://www.youtube.com/watch?v=… or https://youtu.be/…"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1.5 min-w-0">
+                      <span className="block text-xs font-medium text-slate-600">Short caption (optional)</span>
+                      <Input
+                        value={row.caption}
+                        disabled={!canEdit}
+                        onChange={(e) => setYoutubeEmbed(idx, "caption", e.target.value)}
+                        placeholder="Line of context under the thumbnail"
+                      />
+                    </div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => removeYoutubeEmbed(idx)}
+                        className="shrink-0 lg:mb-0.5 inline-flex items-center justify-center p-2 rounded-lg text-red-600 border border-red-200 hover:bg-red-50 self-start"
+                        aria-label={`Remove YouTube clip ${idx + 1}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           {/* Image upload */}
           <div className="bg-white rounded-xl border border-slate-200 p-6">
