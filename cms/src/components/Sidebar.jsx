@@ -149,6 +149,15 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
             </span>
           </div>
         </div>
+        {/* Desktop: primary logout — top of sidebar, high contrast (footer sign-out hidden on lg). */}
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="mt-3 hidden w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-red-900/30 transition-colors hover:bg-red-500 active:scale-[0.99] lg:flex"
+        >
+          <LogOut size={18} strokeWidth={2.25} aria-hidden />
+          Log out
+        </button>
       </div>
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 py-4 sm:px-3">
@@ -171,7 +180,7 @@ export default function Sidebar({ mobileOpen = false, onMobileClose = () => {} }
         ))}
       </nav>
 
-      <div className="mt-auto border-t border-white/[0.06] px-2.5 py-4 sm:px-3">
+      <div className="mt-auto border-t border-white/[0.06] px-2.5 py-4 sm:px-3 lg:hidden">
         <button
           type="button"
           onClick={handleSignOut}

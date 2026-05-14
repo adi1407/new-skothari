@@ -52,12 +52,19 @@ function writerPrimaryLocaleConstraint(role, primaryLocale) {
   return null;
 }
 
-/** Writers assigned to an article (co-desk). */
+/** Normalize populated or lean ref to user id string. */
+function refUserId(ref) {
+  if (ref == null) return "";
+  if (typeof ref === "object" && ref._id != null) return String(ref._id);
+  return String(ref);
+}
+
+/** Writers assigned to an article (co-desk). Works with populated or lean article docs. */
 function isAssignedWriter(article, userId) {
   const id = String(userId);
-  if (String(article.author) === id) return true;
-  if (article.writerEn && String(article.writerEn) === id) return true;
-  if (article.writerHi && String(article.writerHi) === id) return true;
+  if (refUserId(article.author) === id) return true;
+  if (refUserId(article.writerEn) === id) return true;
+  if (refUserId(article.writerHi) === id) return true;
   return false;
 }
 
@@ -82,6 +89,7 @@ module.exports = {
   isAdminLike,
   isSuperAdmin,
   writerPrimaryLocaleConstraint,
+  refUserId,
   isAssignedWriter,
   editorArticleListExtra,
 };

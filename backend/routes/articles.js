@@ -16,6 +16,7 @@ const {
   writerPrimaryLocaleConstraint,
   isAssignedWriter,
   isAdminLike,
+  refUserId,
 } = require("../utils/roles");
 
 const ASSIGNMENT_EDITOR_ROLES = [...new Set([...EDITOR_ROLES, ...ADMIN_LIKE_ROLES])];
@@ -121,15 +122,15 @@ function canViewArticle(user, articleDoc) {
 function canActEnglishDesk(user, article) {
   if (isAdminLike(user.role)) return true;
   if (user.role !== "writer_en" || !isAssignedWriter(article, user._id)) return false;
-  if (article.writerEn) return String(article.writerEn) === String(user._id);
-  return String(article.author) === String(user._id);
+  if (article.writerEn) return refUserId(article.writerEn) === String(user._id);
+  return refUserId(article.author) === String(user._id);
 }
 
 function canActHindiDesk(user, article) {
   if (isAdminLike(user.role)) return true;
   if (user.role !== "writer_hi" || !isAssignedWriter(article, user._id)) return false;
-  if (article.writerHi) return String(article.writerHi) === String(user._id);
-  return String(article.author) === String(user._id);
+  if (article.writerHi) return refUserId(article.writerHi) === String(user._id);
+  return refUserId(article.author) === String(user._id);
 }
 
 function isEnglishPrimaryArticle(article) {

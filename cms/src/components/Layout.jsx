@@ -52,21 +52,19 @@ export default function Layout() {
       <Sidebar mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col lg:min-h-screen">
-        {/* Desktop: always-visible sign out (sidebar logout stays for mobile / habit). */}
-        <header className="sticky top-0 z-30 hidden shrink-0 items-center justify-end gap-3 border-b border-slate-200/90 bg-white/95 px-4 py-2.5 backdrop-blur-md supports-[backdrop-filter]:bg-white/85 lg:flex">
-          <div className="mr-auto min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-800">{user?.name || "Account"}</p>
-            {user?.email && (
-              <p className="truncate text-xs text-slate-500">{user.email}</p>
-            )}
+        {/* Desktop: top toolbar — strong Log out so it is never confused with nav. */}
+        <header className="sticky top-0 z-30 hidden min-h-[3.25rem] shrink-0 items-center gap-4 border-b border-slate-200 bg-white px-4 py-2 shadow-sm lg:flex">
+          <div className="mr-auto min-w-0 py-0.5">
+            <p className="truncate text-sm font-bold text-slate-900">{user?.name || "Account"}</p>
+            {user?.email && <p className="truncate text-xs text-slate-500">{user.email}</p>}
           </div>
           <button
             type="button"
             onClick={handleDesktopSignOut}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-800 active:scale-[0.98]"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-red-900/20 transition-colors hover:bg-red-700 active:scale-[0.98]"
           >
-            <LogOut size={16} strokeWidth={2} aria-hidden />
-            Sign out
+            <LogOut size={18} strokeWidth={2.25} aria-hidden />
+            Log out
           </button>
         </header>
 
