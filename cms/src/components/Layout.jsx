@@ -1,13 +1,21 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
-import { Outlet, useLocation } from "react-router-dom";
-import { Menu } from "lucide-react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Menu, LogOut } from "lucide-react";
 import Sidebar from "./Sidebar";
 import CmsBrandLogo from "./CmsBrandLogo";
+import { useAuth } from "../context/AuthContext";
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const mainRef = useRef(null);
+
+  const handleDesktopSignOut = () => {
+    signOut();
+    navigate("/login");
+  };
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -44,6 +52,24 @@ export default function Layout() {
       <Sidebar mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col lg:min-h-screen">
+        {/* Desktop: always-visible sign out (sidebar logout stays for mobile / habit). */}
+        <header className="sticky top-0 z-30 hidden shrink-0 items-center justify-end gap-3 border-b border-slate-200/90 bg-white/95 px-4 py-2.5 backdrop-blur-md supports-[backdrop-filter]:bg-white/85 lg:flex">
+          <div className="mr-auto min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-800">{user?.name || "Account"}</p>
+            {user?.email && (
+              <p className="truncate text-xs text-slate-500">{user.email}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleDesktopSignOut}
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-800 active:scale-[0.98]"
+          >
+            <LogOut size={16} strokeWidth={2} aria-hidden />
+            Sign out
+          </button>
+        </header>
+
         <header className="sticky top-0 z-30 flex shrink-0 items-center gap-3 border-b border-slate-200/90 bg-white/95 px-3 py-2.5 shadow-mobile-header backdrop-blur-md supports-[backdrop-filter]:bg-white/80 lg:hidden safe-pt">
           <button
             type="button"
