@@ -10,6 +10,7 @@
     "seed:cleanup": "node scripts/cleanup-seeded-content.js",
     "seed:refresh-news": "node scripts/refresh-seed-news.js",
     "seed:news-40": "node scripts/seed-news-40.js",
+    "seed:news-200": "node scripts/seed-news-200.js",
     "articles:clear": "node scripts/clear-articles.js",
     "seed:hindi": "node scripts/seed-hindi-from-existing.js",
     "migrate:primary-locale": "node scripts/migrate-primary-locale.js",
