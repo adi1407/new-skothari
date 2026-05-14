@@ -12,7 +12,7 @@ import type { NewsItem } from "../types/article";
 import ArticleAuthor from "./ArticleAuthor";
 import CommentSection from "./CommentSection";
 import { ArticleRecommendationStrip } from "./RelatedArticles";
-import { formatViewCount, isHtmlParagraph } from "../utils/formatArticle";
+import { isHtmlParagraph } from "../utils/formatArticle";
 import { nativeShare, shareToFacebook, shareToTwitter, shareToWhatsApp } from "../utils/share";
 
 function sanitizeArticleHtml(html: string): string {
@@ -70,8 +70,6 @@ export default function ArticleContent({
   const cat = categories.find((c) => c.slug === article.categorySlug);
   const time = lang === "hi" ? article.time : article.timeEn;
   const author = lang === "hi" ? article.author : article.authorEn;
-  const views = formatViewCount(article.viewCount ?? 0);
-  const viewsLabel = `${views} ${t("व्यूज़", "views")}`;
 
   return (
     <main className="article-main-col">
@@ -99,7 +97,6 @@ export default function ArticleContent({
           authorInitial={author.charAt(0)}
           authorName={author}
           time={time}
-          viewsLabel={viewsLabel}
           readTime={article.readTime}
           color={color}
           t={t}

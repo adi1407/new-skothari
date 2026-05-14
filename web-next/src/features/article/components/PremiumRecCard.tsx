@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, Eye } from "lucide-react";
+import { Clock } from "lucide-react";
 import type { NewsItem } from "../types/article";
-import { categoryColors, formatViewCount } from "../utils/formatArticle";
+import { categoryColors } from "../utils/formatArticle";
 
 export default function PremiumRecCard({ item, lang }: { item: NewsItem; lang: string }) {
   const navigate = useNavigate();
@@ -37,13 +37,6 @@ export default function PremiumRecCard({ item, lang }: { item: NewsItem; lang: s
         <div className="article-rec-card-meta">
           <Clock size={11} strokeWidth={2} aria-hidden />
           <span>{time}</span>
-          {typeof item.viewCount === "number" && item.viewCount > 0 && (
-            <>
-              <span className="article-rec-card-dot" aria-hidden>·</span>
-              <Eye size={11} strokeWidth={2} aria-hidden />
-              <span>{formatViewCount(item.viewCount)}</span>
-            </>
-          )}
         </div>
       </div>
     </article>

@@ -43,6 +43,50 @@ function articleListTitle(a) {
   return (a.title || a.titleHi || "").trim() || "Untitled";
 }
 
+function stripHtml(s) {
+  return String(s || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Short preview of draft/review body for the list row (primary locale). */
+function writerArticleSnippet(a) {
+  const hi = a.primaryLocale === "hi";
+  const summary = hi ? String(a.summaryHi || "").trim() : String(a.summary || "").trim();
+  const bodyHtml = hi ? String(a.bodyHi || "") : String(a.body || "");
+  const fromBody = stripHtml(bodyHtml);
+  const text = summary || fromBody;
+  if (!text) return "";
+  return text.length > 140 ? `${text.slice(0, 137)}…` : text;
+}
+
+function publicArticleUrl(a) {
+  const site = String(import.meta.env.VITE_SITE_ORIGIN || window.location.origin).replace(/\/$/, "");
+  const num = a.articleNumber;
+  if (num != null && num !== "") {
+    const slug = String(a.slug || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const pathSeg = slug ? `${slug}-${num}` : String(num);
+    return `${site}/article/${pathSeg}`;
+  }
+  if (a._id) return `${site}/article/${a._id}`;
+  return null;
+}
+
+function openWriterArticleView(a, navigate) {
+  if (a.status === "published") {
+    const url = publicArticleUrl(a);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+    return;
+  }
+  navigate(`/writer/edit/${a._id}`);
+}
+
 export default function WriterDashboard() {
   const [articles, setArticles] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -137,6 +181,9 @@ export default function WriterDashboard() {
                           {a.primaryLocale === "hi" ? "HI" : "EN"}
                         </span>
                       </div>
+                      <p className="mt-1.5 line-clamp-2 min-w-0 break-words text-xs leading-relaxed text-slate-500">
+                        {writerArticleSnippet(a) || "No draft text yet"}
+                      </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                         <span className="capitalize">{a.category}</span>
                         <span className="text-slate-300">·</span>
@@ -153,7 +200,7 @@ export default function WriterDashboard() {
                       {s.label}
                     </span>
                     <div className="flex flex-shrink-0 items-center gap-1">
-                      {["draft", "rejected"].includes(a.status) && (
+                      {["draft", "rejected", "submitted"].includes(a.status) && (
                         <button
                           type="button"
                           onClick={() => navigate(`/writer/edit/${a._id}`)}
@@ -165,9 +212,9 @@ export default function WriterDashboard() {
                       )}
                       <button
                         type="button"
-                        onClick={() => navigate(`/editor/review/${a._id}`)}
+                        onClick={() => openWriterArticleView(a, navigate)}
                         className="flex min-h-9 min-w-9 items-center justify-center rounded-xl text-slate-400 ring-1 ring-slate-200/80 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                        aria-label="View article"
+                        aria-label={a.status === "published" ? "View on website" : "View article"}
                       >
                         <Eye size={15} />
                       </button>
