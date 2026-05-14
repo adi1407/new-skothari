@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import {
   Save, Send, ArrowLeft, Upload, X, Image as ImgIcon, Loader2, AlertCircle, Link2, Copy,
 } from "lucide-react";
@@ -10,17 +10,18 @@ import {
 } from "../../api";
 import RichTextEditor from "../../components/RichTextEditor.jsx";
 import { useAuth } from "../../context/AuthContext";
-import { isAdminLike, ENGLISH_EDITOR_ASSIGNMENT_ROLES, writerDeskLabel, isWriterRole } from "../../constants/roles";
-
-/** Bilingual UI for admins; single-language form for desk writers. Legacy `writer` → English desk. */
-function articleEditorDeskMode(user) {
-  if (!user?.role) return "both";
-  if (isAdminLike(user.role)) return "both";
-  const r = String(user.role).trim();
-  if (r === "writer_en" || r === "writer") return "en";
-  if (r === "writer_hi") return "hi";
-  return "both";
-}
+import {
+  isAdminLike,
+  ENGLISH_EDITOR_ASSIGNMENT_ROLES,
+  writerDeskLabel,
+  isWriterRole,
+  isEditorRole,
+} from "../../constants/roles";
+import {
+  articleEditorDeskMode,
+  resolveArticleDeskLocale,
+  editorQueuePathForUser,
+} from "../../utils/editorDeskParams";
 
 const CATEGORIES = ["desh","videsh","rajneeti","khel","health","krishi","business","manoranjan"];
 const RELATED_LINK_RE = /<a\s+[^>]*href=["']\/article\/(?:[a-z0-9-]+-)?(\d{9})["'][^>]*>([\s\S]*?)<\/a>/gi;
@@ -106,12 +107,12 @@ function Textarea({ rows = 4, className = "", ...props }) {
 export default function ArticleEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { user } = useAuth();
   const fileRef  = useRef(null);
   const pendingBlobUrlsRef = useRef([]);
   const isEdit   = Boolean(id);
-  /** English desk: only English body fields in UI. Hindi desk: only Hindi. Admin: both. */
-  const deskMode = articleEditorDeskMode(user);
 
   const [form, setForm] = useState({
     primaryLocale: "en",
@@ -141,9 +142,25 @@ export default function ArticleEditor() {
   const [autosaveMsg, setAutosaveMsg] = useState("");
   const autosaveTimerRef = useRef(null);
 
+  const resolvedDesk = resolveArticleDeskLocale(user, searchParams, form.primaryLocale);
+  const deskMode = articleEditorDeskMode(user, resolvedDesk);
+
   useEffect(() => {
     setRteEpoch(0);
   }, [id]);
+
+  /** Remount RTE when desk (URL or loaded article) changes for chief/admin or desk editors. */
+  const prevResolvedDeskRef = useRef(null);
+  useEffect(() => {
+    if (prevResolvedDeskRef.current === null) {
+      prevResolvedDeskRef.current = resolvedDesk;
+      return;
+    }
+    if (prevResolvedDeskRef.current !== resolvedDesk) {
+      prevResolvedDeskRef.current = resolvedDesk;
+      setRteEpoch((e) => e + 1);
+    }
+  }, [resolvedDesk]);
 
   useEffect(() => {
     pendingBlobUrlsRef.current = pendingUploads;
@@ -174,16 +191,34 @@ export default function ArticleEditor() {
   }, [user?._id, user?.role]);
 
   useEffect(() => {
-    const loads = [getTasks(), getEditorAssignmentUsers().catch(() => ({ data: { writers: [], editors: [] } }))];
+    let cancelled = false;
+    if (isEdit) setLoading(true);
+    else setLoading(false);
+
+    const loads = [
+      getTasks(),
+      getEditorAssignmentUsers().catch(() => ({ data: { writers: [], editors: [] } })),
+    ];
     if (isEdit) loads.push(getArticle(id));
-    Promise.all(loads).then(([t, assign, a]) => {
-      setTasks(t.data.tasks.filter((tk) => tk.status !== "completed"));
-      setAssignmentUsers({
-        writers: assign?.data?.writers || [],
-        editors: assign?.data?.editors || [],
-      });
-      if (a) {
-        const art = a.data.article;
+
+    Promise.all(loads)
+      .then((results) => {
+        if (cancelled) return;
+        const [t, assign, a] = results;
+        setTasks(t.data.tasks.filter((tk) => tk.status !== "completed"));
+        setAssignmentUsers({
+          writers: assign?.data?.writers || [],
+          editors: assign?.data?.editors || [],
+        });
+        if (!isEdit || !a) return;
+
+        const art = a.data?.article;
+        if (!art) {
+          setError("Article could not be loaded.");
+          return;
+        }
+
+        setError("");
         setForm({
           primaryLocale: art.primaryLocale === "hi" ? "hi" : "en",
           title: art.title || "", titleHi: art.titleHi || "",
@@ -209,14 +244,30 @@ export default function ArticleEditor() {
         setStatus(art.status);
         setArticleNumber(art.articleNumber ?? null);
         setRteEpoch((e) => e + 1);
-      }
-    }).finally(() => setLoading(false));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const msg =
+          err?.response?.data?.message ||
+          (Array.isArray(err?.response?.data?.errors) && err.response.data.errors[0]?.msg) ||
+          err?.message ||
+          "Failed to load article";
+        setError(msg);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, isEdit]);
 
-  /** Hidden partner desk IDs for single-desk writers (not shown in UI; required by API). */
+  /** Hidden partner desk IDs for single-desk writers (not shown in UI; required by API). Editors/admins get roster defaults, not self as writer. */
   useEffect(() => {
     if (!user?._id) return;
-    const mode = articleEditorDeskMode(user);
+    const resolved = resolveArticleDeskLocale(user, searchParams, form.primaryLocale);
+    const mode = articleEditorDeskMode(user, resolved);
     const writers = assignmentUsers.writers || [];
     const editors = assignmentUsers.editors || [];
     if (!writers.length && !editors.length) return;
@@ -240,8 +291,16 @@ export default function ArticleEditor() {
           }
         }
         if (!f.writerEn) {
-          next.writerEn = user._id;
-          changed = true;
+          if (user.role === "writer_en" || user.role === "writer") {
+            next.writerEn = user._id;
+            changed = true;
+          } else {
+            const w = writers.find((u) => u.role === "writer_en");
+            if (w) {
+              next.writerEn = w._id;
+              changed = true;
+            }
+          }
         }
         return changed ? next : f;
       });
@@ -267,17 +326,27 @@ export default function ArticleEditor() {
           }
         }
         if (!f.writerHi) {
-          next.writerHi = user._id;
-          changed = true;
+          if (user.role === "writer_hi") {
+            next.writerHi = user._id;
+            changed = true;
+          } else {
+            const w = writers.find((u) => u.role === "writer_hi");
+            if (w) {
+              next.writerHi = w._id;
+              changed = true;
+            }
+          }
         }
         return changed ? next : f;
       });
     }
-  }, [assignmentUsers, user]);
+  }, [assignmentUsers, user, form.primaryLocale, searchParams]);
 
-  /** Admin (both columns): opposite-language assignments hidden in UI but still sent to API. */
+  /** Legacy bilingual column mode (rare): opposite-language assignments when desk is "both". */
   useEffect(() => {
-    if (!user?._id || articleEditorDeskMode(user) !== "both") return;
+    if (!user?._id) return;
+    const resolved = resolveArticleDeskLocale(user, searchParams, form.primaryLocale);
+    if (articleEditorDeskMode(user, resolved) !== "both") return;
     const writers = assignmentUsers.writers || [];
     const editors = assignmentUsers.editors || [];
     if (!writers.length && !editors.length) return;
@@ -322,7 +391,7 @@ export default function ArticleEditor() {
       }
       return changed ? next : f;
     });
-  }, [assignmentUsers, user, form.primaryLocale]);
+  }, [assignmentUsers, user, form.primaryLocale, searchParams]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -359,7 +428,7 @@ export default function ArticleEditor() {
       } else {
         const { data } = await createArticle(payload);
         if (data?.article?.articleNumber != null) setArticleNumber(data.article.articleNumber);
-        navigate(`/writer/edit/${data.article._id}`, { replace: true });
+        navigate(`/writer/edit/${data.article._id}${location.search || ""}`, { replace: true });
         result = { articleId: data.article._id, articleNumber: data.article.articleNumber ?? null };
       }
       setSuccess("Saved successfully");
@@ -426,7 +495,11 @@ export default function ArticleEditor() {
         return;
       }
       await submitArticle(submitId);
-      navigate("/writer");
+      if (isEditorRole(user?.role) || isAdminLike(user?.role)) {
+        navigate(editorQueuePathForUser(user, location.search));
+      } else {
+        navigate("/writer");
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Submit failed");
     } finally {
@@ -648,6 +721,7 @@ export default function ArticleEditor() {
   const canSubmit =
     isEdit &&
     canEdit &&
+    isWriterRole(user?.role) &&
     contentReadyPrimary &&
     assignReadyPrimary &&
     images.length > 0;
@@ -664,7 +738,14 @@ export default function ArticleEditor() {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate("/writer")}
+            type="button"
+            onClick={() => {
+              if (isEditorRole(user?.role) || isAdminLike(user?.role)) {
+                navigate(editorQueuePathForUser(user, location.search));
+              } else {
+                navigate("/writer");
+              }
+            }}
             className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors"
           >
             <ArrowLeft size={16} />
@@ -1177,11 +1258,23 @@ export default function ArticleEditor() {
             </Field>
             ) : deskMode === "en" ? (
               <p className="text-sm text-slate-600 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
-                <span className="font-semibold text-slate-800">Your desk:</span> English — headline, summary, and body on this page are all in English.
+                <span className="font-semibold text-slate-800">English-primary article</span>
+                {" "}
+                {user?.role === "writer_en" || user?.role === "writer" || user?.role === "writer_hi" ? (
+                  <>— Your desk: English — headline, summary, and body on this page are all in English.</>
+                ) : (
+                  <>— Same fields the English writer sees.</>
+                )}
               </p>
             ) : (
               <p className="text-sm text-slate-600 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
-                <span className="font-semibold text-slate-800">Your desk:</span> Hindi — headline, summary, and body on this page are all in Hindi.
+                <span className="font-semibold text-slate-800">Hindi-primary article</span>
+                {" "}
+                {user?.role === "writer_hi" ? (
+                  <>— Your desk: Hindi — headline, summary, and body on this page are all in Hindi.</>
+                ) : (
+                  <>— Same fields the Hindi writer sees.</>
+                )}
               </p>
             )}
 

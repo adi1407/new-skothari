@@ -16,6 +16,7 @@ import DashboardHero from "../../components/DashboardHero";
 import StatTile from "../../components/dashboard/StatTile";
 import PanelCard from "../../components/dashboard/PanelCard";
 import MiniBar from "../../components/dashboard/MiniBar";
+import { DEFAULT_CHIEF_DESK_LOCALE } from "../../utils/editorDeskParams";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -40,7 +41,8 @@ export default function AdminDashboard() {
   const quickLinks = [
     { label: "Assign task", path: "/admin/tasks", className: "bg-brand text-white hover:bg-brand-dark" },
     { label: "Writers", path: "/admin/writers", className: "bg-slate-800 text-white hover:bg-slate-900" },
-    { label: "Review queue", path: "/editor/queue", className: "bg-emerald-700 text-white hover:bg-emerald-800" },
+    { label: "Queue (English)", path: "/editor/queue?primaryLocale=en", className: "bg-emerald-700 text-white hover:bg-emerald-800" },
+    { label: "Queue (Hindi)", path: "/editor/queue?primaryLocale=hi", className: "bg-teal-700 text-white hover:bg-teal-800" },
     { label: "Users", path: "/admin/users", className: "bg-violet-700 text-white hover:bg-violet-800" },
   ];
 
@@ -60,14 +62,14 @@ export default function AdminDashboard() {
           value={stats?.articles?.published}
           sub={`+${stats?.articles?.recentPublished ?? 0} this week`}
           variant="success"
-          onClick={() => navigate("/editor/queue")}
+          onClick={() => navigate(`/editor/queue?primaryLocale=${DEFAULT_CHIEF_DESK_LOCALE}`)}
         />
         <StatTile
           icon={Clock}
           label="Pending review"
           value={stats?.articles?.submitted}
           variant="warn"
-          onClick={() => navigate("/editor/queue")}
+          onClick={() => navigate(`/editor/queue?primaryLocale=${DEFAULT_CHIEF_DESK_LOCALE}`)}
         />
         <StatTile
           icon={AlertTriangle}

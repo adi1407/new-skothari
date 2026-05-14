@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { CheckSquare, Clock, Globe, XCircle, Eye, Search } from "lucide-react";
 import { getArticles, mediaUrl } from "../../api";
 import DashboardHero from "../../components/DashboardHero";
 import StatTile from "../../components/dashboard/StatTile";
 import PanelCard from "../../components/dashboard/PanelCard";
 import { useAuth } from "../../context/AuthContext";
-import { articleListParamsFromRole } from "../../utils/editorDeskParams";
+import { articleListParamsWithDeskUrl } from "../../utils/editorDeskParams";
 
 const TAB_FILTER = {
   submitted: { label: "Pending review" },
@@ -35,6 +35,7 @@ function articleListSummary(a) {
 export default function EditorDashboard() {
   const { user } = useAuth();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [tab, setTab] = useState("submitted");
   const [articles, setArticles] = useState([]);
   const [search, setSearch] = useState("");
@@ -42,18 +43,20 @@ export default function EditorDashboard() {
   const [counts, setCounts] = useState({ submitted: 0, published: 0, rejected: 0 });
   const navigate = useNavigate();
 
+  const deskSearchKey = searchParams.toString();
+
   const listBase = () =>
-    articleListParamsFromRole(user?.role, { search: search || undefined });
+    articleListParamsWithDeskUrl(user?.role, searchParams, { search: search || undefined });
 
   useEffect(() => {
     setLoading(true);
     getArticles({ status: tab, ...listBase() })
       .then((r) => setArticles(r.data.articles))
       .finally(() => setLoading(false));
-  }, [tab, search, user?.role]);
+  }, [tab, search, user?.role, deskSearchKey]);
 
   useEffect(() => {
-    const base = () => articleListParamsFromRole(user?.role, {});
+    const base = () => articleListParamsWithDeskUrl(user?.role, searchParams, {});
     Promise.all([
       getArticles({ status: "submitted", ...base() }),
       getArticles({ status: "published", ...base() }),
@@ -65,7 +68,7 @@ export default function EditorDashboard() {
         rejected: r.data.pagination.total,
       })
     );
-  }, [user?.role]);
+  }, [user?.role, deskSearchKey]);
 
   return (
     <div className="cms-page">

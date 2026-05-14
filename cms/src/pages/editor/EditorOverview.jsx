@@ -17,7 +17,8 @@ import StatTile from "../../components/dashboard/StatTile";
 import PanelCard from "../../components/dashboard/PanelCard";
 import MiniBar from "../../components/dashboard/MiniBar";
 import { useAuth } from "../../context/AuthContext";
-import { withEditorListSearch } from "../../utils/editorDeskParams";
+import { withEditorListSearch, DEFAULT_CHIEF_DESK_LOCALE } from "../../utils/editorDeskParams";
+import { isAdminLike } from "../../constants/roles";
 
 export default function EditorOverview() {
   const { user } = useAuth();
@@ -29,6 +30,32 @@ export default function EditorOverview() {
   const deskArticles = useMemo(() => withEditorListSearch("/editor/articles", user?.role), [user?.role]);
   const deskWriters = useMemo(() => withEditorListSearch("/editor/writers", user?.role), [user?.role]);
   const deskTasks = useMemo(() => withEditorListSearch("/editor/tasks", user?.role), [user?.role]);
+
+  const defaultQueuePath = useMemo(() => {
+    if (isAdminLike(user?.role) || user?.role === "editor") {
+      return `/editor/queue?primaryLocale=${DEFAULT_CHIEF_DESK_LOCALE}`;
+    }
+    return deskQueue;
+  }, [user?.role, deskQueue]);
+
+  const quickLinks = useMemo(() => {
+    if (isAdminLike(user?.role) || user?.role === "editor") {
+      return [
+        { label: "Queue (English)", path: "/editor/queue?primaryLocale=en", className: "bg-emerald-700 text-white hover:bg-emerald-800" },
+        { label: "Queue (Hindi)", path: "/editor/queue?primaryLocale=hi", className: "bg-teal-700 text-white hover:bg-teal-800" },
+        { label: "Articles (English)", path: "/editor/articles?primaryLocale=en", className: "bg-slate-800 text-white hover:bg-slate-900" },
+        { label: "Articles (Hindi)", path: "/editor/articles?primaryLocale=hi", className: "bg-slate-700 text-white hover:bg-slate-800" },
+        { label: "Writers", path: "/editor/writers", className: "bg-brand text-white hover:bg-brand-dark" },
+        { label: "Tasks", path: "/editor/tasks", className: "bg-violet-700 text-white hover:bg-violet-800" },
+      ];
+    }
+    return [
+      { label: "Review queue", path: deskQueue, className: "bg-emerald-700 text-white hover:bg-emerald-800" },
+      { label: "All articles", path: deskArticles, className: "bg-slate-800 text-white hover:bg-slate-900" },
+      { label: "Writers", path: deskWriters, className: "bg-brand text-white hover:bg-brand-dark" },
+      { label: "Tasks", path: deskTasks, className: "bg-violet-700 text-white hover:bg-violet-800" },
+    ];
+  }, [user?.role, deskQueue, deskArticles, deskWriters, deskTasks]);
 
   useEffect(() => {
     getEditorStats()
@@ -44,13 +71,6 @@ export default function EditorOverview() {
     );
 
   const catMax = stats?.byCategory?.[0]?.count || 1;
-
-  const quickLinks = [
-    { label: "Review queue", path: deskQueue, className: "bg-emerald-700 text-white hover:bg-emerald-800" },
-    { label: "All articles", path: deskArticles, className: "bg-slate-800 text-white hover:bg-slate-900" },
-    { label: "Writers", path: deskWriters, className: "bg-brand text-white hover:bg-brand-dark" },
-    { label: "Tasks", path: deskTasks, className: "bg-violet-700 text-white hover:bg-violet-800" },
-  ];
 
   return (
     <div className="cms-page">
@@ -68,14 +88,14 @@ export default function EditorOverview() {
           value={stats?.articles?.published}
           sub={`+${stats?.articles?.recentPublished ?? 0} this week`}
           variant="success"
-          onClick={() => navigate(deskQueue)}
+          onClick={() => navigate(defaultQueuePath)}
         />
         <StatTile
           icon={Clock}
           label="Pending review"
           value={stats?.articles?.submitted}
           variant="warn"
-          onClick={() => navigate(deskQueue)}
+          onClick={() => navigate(defaultQueuePath)}
         />
         <StatTile
           icon={AlertTriangle}
@@ -101,7 +121,7 @@ export default function EditorOverview() {
           label="Rejected"
           value={stats?.articles?.rejected}
           variant="danger"
-          onClick={() => navigate(deskQueue)}
+          onClick={() => navigate(defaultQueuePath)}
         />
       </div>
 
@@ -183,7 +203,7 @@ export default function EditorOverview() {
           <LayoutGrid size={16} strokeWidth={2.25} className="text-brand" />
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-600">Shortcuts</h2>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {quickLinks.map(({ label, path, className }) => (
             <button
               key={path}

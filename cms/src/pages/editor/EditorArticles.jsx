@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { Search, Eye } from "lucide-react";
 import { getEditorArticles } from "../../api";
 import { useAuth } from "../../context/AuthContext";
-import { articleListParamsFromRole } from "../../utils/editorDeskParams";
+import { articleListParamsWithDeskUrl } from "../../utils/editorDeskParams";
 
 const STATUS_BADGE = {
   draft: "bg-slate-100 text-slate-600",
@@ -23,6 +23,7 @@ function articleListTitle(a) {
 export default function EditorArticles() {
   const { user } = useAuth();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [articles, setArticles] = useState([]);
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("");
@@ -33,9 +34,11 @@ export default function EditorArticles() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  const deskSearchKey = searchParams.toString();
+
   useEffect(() => {
     setLoading(true);
-    const params = { page, limit: 20, ...articleListParamsFromRole(user?.role, {}) };
+    const params = { page, limit: 20, ...articleListParamsWithDeskUrl(user?.role, searchParams, {}) };
     if (status) params.status = status;
     if (category) params.category = category;
     if (appliedSearch.trim()) params.search = appliedSearch.trim();
@@ -45,7 +48,7 @@ export default function EditorArticles() {
         setPages(r.data.pagination?.pages || 1);
       })
       .finally(() => setLoading(false));
-  }, [status, category, page, appliedSearch, user?.role]);
+  }, [status, category, page, appliedSearch, user?.role, deskSearchKey]);
 
   return (
     <div className="cms-page">

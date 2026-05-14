@@ -2,6 +2,8 @@
 
 Monorepo: **public site** (`web-next/`), **CMS** (`cms/`), **API** (`backend/`).
 
+**Full-stack architecture (web-next, backend, CMS):** [docs/KOTHARI_ARCHITECTURE.md](docs/KOTHARI_ARCHITECTURE.md)
+
 ## Quick start
 
 1. **MongoDB Atlas** — copy the `mongodb+srv://…` string from Atlas (Database → Connect → Drivers) into **`MONGO_URI`** in `backend/.env`. URL-encode special characters in the password (e.g. `@` → `%40`). In Atlas → **Network Access**, allow your IP (or `0.0.0.0/0` for short-lived dev only). See `backend/.env.example`. Optional self-hosted URI: `mongodb://127.0.0.1:27017/kothari-news`.

@@ -26,9 +26,10 @@ import Users          from "./pages/admin/Users";
 import Videos         from "./pages/admin/Videos";
 import VideoEditor    from "./pages/admin/VideoEditor";
 import { isWriterRole, isEditorRole, isAdminLike, isVideoStaff } from "./constants/roles";
-import { withEditorListSearch } from "./utils/editorDeskParams";
+import { withEditorListSearch, DEFAULT_CHIEF_DESK_LOCALE } from "./utils/editorDeskParams";
 
 const WRITER_ROUTE_ROLES = ["__writers__", "__adminLike__"];
+const WRITER_EDIT_ROUTE_ROLES = ["__writers__", "__adminLike__", "__textEditors__"];
 const EDITOR_ROUTE_ROLES = ["__textEditors__", "__adminLike__"];
 const ADMIN_ROUTE_ROLES = ["__adminLike__"];
 const VIDEO_ROUTE_ROLES = ["__videoStaff__"];
@@ -42,7 +43,9 @@ function RoleHome() {
   if (r === "editor_en" || r === "editor_hi") {
     return <Navigate to={withEditorListSearch("/editor/queue", r)} replace />;
   }
-  if (isEditorRole(r)) return <Navigate to="/editor" replace />;
+  if (isEditorRole(r)) {
+    return <Navigate to={`/editor/queue?primaryLocale=${DEFAULT_CHIEF_DESK_LOCALE}`} replace />;
+  }
   return <Navigate to="/login" replace />;
 }
 
@@ -67,7 +70,7 @@ export default function App() {
         {/* Writer */}
         <Route path="writer" element={<ProtectedRoute roles={WRITER_ROUTE_ROLES}><WriterDashboard /></ProtectedRoute>} />
         <Route path="writer/new"  element={<ProtectedRoute roles={WRITER_ROUTE_ROLES}><ArticleEditor /></ProtectedRoute>} />
-        <Route path="writer/edit/:id" element={<ProtectedRoute roles={WRITER_ROUTE_ROLES}><ArticleEditor /></ProtectedRoute>} />
+        <Route path="writer/edit/:id" element={<ProtectedRoute roles={WRITER_EDIT_ROUTE_ROLES}><ArticleEditor /></ProtectedRoute>} />
 
         {/* Editor desk (text editors + admins) */}
         <Route path="editor" element={<ProtectedRoute roles={EDITOR_ROUTE_ROLES}><EditorOverview /></ProtectedRoute>} />

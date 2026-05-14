@@ -1,9 +1,10 @@
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 /**
- * WYSIWYG body editor — Hindi / English newsroom style (TipTap).
+ * WYSIWYG body editor — Hindi / English newsroom style (CKEditor 5).
+ * Syncs async-loaded HTML: `data` alone does not always update after mount.
  */
 export default function RichTextEditor({
   value,
@@ -12,6 +13,9 @@ export default function RichTextEditor({
   placeholder,
   labelHint,
 }) {
+  const editorRef = useRef(null);
+  const skipNextChange = useRef(false);
+
   const config = useMemo(
     () => ({
       placeholder: placeholder || "",
@@ -62,6 +66,21 @@ export default function RichTextEditor({
     [placeholder]
   );
 
+  const html = value || "";
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    try {
+      const current = editor.getData();
+      if (current === html) return;
+      skipNextChange.current = true;
+      editor.setData(html);
+    } catch {
+      /* editor may be destroying */
+    }
+  }, [html]);
+
   return (
     <div className="rounded-lg border border-slate-200 overflow-hidden bg-white">
       {labelHint && (
@@ -72,8 +91,19 @@ export default function RichTextEditor({
           editor={ClassicEditor}
           disabled={Boolean(disabled)}
           config={config}
-          data={value || ""}
-          onChange={(_, editor) => onChange(editor.getData())}
+          data={html}
+          onReady={(editor) => {
+            editorRef.current = editor;
+            skipNextChange.current = true;
+            editor.setData(html);
+          }}
+          onChange={(_, editor) => {
+            if (skipNextChange.current) {
+              skipNextChange.current = false;
+              return;
+            }
+            onChange(editor.getData());
+          }}
         />
       </div>
     </div>

@@ -31,6 +31,18 @@ const EDITOR_NAV = [
   { to: "/editor/tasks", label: "Tasks", icon: ClipboardList, end: true },
 ];
 
+/** Editor-in-chief: separate English / Hindi queue and article lists (matches writer desk split). */
+const EDITOR_CHIEF_NAV = [
+  { to: "/editor", label: "Overview", icon: LayoutDashboard, end: true },
+  { to: "/editor/queue?primaryLocale=en", label: "Queue (English)", icon: CheckSquare, end: false },
+  { to: "/editor/queue?primaryLocale=hi", label: "Queue (Hindi)", icon: CheckSquare, end: false },
+  { to: "/editor/articles?primaryLocale=en", label: "Articles (English)", icon: FileText, end: false },
+  { to: "/editor/articles?primaryLocale=hi", label: "Articles (Hindi)", icon: FileText, end: false },
+  { to: "/editor/videos", label: "Videos", icon: Video, end: true },
+  { to: "/editor/writers", label: "Writers", icon: Users, end: true },
+  { to: "/editor/tasks", label: "Tasks", icon: ClipboardList, end: true },
+];
+
 const ADMIN_NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/writers", label: "Writers", icon: Users, end: false },
@@ -39,8 +51,10 @@ const ADMIN_NAV = [
   { to: "/admin/users", label: "Users", icon: UserCog, end: true },
   { to: "/writer", label: "Write", icon: PlusCircle, end: true },
   { to: "/editor", label: "Editor overview", icon: LayoutDashboard, end: true },
-  { to: "/editor/queue", label: "Review queue", icon: CheckSquare, end: true },
-  { to: "/editor/articles", label: "All articles", icon: FileText, end: true },
+  { to: "/editor/queue?primaryLocale=en", label: "Queue (English)", icon: CheckSquare, end: false },
+  { to: "/editor/queue?primaryLocale=hi", label: "Queue (Hindi)", icon: CheckSquare, end: false },
+  { to: "/editor/articles?primaryLocale=en", label: "Articles (English)", icon: FileText, end: false },
+  { to: "/editor/articles?primaryLocale=hi", label: "Articles (Hindi)", icon: FileText, end: false },
 ];
 
 const VIDEO_EDITOR_NAV = [
@@ -49,6 +63,7 @@ const VIDEO_EDITOR_NAV = [
 
 function navForUser(role) {
   if (isAdminLike(role)) return ADMIN_NAV;
+  if (role === "editor") return EDITOR_CHIEF_NAV;
   if (isEditorRole(role)) {
     return EDITOR_NAV.map((item) => ({
       ...item,

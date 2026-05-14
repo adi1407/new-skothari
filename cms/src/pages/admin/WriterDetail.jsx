@@ -3,6 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, FileText, Eye, CheckCircle, Clock, XCircle, ClipboardList } from "lucide-react";
 import { getWriterStats as getWriterStatsDefault } from "../../api";
 import { writerDeskLabel } from "../../constants/roles";
+import { chiefDeskSearchFromArticle } from "../../utils/editorDeskParams";
+
+function recentArticleTitle(a) {
+  const pl = a.primaryLocale === "hi" ? "hi" : "en";
+  if (pl === "hi") return (a.titleHi || a.title || "").trim() || "Untitled";
+  return (a.title || a.titleHi || "").trim() || "Untitled";
+}
 
 const STATUS_BADGE = {
   draft:     "bg-slate-100 text-slate-600",
@@ -93,11 +100,11 @@ export default function WriterDetail({
             {recentArticles.map((a) => (
               <div
                 key={a._id}
-                onClick={() => navigate(`/editor/review/${a._id}`)}
+                onClick={() => navigate(`/editor/review/${a._id}${chiefDeskSearchFromArticle(a)}`)}
                 className="flex items-center gap-4 px-6 py-3 hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{a.title}</p>
+                  <p className="text-sm font-medium text-slate-800 truncate">{recentArticleTitle(a)}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xs text-slate-400 capitalize">{a.category}</span>
                     <span className="text-slate-300">·</span>
