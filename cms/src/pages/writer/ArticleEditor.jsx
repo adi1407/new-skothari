@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, useLocation, useBlocker } from "react-router-dom";
 import {
   Save, Send, ArrowLeft, Upload, X, Image as ImgIcon, Loader2, AlertCircle, Link2, Copy,
 } from "lucide-react";
@@ -141,9 +141,46 @@ export default function ArticleEditor() {
   const [rteEpoch, setRteEpoch] = useState(0);
   const [autosaveMsg, setAutosaveMsg] = useState("");
   const autosaveTimerRef = useRef(null);
+  /** Writer unsaved changes — cleared after successful save/autosave or article reload. */
+  const [isDirty, setIsDirty] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  /** False during server hydrate / roster sync so programmatic setForm does not mark dirty. */
+  const allowDirtyRef = useRef(false);
+  const blockedNavConfirmShownRef = useRef(false);
 
   const resolvedDesk = resolveArticleDeskLocale(user, searchParams, form.primaryLocale);
   const deskMode = articleEditorDeskMode(user, resolvedDesk);
+
+  const writerMayHaveUnsavedWork =
+    isWriterRole(user?.role) && ["draft", "rejected"].includes(status) && isDirty;
+  const blocker = useBlocker(writerMayHaveUnsavedWork);
+
+  useEffect(() => {
+    if (!writerMayHaveUnsavedWork) return;
+    const onBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [writerMayHaveUnsavedWork]);
+
+  useEffect(() => {
+    if (blocker.state !== "blocked") {
+      blockedNavConfirmShownRef.current = false;
+      return;
+    }
+    if (blockedNavConfirmShownRef.current) return;
+    blockedNavConfirmShownRef.current = true;
+    const ok = window.confirm("You have unsaved changes. Leave without saving?");
+    if (ok) {
+      setIsDirty(false);
+      blocker.proceed();
+    } else {
+      blockedNavConfirmShownRef.current = false;
+      blocker.reset();
+    }
+  }, [blocker, blocker.state]);
 
   useEffect(() => {
     setRteEpoch(0);
@@ -192,6 +229,7 @@ export default function ArticleEditor() {
 
   useEffect(() => {
     let cancelled = false;
+    allowDirtyRef.current = false;
     if (isEdit) setLoading(true);
     else setLoading(false);
 
@@ -210,7 +248,13 @@ export default function ArticleEditor() {
           writers: assign?.data?.writers || [],
           editors: assign?.data?.editors || [],
         });
-        if (!isEdit || !a) return;
+        if (!isEdit || !a) {
+          if (!isEdit) {
+            setRejectionReason("");
+            setIsDirty(false);
+          }
+          return;
+        }
 
         const art = a.data?.article;
         if (!art) {
@@ -219,6 +263,7 @@ export default function ArticleEditor() {
         }
 
         setError("");
+        /* Hydrate all writer-editable CMS fields from Article schema; omitted: readTime, views, desk flags, published*, lastEditedBy. */
         setForm({
           primaryLocale: art.primaryLocale === "hi" ? "hi" : "en",
           title: art.title || "", titleHi: art.titleHi || "",
@@ -243,6 +288,8 @@ export default function ArticleEditor() {
         setImages(art.images || []);
         setStatus(art.status);
         setArticleNumber(art.articleNumber ?? null);
+        setRejectionReason(String(art.rejectionReason || "").trim());
+        setIsDirty(false);
         setRteEpoch((e) => e + 1);
       })
       .catch((err) => {
@@ -393,7 +440,33 @@ export default function ArticleEditor() {
     });
   }, [assignmentUsers, user, form.primaryLocale, searchParams]);
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  /** After hydrate + roster sync, allow marking unsaved for writers (avoids false dirty on programmatic setForm). */
+  useEffect(() => {
+    if (!isWriterRole(user?.role)) {
+      allowDirtyRef.current = false;
+      return;
+    }
+    if (loading) {
+      allowDirtyRef.current = false;
+      return;
+    }
+    const tid = window.setTimeout(() => {
+      allowDirtyRef.current = true;
+    }, 0);
+    return () => clearTimeout(tid);
+  }, [loading, isEdit, id, user?.role]);
+
+  const markWriterDirty = () => {
+    if (!isWriterRole(user?.role)) return;
+    if (!["draft", "rejected"].includes(status)) return;
+    if (!allowDirtyRef.current) return;
+    setIsDirty(true);
+  };
+
+  const set = (k, v) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    markWriterDirty();
+  };
 
   useEffect(() => {
     if (deskMode === "en") setRelatedLinks(collectRelatedLinksFromHtml(form.body));
@@ -424,10 +497,12 @@ export default function ArticleEditor() {
       if (isEdit) {
         const { data } = await updateArticle(id, payload);
         if (data?.article?.articleNumber != null) setArticleNumber(data.article.articleNumber);
+        setIsDirty(false);
         result = { articleId: data?.article?._id || id, articleNumber: data?.article?.articleNumber ?? null };
       } else {
         const { data } = await createArticle(payload);
         if (data?.article?.articleNumber != null) setArticleNumber(data.article.articleNumber);
+        setIsDirty(false);
         navigate(`/writer/edit/${data.article._id}${location.search || ""}`, { replace: true });
         result = { articleId: data.article._id, articleNumber: data.article.articleNumber ?? null };
       }
@@ -462,6 +537,7 @@ export default function ArticleEditor() {
         };
         const { data } = await updateArticle(id, payload);
         if (data?.article?.articleNumber != null) setArticleNumber(data.article.articleNumber);
+        setIsDirty(false);
         setAutosaveMsg("Autosaved");
         setTimeout(() => setAutosaveMsg(""), 2500);
       } catch {
@@ -495,6 +571,7 @@ export default function ArticleEditor() {
         return;
       }
       await submitArticle(submitId);
+      setIsDirty(false);
       if (isEditorRole(user?.role) || isAdminLike(user?.role)) {
         navigate(editorQueuePathForUser(user, location.search));
       } else {
@@ -574,6 +651,7 @@ export default function ArticleEditor() {
     try {
       const { data } = await uploadImages(id, fd);
       setImages((prev) => [...prev, ...data.images]);
+      markWriterDirty();
       setSuccess(`${data.images?.length || n} image(s) uploaded. You can still edit details below.`);
       setTimeout(() => setSuccess(""), 4000);
       setPendingUploads((prev) => {
@@ -591,6 +669,7 @@ export default function ArticleEditor() {
     try {
       await deleteImage(id, filename);
       setImages((prev) => prev.filter((img) => !img.url.endsWith(filename)));
+      markWriterDirty();
     } catch {
       setError("Failed to delete image");
     }
@@ -655,6 +734,7 @@ export default function ArticleEditor() {
       body: deskMode === "hi" ? prev.body : removeRelatedLinkFromHtml(prev.body, articleId),
       bodyHi: deskMode === "en" ? prev.bodyHi : removeRelatedLinkFromHtml(prev.bodyHi, articleId),
     }));
+    markWriterDirty();
     setSuccess("Related article link removed.");
     setTimeout(() => setSuccess(""), 2500);
   };
@@ -680,6 +760,7 @@ export default function ArticleEditor() {
         if (next[index]) next[index] = { ...next[index], ...meta };
         return next;
       });
+      markWriterDirty();
     } catch {
       setError("Failed to save image details");
     }
@@ -703,6 +784,7 @@ export default function ArticleEditor() {
       next[i] = { ...next[i], [key]: v };
       return next;
     });
+    markWriterDirty();
   };
 
   const canEdit  = ["draft", "rejected"].includes(status);
@@ -776,6 +858,16 @@ export default function ArticleEditor() {
                 "bg-slate-100 text-slate-600"
               }`}>{status}</span>
             )}
+            {isEdit && isWriterRole(user?.role) && isDirty && ["draft", "rejected"].includes(status) && (
+              <span className="text-xs font-semibold text-amber-800 bg-amber-50 ring-1 ring-amber-200/80 rounded-full px-2 py-0.5 mt-1 inline-block">
+                Unsaved changes
+              </span>
+            )}
+            {isWriterRole(user?.role) && !isEdit && isDirty && (
+              <span className="text-xs font-semibold text-amber-800 bg-amber-50 ring-1 ring-amber-200/80 rounded-full px-2 py-0.5 mt-1 inline-block">
+                Unsaved changes
+              </span>
+            )}
             {isEdit && autosaveMsg && isWriterRole(user?.role) && ["draft", "rejected"].includes(status) && (
               <span className="text-xs text-slate-500 mt-1 block">{autosaveMsg}</span>
             )}
@@ -816,6 +908,13 @@ export default function ArticleEditor() {
       {success && (
         <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-6">
           {success}
+        </div>
+      )}
+
+      {isWriterRole(user?.role) && status === "rejected" && rejectionReason.trim() && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p className="font-semibold text-red-900">Editor feedback</p>
+          <p className="mt-1 whitespace-pre-wrap leading-relaxed">{rejectionReason}</p>
         </div>
       )}
 
