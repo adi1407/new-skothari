@@ -151,10 +151,11 @@ router.post(
         );
         const generic =
           "Could not send the verification email. Check SMTP_HOST, SMTP_PORT, SMTP_SECURE, CMS_PASSWORD_RESET_FROM, and SMTP_USER / SMTP_PASS (must match what your mail provider expects).";
-        const message =
-          process.env.NODE_ENV !== "production" && errDetail
-            ? `${errDetail}${mailResult.status ? ` (HTTP ${mailResult.status})` : ""}`
-            : generic;
+        const showDetail =
+          (process.env.NODE_ENV !== "production" || process.env.SMTP_DEBUG === "1") && errDetail;
+        const message = showDetail
+          ? `${generic} Details: ${errDetail}`
+          : generic;
         return res.status(502).json({ message });
       }
 

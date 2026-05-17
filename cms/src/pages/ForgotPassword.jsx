@@ -59,9 +59,11 @@ export default function ForgotPassword() {
       const msg =
         (typeof data?.message === "string" && data.message) ||
         (typeof firstErr?.msg === "string" && firstErr.msg) ||
-        (err.code === "ERR_NETWORK" || err.message === "Network Error"
-          ? "Cannot reach the API. Set VITE_API_ORIGIN on Vercel (CMS) to your backend URL and redeploy; on Render set CLIENT_URLS to include this CMS site."
-          : "Could not request a verification code.");
+        (err.code === "ECONNABORTED"
+          ? "Request timed out. Check SMTP settings on the API (host, port, SMTP_SECURE) and that the backend is reachable."
+          : err.code === "ERR_NETWORK" || err.message === "Network Error"
+            ? "Cannot reach the API. Set VITE_API_ORIGIN on Vercel (CMS) to your backend URL and redeploy; on Render set CLIENT_URLS to include this CMS site."
+            : "Could not request a verification code.");
       setError(msg);
     } finally {
       busy(false);

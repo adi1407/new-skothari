@@ -53,7 +53,7 @@ http.interceptors.response.use(
 // ── Auth ─────────────────────────────────────────────
 export const login  = (email, password) => http.post("/auth/login", { email, password });
 export const requestPasswordReset = (email) =>
-  http.post("/auth/forgot-password", { email });
+  http.post("/auth/forgot-password", { email }, { timeout: 30_000 });
 export const resetPasswordWithOtp = ({ email, otp, newPassword }) =>
   http.post("/auth/reset-password", { email, otp, newPassword });
 export const getMe  = ()               => http.get("/auth/me");

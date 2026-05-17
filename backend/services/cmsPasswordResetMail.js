@@ -5,8 +5,20 @@
 
 const nodemailer = require("nodemailer");
 
+/** Trim env values; strip one layer of surrounding quotes (common on Render dashboard). */
+function envValue(key) {
+  let v = String(process.env[key] ?? "").trim();
+  if (
+    (v.startsWith('"') && v.endsWith('"')) ||
+    (v.startsWith("'") && v.endsWith("'"))
+  ) {
+    v = v.slice(1, -1).trim();
+  }
+  return v;
+}
+
 function getFromAddress() {
-  return (process.env.CMS_PASSWORD_RESET_FROM || process.env.SMTP_FROM || "").trim();
+  return envValue("CMS_PASSWORD_RESET_FROM") || envValue("SMTP_FROM");
 }
 
 function buildOtpEmail(otp, minutesValid) {
@@ -24,9 +36,9 @@ function buildOtpEmail(otp, minutesValid) {
 }
 
 function isPasswordResetMailConfigured() {
-  const host = process.env.SMTP_HOST;
+  const host = envValue("SMTP_HOST");
   const from = getFromAddress();
-  return Boolean(host && String(host).trim() && from);
+  return Boolean(host && from);
 }
 
 async function sendCmsPasswordResetOtp({ to, otp, minutesValid = 15 }) {
@@ -35,25 +47,29 @@ async function sendCmsPasswordResetOtp({ to, otp, minutesValid = 15 }) {
   }
 
   const { subject, html, text } = buildOtpEmail(otp, minutesValid);
-  const host = String(process.env.SMTP_HOST).trim();
-  const port = parseInt(process.env.SMTP_PORT || "587", 10);
-  const secureEnv = process.env.SMTP_SECURE;
-  const secure =
-    secureEnv === "true" ||
-    secureEnv === "1" ||
-    port === 465;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const host = envValue("SMTP_HOST");
+  const port = parseInt(envValue("SMTP_PORT") || "587", 10);
+  const secureEnv = envValue("SMTP_SECURE").toLowerCase();
+  const secure = secureEnv === "true" || secureEnv === "1" || port === 465;
+  const user = envValue("SMTP_USER");
+  // Gmail app passwords are often pasted with spaces — strip them.
+  const pass = envValue("SMTP_PASS").replace(/\s+/g, "");
   const from = getFromAddress();
 
   const transporter = nodemailer.createTransport({
     host,
     port,
     secure,
+    requireTLS: port === 587 && !secure,
     auth: user && pass ? { user, pass } : undefined,
+    connectionTimeout: 15_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 20_000,
+    tls: { minVersion: "TLSv1.2" },
   });
 
   try {
+    await transporter.verify();
     await transporter.sendMail({ from, to, subject, text, html });
     return { ok: true };
   } catch (err) {
