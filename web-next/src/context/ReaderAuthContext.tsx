@@ -6,7 +6,7 @@ interface ReaderAuthContextType {
   token: string;
   loading: boolean;
   isAuthenticated: boolean;
-  signInWithGooglePayload: (payload: { email: string; name: string; googleId?: string; avatar?: string }) => Promise<void>;
+  signInWithGoogleCredential: (credential: string) => Promise<void>;
   refreshReader: () => Promise<void>;
   logout: () => void;
 }
@@ -16,7 +16,7 @@ const ReaderAuthContext = createContext<ReaderAuthContextType>({
   token: "",
   loading: false,
   isAuthenticated: false,
-  signInWithGooglePayload: async () => {},
+  signInWithGoogleCredential: async () => {},
   refreshReader: async () => {},
   logout: () => {},
 });
@@ -53,15 +53,10 @@ export function ReaderAuthProvider({ children }: { children: React.ReactNode }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const signInWithGooglePayload = async (payload: {
-    email: string;
-    name: string;
-    googleId?: string;
-    avatar?: string;
-  }) => {
+  const signInWithGoogleCredential = async (credential: string) => {
     setLoading(true);
     try {
-      const data = await readerGoogleAuth(payload);
+      const data = await readerGoogleAuth(credential);
       if (canUseStorage) localStorage.setItem(TOKEN_KEY, data.token);
       setToken(data.token);
       setReader(data.reader);
@@ -87,7 +82,7 @@ export function ReaderAuthProvider({ children }: { children: React.ReactNode }) 
       loading,
       // Token is the source of truth; reader may hydrate a moment later.
       isAuthenticated: Boolean(token),
-      signInWithGooglePayload,
+      signInWithGoogleCredential,
       refreshReader,
       logout,
     }),

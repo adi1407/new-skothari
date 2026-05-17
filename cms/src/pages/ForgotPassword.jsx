@@ -17,21 +17,34 @@ export default function ForgotPassword() {
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
-  const sendCode = async (e) => {
-    e.preventDefault();
+  const requestCode = async ({ advanceOnSend = true } = {}) => {
     setError("");
     setInfo("");
-    setLoading(true);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError("Enter your email address.");
+      return;
+    }
+    const busy = advanceOnSend ? setLoading : setResending;
+    busy(true);
     try {
-      const { data } = await requestPasswordReset(email.trim());
+      const { data } = await requestPasswordReset(trimmed);
       if (data?.otpSent === true) {
-        setOtp("");
-        setStep(2);
-        setNewPassword("");
-        setConfirmPassword("");
+        if (advanceOnSend) {
+          setOtp("");
+          setStep(2);
+          setNewPassword("");
+          setConfirmPassword("");
+        }
         setInfo(
-          [data?.message, "Check your email for the 6-digit code, then enter it below."]
+          [
+            data?.message,
+            advanceOnSend
+              ? "Check your email for the 6-digit code, then enter it below."
+              : "A new code was sent if your account is eligible. Check your email.",
+          ]
             .filter((s) => typeof s === "string" && s.trim())
             .join(" ")
         );
@@ -39,7 +52,7 @@ export default function ForgotPassword() {
       }
       /* Same generic message when email is unknown, rate-limited, or throttled */
       setInfo(data?.message || "");
-      setStep(1);
+      if (advanceOnSend) setStep(1);
     } catch (err) {
       const data = err.response?.data;
       const firstErr = Array.isArray(data?.errors) ? data.errors[0] : null;
@@ -51,8 +64,17 @@ export default function ForgotPassword() {
           : "Could not request a verification code.");
       setError(msg);
     } finally {
-      setLoading(false);
+      busy(false);
     }
+  };
+
+  const sendCode = async (e) => {
+    e.preventDefault();
+    await requestCode({ advanceOnSend: true });
+  };
+
+  const resendCode = async () => {
+    await requestCode({ advanceOnSend: false });
   };
 
   const submitReset = async (e) => {
@@ -119,7 +141,7 @@ export default function ForgotPassword() {
               <h1 className="cms-auth-h1">{step === 1 ? "Forgot password" : "Reset password"}</h1>
               <p className="cms-auth-lede">
                 {step === 1
-                  ? "Enter your CMS email. If the account exists, you can continue with a verification code."
+                  ? "Enter your CMS email. If the account exists, you can continue with a verification code. Codes are limited to 3 requests per 10 minutes per email."
                   : "Enter the 6-digit code from your email and choose a strong new password."}
               </p>
             </div>
@@ -245,9 +267,19 @@ export default function ForgotPassword() {
                 </div>
               </div>
 
-              <button type="submit" disabled={loading} className="cms-auth-btn">
-                {loading ? "Updating…" : "Update password"}
-              </button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <button
+                  type="button"
+                  disabled={loading || resending}
+                  onClick={resendCode}
+                  className="cms-auth-link text-left font-semibold disabled:opacity-50"
+                >
+                  {resending ? "Sending…" : "Resend code"}
+                </button>
+                <button type="submit" disabled={loading || resending} className="cms-auth-btn sm:min-w-[12rem]">
+                  {loading ? "Updating…" : "Update password"}
+                </button>
+              </div>
             </form>
           )}
         </div>

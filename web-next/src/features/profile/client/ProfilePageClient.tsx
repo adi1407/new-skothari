@@ -21,7 +21,7 @@ import type { ProfileTabKey } from "../types/profile";
 export default function ProfilePageClient() {
   const googleSignInEnabled = Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
   const { setLang, t } = useLang();
-  const { reader, token, loading, isAuthenticated, signInWithGooglePayload, refreshReader, logout } = useReaderAuth();
+  const { reader, token, loading, isAuthenticated, signInWithGoogleCredential, refreshReader, logout } = useReaderAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<ProfileTabKey>("settings");
   const [busy, setBusy] = useState(false);
@@ -34,7 +34,7 @@ export default function ProfilePageClient() {
   const { signingIn, handleGoogleSuccess, handleGoogleError } = useProfileGoogleSignIn(
     navigate,
     refreshReader,
-    signInWithGooglePayload,
+    signInWithGoogleCredential,
     setTab,
     setMessage,
     t

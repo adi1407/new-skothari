@@ -17,7 +17,7 @@ const FORGOT_PASSWORD_MESSAGE =
 
 const OTP_EXPIRY_MS = 15 * 60 * 1000;
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
-const OTP_WINDOW_MS = 60 * 60 * 1000;
+const OTP_WINDOW_MS = 10 * 60 * 1000;
 const OTP_MAX_SENDS_PER_WINDOW = 3;
 
 const PASSWORD_RESET_FIELDS =
@@ -27,8 +27,8 @@ const RESET_PASSWORD_SELECT = `${PASSWORD_RESET_FIELDS} +password`;
 
 /** Per-IP cap on forgot-password (in addition to per-user DB limits below). */
 const forgotPasswordIpLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
+  windowMs: 10 * 60 * 1000,
+  max: 3,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

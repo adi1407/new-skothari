@@ -52,16 +52,11 @@ async function authed<T>(path: string, token: string, init: RequestInit = {}): P
   return (await res.json()) as T;
 }
 
-export async function readerGoogleAuth(payload: {
-  email: string;
-  name: string;
-  googleId?: string;
-  avatar?: string;
-}): Promise<{ token: string; reader: ReaderAccount }> {
+export async function readerGoogleAuth(credential: string): Promise<{ token: string; reader: ReaderAccount }> {
   const res = await fetch(api("/auth/google"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ credential }),
     signal: apiFetchSignal(),
   });
   if (!res.ok) {

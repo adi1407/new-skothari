@@ -13,6 +13,7 @@ const { resolvePublishedArticleMongoId } = require("../utils/resolveArticleRef")
 const { authenticateReader, signReaderToken, readerPublic } = require("../middleware/readerAuth");
 const { setNewsletterSubscription } = require("../services/newsletterSubscription");
 const { sendLatestStoriesNewsletter } = require("../services/newsletterDigest");
+const { verifyGoogleIdToken } = require("../services/googleIdToken");
 
 function err400(req, res) {
   const errors = validationResult(req);
@@ -48,19 +49,27 @@ function sessionPayload(req) {
   };
 }
 
-// Google-only (lightweight): client sends verified identity payload from Google SDK.
+// Google Sign-In: client sends GIS credential (ID token); server verifies with Google.
 router.post(
   "/auth/google",
-  [
-    body("email").isEmail().normalizeEmail(),
-    body("name").trim().notEmpty(),
-    body("googleId").optional().trim().notEmpty(),
-    body("avatar").optional().isString(),
-  ],
+  [body("credential").trim().notEmpty()],
   async (req, res) => {
     if (err400(req, res)) return;
     try {
-      const { email, name, googleId, avatar = "" } = req.body;
+      let email;
+      let name;
+      let googleId;
+      let avatar = "";
+      try {
+        const verified = await verifyGoogleIdToken(req.body.credential);
+        email = verified.email;
+        name = verified.name;
+        googleId = verified.googleId;
+        avatar = verified.avatar;
+      } catch (verifyErr) {
+        const status = verifyErr.status || 401;
+        return res.status(status).json({ message: verifyErr.message || "Invalid Google sign-in" });
+      }
       let reader = null;
       if (googleId) {
         reader = await Reader.findOne({ googleId });
